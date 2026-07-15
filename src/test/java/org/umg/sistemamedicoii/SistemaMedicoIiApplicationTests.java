@@ -1,4 +1,4 @@
-package org.umg.sistemamedicoii.sistemamedicoii;
+package org.umg.sistemamedicoii;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
