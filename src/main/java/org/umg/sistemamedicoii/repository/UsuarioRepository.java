@@ -12,4 +12,10 @@ public interface UsuarioRepository extends JpaRepository<Usuario, Integer> {
     boolean existsByNombreUsuario(String nombreUsuario);
 
     boolean existsByCorreo(String correo);
+
+    boolean existsByCorreoAndIdNot(String correo, Integer id);
+
+    boolean existsByNombreUsuarioAndIdNot(String nombreUsuario, Integer id);
+
+    boolean existsByDpiAndIdNot(String dpi, Integer id);
 }

@@ -17,7 +17,7 @@ public class Usuario {
     @Column(nullable = false, length = 100)
     private String nombreCompleto;
 
-    @Column(nullable = false,unique = true, length = 13)
+    @Column(nullable = true,unique = true, length = 13)
     private String dpi;
 
     @Column(nullable = true)
