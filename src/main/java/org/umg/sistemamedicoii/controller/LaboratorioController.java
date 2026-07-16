@@ -8,7 +8,7 @@ import org.umg.sistemamedicoii.service.LaboratorioServiceImpl;
 import java.util.List;
 
 @RestController
-@RequestMapping
+@RequestMapping("/api/laboratorios")
 public class LaboratorioController {
 
     @Autowired

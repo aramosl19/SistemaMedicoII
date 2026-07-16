@@ -24,7 +24,7 @@ public class MedicamentoController {
     }
 
     @PostMapping
-    public Medicamento crear(@PathVariable Medicamento medicamento) {
+    public Medicamento crear(@RequestBody Medicamento medicamento) {
         return medicamentoService.crear(medicamento);
     }
 

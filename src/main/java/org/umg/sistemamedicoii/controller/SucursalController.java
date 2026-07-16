@@ -30,7 +30,7 @@ public class SucursalController {
         return sucursalService.crear(sucursal);
     }
 
-    @PutMapping
+    @PutMapping("/{id}")
     public Sucursal actualizar(@PathVariable Integer id, @RequestBody Sucursal sucursal){
         return sucursalService.actualizar(id, sucursal);
     }
