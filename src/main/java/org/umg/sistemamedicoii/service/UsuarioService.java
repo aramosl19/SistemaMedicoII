@@ -1,5 +1,6 @@
 package org.umg.sistemamedicoii.service;
 
+import org.springframework.data.domain.Page;
 import org.umg.sistemamedicoii.dto.UsuarioRequestDTO;
 import org.umg.sistemamedicoii.dto.UsuarioResponseDTO;
 
@@ -11,4 +12,6 @@ public interface UsuarioService {
     UsuarioResponseDTO crear(UsuarioRequestDTO dto);
     UsuarioResponseDTO actualizar(Integer id, UsuarioRequestDTO dto);
     void eliminar(Integer id);
+
+    Page<UsuarioResponseDTO> buscar(String campo, String valor, int page, int size);
 }

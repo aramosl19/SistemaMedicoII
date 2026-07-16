@@ -1,6 +1,9 @@
 package org.umg.sistemamedicoii.service;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.umg.sistemamedicoii.dto.UsuarioRequestDTO;
@@ -150,6 +153,26 @@ public class UsuarioServiceImpl implements UsuarioService{
     public void eliminar(Integer id) {
         buscarUsuarioOlanzar(id);
         usuarioRepository.deleteById(id);
+    }
+
+    @Override
+    public Page<UsuarioResponseDTO> buscar(String campo, String valor, int page, int size) {
+        Pageable pageable = PageRequest.of(page, size);
+
+        if (campo == null || valor == null || valor.isBlank()) {
+            return usuarioRepository.findAll(pageable).map(this::toResponseDTO);
+        }
+
+        Page<Usuario> resultado = switch (campo.toLowerCase()) {
+            case "nombre" -> usuarioRepository.buscarPorNombre(valor, pageable);
+            case "correo" -> usuarioRepository.buscarPorCorreo(valor, pageable);
+            case "usuario" -> usuarioRepository.buscarPorNombreUsuario(valor, pageable);
+            case "dpi" -> usuarioRepository.buscarPorDpi(valor, pageable);
+            case "rol" -> usuarioRepository.buscarPorRol(valor, pageable);
+            default -> throw new IllegalArgumentException("Campo de búsqueda no válido: " + campo);
+        };
+
+        return resultado.map(this::toResponseDTO);
     }
 
     private Usuario buscarUsuarioOlanzar(Integer id) {
