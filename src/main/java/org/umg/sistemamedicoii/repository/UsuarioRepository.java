@@ -10,8 +10,10 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import java.util.Optional;
 
 public interface UsuarioRepository extends JpaRepository<Usuario, Integer> {
-    
+
     Optional<Usuario> findByDpi(String dpi);
+
+    Optional<Usuario> findByNombreUsuario(String nombreUsuario);
 
     boolean existsByNombreUsuario(String nombreUsuario);
 
@@ -22,7 +24,7 @@ public interface UsuarioRepository extends JpaRepository<Usuario, Integer> {
     boolean existsByNombreUsuarioAndIdNot(String nombreUsuario, Integer id);
 
     boolean existsByDpiAndIdNot(String dpi, Integer id);
-    
+
 
     @Query(value = "SELECT * FROM usuario u WHERE unaccent(u.nombre_completo) ILIKE unaccent(CONCAT('%', :valor, '%'))",
             countQuery = "SELECT count(*) FROM usuario u WHERE unaccent(u.nombre_completo) ILIKE unaccent(CONCAT('%', :valor, '%'))",

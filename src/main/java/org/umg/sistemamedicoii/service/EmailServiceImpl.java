@@ -25,6 +25,7 @@ public class EmailServiceImpl implements EmailService {
     }
 
     @Override
+    @Async
     public void enviarBienvenida(String destinatario, String nombreCompleto) {
         String asunto = "Bienvenido al Sistema de Citas - Hospital";
         String mensaje = "Estimado(a) " + nombreCompleto + ",\n\n"

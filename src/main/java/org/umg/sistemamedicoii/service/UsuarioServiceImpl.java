@@ -6,9 +6,15 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.umg.sistemamedicoii.dto.LoginRequestDTO;
+import org.umg.sistemamedicoii.dto.LoginResponseDTO;
+import org.umg.sistemamedicoii.dto.RegistroExternoDTO;
 import org.umg.sistemamedicoii.dto.UsuarioRequestDTO;
 import org.umg.sistemamedicoii.dto.UsuarioResponseDTO;
+import org.umg.sistemamedicoii.dto.VerificarDpiResponseDTO;
+import org.umg.sistemamedicoii.exception.AccountLockedException;
 import org.umg.sistemamedicoii.exception.DuplicateResourceException;
+import org.umg.sistemamedicoii.exception.InvalidCredentialsException;
 import org.umg.sistemamedicoii.exception.ResourceNotFoundException;
 import org.umg.sistemamedicoii.models.Especialidad;
 import org.umg.sistemamedicoii.models.Rol;
@@ -19,17 +25,21 @@ import org.umg.sistemamedicoii.repository.RolRepository;
 import org.umg.sistemamedicoii.repository.SucursalRepository;
 import org.umg.sistemamedicoii.repository.UsuarioRepository;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Service
 public class UsuarioServiceImpl implements UsuarioService{
 
+    private static final int MAX_INTENTOS_FALLIDOS = 5;
+    private static final int MINUTOS_BLOQUEO = 15;
 
     @Autowired private UsuarioRepository usuarioRepository;
     @Autowired private RolRepository rolRepository;
     @Autowired private SucursalRepository sucursalRepository;
     @Autowired private EspecialidadRepository especialidadRepository;
     @Autowired private PasswordEncoder passwordEncoder;
+    @Autowired private EmailService emailService;
 
 
     private void validarSucursalObligatoriaEnCreacion(UsuarioRequestDTO dto) {
@@ -51,7 +61,7 @@ public class UsuarioServiceImpl implements UsuarioService{
         }
     }
 
-    
+
     @Override
     public List<UsuarioResponseDTO> listar() {
         return usuarioRepository.findAll()
@@ -74,8 +84,8 @@ public class UsuarioServiceImpl implements UsuarioService{
                     "Ya existe una cuenta registrada con este correo electrónico.");
         }
         if (usuarioRepository.existsByNombreUsuario(dto.getNombreUsuario())){
-                throw new DuplicateResourceException(
-                        "El nombre de usuario " + dto.getNombreUsuario() + "ya se encuentra registrado.");
+            throw new DuplicateResourceException(
+                    "El nombre de usuario " + dto.getNombreUsuario() + "ya se encuentra registrado.");
         }
 
         Rol rol = rolRepository.findById(dto.getRolId())
@@ -98,7 +108,7 @@ public class UsuarioServiceImpl implements UsuarioService{
 
         if (dto.getSucursalId()!=null){
             Sucursal sucursal = sucursalRepository.findById(dto.getSucursalId())
-                  .orElseThrow(()-> new ResourceNotFoundException("Sucursal no encontrada con id "+ dto.getSucursalId()));
+                    .orElseThrow(()-> new ResourceNotFoundException("Sucursal no encontrada con id "+ dto.getSucursalId()));
             usuario.setSucursal(sucursal);
         }
         if (dto.getEspecialidadId()!=null){
@@ -117,7 +127,7 @@ public class UsuarioServiceImpl implements UsuarioService{
 
         if (usuarioRepository.existsByCorreoAndIdNot(dto.getCorreo(), id)) {
             throw new DuplicateResourceException("Ese correo ya está en uso por otro usuario.");
-            }
+        }
 
         if (usuarioRepository.existsByNombreUsuarioAndIdNot(dto.getNombreUsuario(),id)){
             throw new DuplicateResourceException("Ese nombre de usuario ya está en uso.");
@@ -173,6 +183,106 @@ public class UsuarioServiceImpl implements UsuarioService{
         };
 
         return resultado.map(this::toResponseDTO);
+    }
+
+    @Override
+    public UsuarioResponseDTO registrarExterno(RegistroExternoDTO dto) {
+        if (usuarioRepository.existsByCorreo(dto.getCorreo())) {
+            throw new DuplicateResourceException(
+                    "Ya existe una cuenta registrada con este correo electrónico.");
+        }
+        if (usuarioRepository.findByDpi(dto.getDpi()).isPresent()) {
+            throw new DuplicateResourceException(
+                    "Ya existe una cuenta registrada con este número de DPI. Si ya tiene cuenta, inicie sesión.");
+        }
+        if (usuarioRepository.existsByNombreUsuario(dto.getNombreUsuario())) {
+            throw new DuplicateResourceException("El nombre de usuario ya se encuentra registrado.");
+        }
+
+        Rol rolPaciente = rolRepository.findByNombre("Paciente")
+                .orElseThrow(() -> new ResourceNotFoundException("El rol 'Paciente' no está configurado en el sistema."));
+
+        Usuario usuario = new Usuario();
+        usuario.setNombreCompleto(dto.getNombreCompleto());
+        usuario.setDpi(dto.getDpi());
+        usuario.setNit(dto.getNit());
+        usuario.setCorreo(dto.getCorreo());
+        usuario.setNombreUsuario(dto.getNombreUsuario());
+        usuario.setPassword(passwordEncoder.encode(dto.getPassword()));
+        usuario.setTelefono(dto.getTelefono());
+        usuario.setNumeroSeguro(dto.getNumeroSeguro());
+        usuario.setRol(rolPaciente);
+        usuario.setActivo(true);
+
+        Usuario guardado = usuarioRepository.save(usuario);
+
+        emailService.enviarBienvenida(guardado.getCorreo(), guardado.getNombreCompleto());
+
+        return toResponseDTO(guardado);
+    }
+
+    @Override
+    public VerificarDpiResponseDTO verificarDpi(String dpi) {
+        VerificarDpiResponseDTO response = new VerificarDpiResponseDTO();
+
+        return usuarioRepository.findByDpi(dpi)
+                .map(usuario -> {
+                    response.setRegistrado(true);
+                    response.setRol(usuario.getRol().getNombre());
+                    response.setNombreCompleto(usuario.getNombreCompleto());
+                    return response;
+                })
+                .orElseGet(() -> {
+                    response.setRegistrado(false);
+                    return response;
+                });
+    }
+
+    @Override
+    public LoginResponseDTO login(LoginRequestDTO dto) {
+        Usuario usuario = usuarioRepository.findByNombreUsuario(dto.getNombreUsuario())
+                .orElseThrow(() -> new InvalidCredentialsException("Usuario o contraseña incorrectos."));
+
+        if (usuario.getBloqueadoHasta() != null && !usuario.getBloqueadoHasta().isAfter(LocalDateTime.now())) {
+            usuario.setIntentosFallidos(0);
+            usuario.setBloqueadoHasta(null);
+        }
+
+        if (usuario.getBloqueadoHasta() != null && usuario.getBloqueadoHasta().isAfter(LocalDateTime.now())) {
+            throw new AccountLockedException("Cuenta bloqueada temporalmente. Intente de nuevo en 15 minutos.");
+        }
+
+        if (!passwordEncoder.matches(dto.getPassword(), usuario.getPassword())) {
+            int intentos = usuario.getIntentosFallidos() + 1;
+            usuario.setIntentosFallidos(intentos);
+
+            int restantes = MAX_INTENTOS_FALLIDOS - intentos;
+
+            if (restantes <= 0) {
+                usuario.setBloqueadoHasta(LocalDateTime.now().plusMinutes(MINUTOS_BLOQUEO));
+                usuarioRepository.save(usuario);
+                throw new AccountLockedException("Cuenta bloqueada temporalmente. Intente de nuevo en 15 minutos.");
+            }
+
+            usuarioRepository.save(usuario);
+            throw new InvalidCredentialsException(
+                    "Usuario o contraseña incorrectos. Intentos restantes: " + restantes + ".");
+        }
+
+        if (!usuario.isActivo()) {
+            throw new InvalidCredentialsException("Esta cuenta se encuentra inactiva. Contacte al administrador.");
+        }
+
+        usuario.setIntentosFallidos(0);
+        usuario.setBloqueadoHasta(null);
+        usuarioRepository.save(usuario);
+
+        LoginResponseDTO response = new LoginResponseDTO();
+        response.setId(usuario.getId());
+        response.setNombreCompleto(usuario.getNombreCompleto());
+        response.setNombreUsuario(usuario.getNombreUsuario());
+        response.setRol(usuario.getRol().getNombre());
+        return response;
     }
 
     private Usuario buscarUsuarioOlanzar(Integer id) {

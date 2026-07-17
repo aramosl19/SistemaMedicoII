@@ -5,6 +5,8 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.time.LocalDateTime;
+
 @Entity
 @Table(name = "usuario")
 @Getter
@@ -52,4 +54,11 @@ public class Usuario {
 
     @Column(nullable = false)
     private boolean activo = true;
+
+    // --- Control de login fallido (RN-CU00-03) ---
+    @Column(nullable = false)
+    private int intentosFallidos = 0;
+
+    @Column(nullable = true)
+    private LocalDateTime bloqueadoHasta;
 }
