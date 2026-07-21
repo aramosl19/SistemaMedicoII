@@ -1,13 +1,13 @@
 package org.umg.sistemamedicoii.service;
 
 import org.umg.sistemamedicoii.models.Catalogo;
-import org.springframework.data.jpa.repository.JpaRepository;
+import org.umg.sistemamedicoii.repository.CatalogoRepository;
 
 import java.util.List;
 
 public abstract class CatalogoServiceImpl<T extends Catalogo> implements CatalogoService<T> {
 
-    protected abstract JpaRepository<T, Integer> getRepository();
+    protected abstract CatalogoRepository<T> getRepository();
 
     @Override
     public List<T> listar() {
@@ -22,6 +22,10 @@ public abstract class CatalogoServiceImpl<T extends Catalogo> implements Catalog
 
     @Override
     public T crear(T entidad) {
+        if (!getRepository().findByNombreIgnoreCaseAndActivoTrue(entidad.getNombre()).isEmpty()) {
+            throw new IllegalArgumentException(
+                    "Ya existe un registro con el nombre " + entidad.getNombre() + " en este catálogo.");
+        }
         return getRepository().save(entidad);
     }
 

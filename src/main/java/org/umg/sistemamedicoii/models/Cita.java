@@ -1,0 +1,47 @@
+package org.umg.sistemamedicoii.models;
+
+
+import jakarta.persistence.*;
+import lombok.Getter;
+import lombok.Setter;
+
+import java.time.LocalDateTime;
+
+@Getter @Setter
+@Entity
+@Table(name = "cita")
+public class Cita {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Integer id;
+
+    @ManyToOne
+    @JoinColumn(name = "paciente_id",nullable = false)
+    private Usuario paciente;
+
+    @ManyToOne
+    @JoinColumn(name = "medico_id", nullable = false)
+    private Usuario medico;
+
+    @ManyToOne
+    @JoinColumn(name = "sucursal_id", nullable = false)
+    private Sucursal sucursal;
+
+    @ManyToOne
+    @JoinColumn(name = "especialidad_id", nullable = false)
+    private Especialidad especialidad;
+
+    @ManyToOne
+    @JoinColumn(name = "estado_id", nullable = false)
+    private EstadoCita estado;
+
+    @Column (nullable = false)
+    private LocalDateTime fechaHora;
+
+    @Column (nullable = false, length = 2000)
+    private String motivo;
+
+    @Column (nullable = false)
+    private LocalDateTime reservadaHasta;
+}
