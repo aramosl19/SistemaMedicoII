@@ -4,7 +4,7 @@ package org.umg.sistemamedicoii.controller;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 import org.umg.sistemamedicoii.models.Sucursal;
-import org.umg.sistemamedicoii.service.SucursalServiceImpl;
+import org.umg.sistemamedicoii.service.CatalogoService;
 
 import java.util.List;
 
@@ -13,7 +13,7 @@ import java.util.List;
 public class SucursalController {
 
     @Autowired
-    private SucursalServiceImpl sucursalService;
+    private CatalogoService<Sucursal> sucursalService;
 
     @GetMapping
     public List<Sucursal> listar(){

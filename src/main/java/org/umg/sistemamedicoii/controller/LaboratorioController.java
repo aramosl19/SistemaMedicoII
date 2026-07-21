@@ -3,7 +3,7 @@ package org.umg.sistemamedicoii.controller;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 import org.umg.sistemamedicoii.models.Laboratorio;
-import org.umg.sistemamedicoii.service.LaboratorioServiceImpl;
+import org.umg.sistemamedicoii.service.CatalogoService;
 
 import java.util.List;
 
@@ -12,7 +12,7 @@ import java.util.List;
 public class LaboratorioController {
 
     @Autowired
-    private LaboratorioServiceImpl laboratorioService;
+    private CatalogoService<Laboratorio> laboratorioService;
 
     @GetMapping
     public List<Laboratorio> listar() {
