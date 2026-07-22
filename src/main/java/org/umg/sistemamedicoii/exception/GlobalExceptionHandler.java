@@ -47,4 +47,10 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.LOCKED)
                 .body(Map.of("error", ex.getMessage()));
     }
+
+    @ExceptionHandler(PagoRechazadoException.class)
+    public ResponseEntity<Map<String, String>> handlePagoRechazado(PagoRechazadoException ex) {
+        return ResponseEntity.status(HttpStatus.PAYMENT_REQUIRED)
+                .body(Map.of("error", ex.getMessage()));
+    }
 }

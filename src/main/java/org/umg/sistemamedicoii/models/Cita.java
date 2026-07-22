@@ -42,6 +42,6 @@ public class Cita {
     @Column (nullable = false, length = 2000)
     private String motivo;
 
-    @Column (nullable = false)
+    @Column (nullable = true)
     private LocalDateTime reservadaHasta;
 }
