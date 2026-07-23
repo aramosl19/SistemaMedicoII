@@ -35,7 +35,7 @@ public class Cita {
     @ManyToOne
     @JoinColumn(name = "estado_id", nullable = false)
     private EstadoCita estado;
-
+    
     @Column (nullable = false)
     private LocalDateTime fechaHora;
 
@@ -44,4 +44,10 @@ public class Cita {
 
     @Column (nullable = true)
     private LocalDateTime reservadaHasta;
+
+    @Column(nullable = true)
+    private LocalDateTime horaLlegada;
+
+    @Column(nullable = false)
+    private boolean emergencia = false;
 }
