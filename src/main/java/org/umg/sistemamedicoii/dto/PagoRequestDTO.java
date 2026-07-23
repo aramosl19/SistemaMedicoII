@@ -11,7 +11,7 @@ public class PagoRequestDTO {
     private Integer citaId;
 
     @NotBlank(message = "El número de tarjeta es obligatorio.")
-    @Pattern(regexp = "\\d{13,19}", message = "El número de tarjeta no es válido.")
+    @Pattern(regexp = "\\d{13,19}", message = "El número de tarjeta debe contener entre 13 y 19 dígitos y ser válido.")
     private String numeroTarjeta;
 
     @NotBlank(message = "El nombre del titular es obligatorio.")
@@ -20,10 +20,10 @@ public class PagoRequestDTO {
     private String nombreTitular;
 
     @NotBlank(message = "El vencimiento es obligatorio.")
-    @Pattern(regexp = "(0[1-9]|1[0-2])/\\d{2}", message = "Formato inválido. Use MM/AA.")
+    @Pattern(regexp = "(0[1-9]|1[0-2])/\\d{2}", message = "La fecha de vencimiento debe estar en formato MM/AA y la tarjeta no debe estar vencida.")
     private String vencimiento;
 
     @NotBlank(message = "El CVV es obligatorio.")
-    @Pattern(regexp = "\\d{3,4}", message = "El CVV no es válido.")
+    @Pattern(regexp = "\\d{3,4}", message = "El CVV debe contener 3 ó 4 dígitos numéricos.")
     private String cvv;
 }

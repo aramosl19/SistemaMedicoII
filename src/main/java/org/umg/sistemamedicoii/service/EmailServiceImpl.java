@@ -1,6 +1,7 @@
 package org.umg.sistemamedicoii.service;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.scheduling.annotation.Async;
@@ -11,6 +12,9 @@ public class EmailServiceImpl implements EmailService {
 
     @Autowired
     private JavaMailSender mailSender;
+
+    @Value("${app.hospital.nombre}")
+    private String nombreHospital;
 
     @Override
     @Async
@@ -27,7 +31,7 @@ public class EmailServiceImpl implements EmailService {
     @Override
     @Async
     public void enviarBienvenida(String destinatario, String nombreCompleto) {
-        String asunto = "Bienvenido al Sistema de Citas - Hospital";
+        String asunto = "Bienvenido al Sistema de Citas - " + nombreHospital;
         String mensaje = "Estimado(a) " + nombreCompleto + ",\n\n"
                 + "Su registro ha sido completado exitosamente. Ya puede agendar sus citas "
                 + "médicas a través de nuestro portal.\n\n"

@@ -1,6 +1,7 @@
 package org.umg.sistemamedicoii.service;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.umg.sistemamedicoii.dto.PagoRequestDTO;
 import org.umg.sistemamedicoii.dto.PagoResponseDTO;
@@ -17,6 +18,8 @@ import java.util.UUID;
 @Service
 public class PagoServiceImpl implements PagoService {
 
+    @Value("${app.hospital.nombre}")
+    private String nombreHospital;
     // --- Tarjetas de prueba fijas (simulan la pasarela) ---
     private static final String TARJETA_FONDOS_INSUFICIENTES = "4000000000000200";
     private static final String TARJETA_ERROR_COMUNICACION = "4000000000000309";
@@ -49,7 +52,7 @@ public class PagoServiceImpl implements PagoService {
         String[] partesVencimiento = dto.getVencimiento().split("/");
         YearMonth vencimiento = YearMonth.of(2000 + Integer.parseInt(partesVencimiento[1]), Integer.parseInt(partesVencimiento[0]));
         if (vencimiento.isBefore(YearMonth.from(LocalDate.now()))) {
-            throw new IllegalArgumentException("La tarjeta está vencida.");
+            throw new IllegalArgumentException("La fecha de vencimiento debe estar en formato MM/AA y la tarjeta no debe estar vencida.");
         }
 
         switch (dto.getNumeroTarjeta()) {
@@ -79,7 +82,7 @@ public class PagoServiceImpl implements PagoService {
 
         emailService.enviarCorreo(
                 cita.getPaciente().getCorreo(),
-                "Comprobante de pago - Cita médica",
+                "Comprobante de pago - Cita médica - " + nombreHospital,
                 "Su pago fue procesado exitosamente. Número de transacción: " + pago.getNumeroTransaccion()
         );
 
@@ -108,4 +111,5 @@ public class PagoServiceImpl implements PagoService {
         }
         return suma % 10 == 0;
     }
+
 }
