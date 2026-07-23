@@ -7,7 +7,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 import org.umg.sistemamedicoii.dto.CitaRequestDTO;
 import org.umg.sistemamedicoii.dto.CitaResponseDTO;
-import org.umg.sistemamedicoii.dto.MedicoDisponibleDTO;
+import org.umg.sistemamedicoii.dto.MedicoDisponibleResponseDTO;
 import org.umg.sistemamedicoii.service.CitaService;
 
 import java.time.LocalDate;
@@ -22,7 +22,7 @@ public class CitaController {
     private CitaService citaService;
 
     @GetMapping("/medicos-disponibles")
-    public List<MedicoDisponibleDTO> medicosDisponibles(
+    public List<MedicoDisponibleResponseDTO> medicosDisponibles(
             @RequestParam Integer sucursalId, @RequestParam Integer especialidadId){
         return citaService.listarMedicosDisponibles(sucursalId, especialidadId);
     }

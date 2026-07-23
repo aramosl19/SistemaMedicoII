@@ -5,7 +5,7 @@ import lombok.Getter;
 import lombok.Setter;
 
 @Getter @Setter
-public class RegistroExternoDTO {
+public class RegistroExternoRequestDTO {
 
     @NotBlank(message = "El nombre debe contener entre 10 y 100 caracteres.")
     @Size(min = 10, max = 100, message = "El nombre debe contener entre 10 y 100 caracteres.")

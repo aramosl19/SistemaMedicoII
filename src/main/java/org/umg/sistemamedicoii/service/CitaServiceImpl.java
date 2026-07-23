@@ -4,7 +4,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.umg.sistemamedicoii.dto.CitaRequestDTO;
 import org.umg.sistemamedicoii.dto.CitaResponseDTO;
-import org.umg.sistemamedicoii.dto.MedicoDisponibleDTO;
+import org.umg.sistemamedicoii.dto.MedicoDisponibleResponseDTO;
 import org.umg.sistemamedicoii.exception.ResourceNotFoundException;
 import org.umg.sistemamedicoii.models.*;
 import org.umg.sistemamedicoii.repository.*;
@@ -33,14 +33,14 @@ public class CitaServiceImpl implements CitaService {
     @Autowired private EstadoCitaRepository estadoCitaRepository;
 
     @Override
-    public List<MedicoDisponibleDTO> listarMedicosDisponibles(Integer sucursalId, Integer especialidadId){
+    public List<MedicoDisponibleResponseDTO> listarMedicosDisponibles(Integer sucursalId, Integer especialidadId){
         return usuarioRepository.findAll().stream()
                 .filter(u->u.isActivo()
                         && u.getRol() != null && "Médico".equalsIgnoreCase(u.getRol().getNombre())
                         && sucursalId.equals(u.getSucursal()!= null ? u.getSucursal().getId():null)
                         && especialidadId.equals(u.getEspecialidad() != null ? u.getEspecialidad().getId():null))
                 .map(u-> {
-                    MedicoDisponibleDTO dto = new MedicoDisponibleDTO();
+                    MedicoDisponibleResponseDTO dto = new MedicoDisponibleResponseDTO();
                     dto.setId(u.getId());
                     dto.setNombreCompleto(u.getNombreCompleto());
                     return dto;

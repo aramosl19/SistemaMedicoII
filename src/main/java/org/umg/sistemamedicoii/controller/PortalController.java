@@ -6,7 +6,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 import org.umg.sistemamedicoii.dto.LoginRequestDTO;
 import org.umg.sistemamedicoii.dto.LoginResponseDTO;
-import org.umg.sistemamedicoii.dto.RegistroExternoDTO;
+import org.umg.sistemamedicoii.dto.RegistroExternoRequestDTO;
 import org.umg.sistemamedicoii.dto.UsuarioResponseDTO;
 import org.umg.sistemamedicoii.dto.VerificarDpiRequestDTO;
 import org.umg.sistemamedicoii.dto.VerificarDpiResponseDTO;
@@ -21,7 +21,7 @@ public class PortalController {
 
     @PostMapping("/registro")
     @ResponseStatus(HttpStatus.CREATED)
-    public UsuarioResponseDTO registrarExterno(@Valid @RequestBody RegistroExternoDTO dto) {
+    public UsuarioResponseDTO registrarExterno(@Valid @RequestBody RegistroExternoRequestDTO dto) {
         return usuarioService.registrarExterno(dto);
     }
 

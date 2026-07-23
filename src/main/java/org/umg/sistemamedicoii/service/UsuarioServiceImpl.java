@@ -8,7 +8,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.umg.sistemamedicoii.dto.LoginRequestDTO;
 import org.umg.sistemamedicoii.dto.LoginResponseDTO;
-import org.umg.sistemamedicoii.dto.RegistroExternoDTO;
+import org.umg.sistemamedicoii.dto.RegistroExternoRequestDTO;
 import org.umg.sistemamedicoii.dto.UsuarioRequestDTO;
 import org.umg.sistemamedicoii.dto.UsuarioResponseDTO;
 import org.umg.sistemamedicoii.dto.VerificarDpiResponseDTO;
@@ -186,7 +186,7 @@ public class UsuarioServiceImpl implements UsuarioService{
     }
 
     @Override
-    public UsuarioResponseDTO registrarExterno(RegistroExternoDTO dto) {
+    public UsuarioResponseDTO registrarExterno(RegistroExternoRequestDTO dto) {
         if (usuarioRepository.existsByCorreo(dto.getCorreo())) {
             throw new DuplicateResourceException(
                     "Ya existe una cuenta registrada con este correo electrónico.");

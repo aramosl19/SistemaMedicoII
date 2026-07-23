@@ -5,7 +5,6 @@ import lombok.Getter;
 import lombok.Setter;
 
 @Getter @Setter
-public class MedicoDisponibleDTO {
-    private Integer id;
-    private String nombreCompleto;
+public class RegistrarLlegadaRequestDTO {
+    private boolean emergencia = false;
 }
