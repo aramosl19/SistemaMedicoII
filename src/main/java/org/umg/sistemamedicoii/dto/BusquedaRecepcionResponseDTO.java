@@ -1,6 +1,5 @@
 package org.umg.sistemamedicoii.dto;
 
-import jakarta.persistence.criteria.CriteriaBuilder;
 import lombok.Getter;
 import lombok.Setter;
 

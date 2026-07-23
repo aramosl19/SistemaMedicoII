@@ -32,6 +32,17 @@ public abstract class CatalogoServiceImpl<T extends Catalogo> implements Catalog
     @Override
     public T actualizar(Integer id, T entidad) {
         obtenerPorId(id);
+
+        boolean nombreDuplicado = getRepository()
+                .findByNombreIgnoreCaseAndActivoTrue(entidad.getNombre())
+                .stream()
+                .anyMatch(otro -> !otro.getId().equals(id));
+
+        if (nombreDuplicado) {
+            throw new IllegalArgumentException(
+                    "Ya existe un registro con el nombre " + entidad.getNombre() + " en este catálogo.");
+        }
+
         entidad.setId(id);
         return getRepository().save(entidad);
     }

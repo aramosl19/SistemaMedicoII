@@ -85,7 +85,7 @@ public class UsuarioServiceImpl implements UsuarioService{
         }
         if (usuarioRepository.existsByNombreUsuario(dto.getNombreUsuario())){
             throw new DuplicateResourceException(
-                    "El nombre de usuario " + dto.getNombreUsuario() + "ya se encuentra registrado.");
+                    "El nombre de usuario " + dto.getNombreUsuario() + " ya se encuentra registrado.");
         }
 
         Rol rol = rolRepository.findById(dto.getRolId())

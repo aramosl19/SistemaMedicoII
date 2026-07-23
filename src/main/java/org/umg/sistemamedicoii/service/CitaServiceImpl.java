@@ -81,7 +81,7 @@ public class CitaServiceImpl implements CitaService {
 
         Usuario paciente = usuarioRepository.findById(dto.getPacienteId())
                 .orElseThrow(()-> new ResourceNotFoundException("Paciente no encontrado."));
-        if (paciente.getRol() != null && "Médico".equalsIgnoreCase(paciente.getRol().getNombre())) {
+        if (paciente.getRol() == null || !"Paciente".equalsIgnoreCase(paciente.getRol().getNombre())) {
             throw new IllegalArgumentException("El paciente seleccionado no es válido.");
         }
         Usuario medico = usuarioRepository.findById(dto.getMedicoId())
