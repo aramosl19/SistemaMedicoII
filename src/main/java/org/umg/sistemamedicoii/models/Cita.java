@@ -16,6 +16,7 @@ public class Cita {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
 
+
     @ManyToOne
     @JoinColumn(name = "paciente_id",nullable = false)
     private Usuario paciente;
@@ -50,4 +51,11 @@ public class Cita {
 
     @Column(nullable = false)
     private boolean emergencia = false;
+
+    @Column(nullable = false)
+    private LocalDateTime fechaCreacion;
+
+    @Column(nullable = false)
+    private boolean creadaPorPersonalInterno = false;
+
 }
