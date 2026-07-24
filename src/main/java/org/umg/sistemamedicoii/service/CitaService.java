@@ -11,5 +11,5 @@ import java.util.List;
 public interface CitaService {
     List<MedicoDisponibleResponseDTO> listarMedicosDisponibles(Integer sucursalId, Integer especialidadId);
     List<LocalDateTime> listarHorariosDisponibles(Integer medicoId, LocalDate fecha);
-    CitaResponseDTO agendarCita(CitaRequestDTO dto);
+    CitaResponseDTO agendarCita(CitaRequestDTO dto, boolean creadaPorPersonalInterno);
 }

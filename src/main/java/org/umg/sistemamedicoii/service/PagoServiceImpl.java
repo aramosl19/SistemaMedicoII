@@ -20,12 +20,12 @@ public class PagoServiceImpl implements PagoService {
 
     @Value("${app.hospital.nombre}")
     private String nombreHospital;
-    // --- Tarjetas de prueba fijas (simulan la pasarela) ---
+
     private static final String TARJETA_FONDOS_INSUFICIENTES = "4000000000000200";
     private static final String TARJETA_ERROR_COMUNICACION = "4000000000000309";
 
     @Autowired private CitaRepository citaRepository;
-    @Autowired private PagoRepository pagoRepository;
+    @Autowired private PagoTarjetaRepository pagoTarjetaRepository;
     @Autowired private EstadoCitaRepository estadoCitaRepository;
     @Autowired private EmailService emailService;
 
@@ -41,7 +41,7 @@ public class PagoServiceImpl implements PagoService {
                     "El tiempo para confirmar su cita ha expirado. El horario seleccionado ha sido liberado. Por favor, seleccione un nuevo horario.");
         }
 
-        if (pagoRepository.existsByCitaId(cita.getId())) {
+        if (pagoTarjetaRepository.existsByCitaId(cita.getId())) {
             throw new IllegalArgumentException("Esta cita ya fue pagada.");
         }
 
@@ -61,24 +61,24 @@ public class PagoServiceImpl implements PagoService {
             case TARJETA_ERROR_COMUNICACION -> throw new PagoRechazadoException(
                     "Error al procesar el pago. Por favor, intente nuevamente o contacte a su banco.");
         }
-        
-        EstadoCita estadoPagada = estadoCitaRepository.findAll().stream()
-                .filter(e -> "Pagada".equalsIgnoreCase(e.getNombre()))
-                .findFirst()
-                .orElseThrow(() -> new ResourceNotFoundException("Estado 'Pagada' no configurado."));
 
-        cita.setEstado(estadoPagada);
+        EstadoCita estadoConfirmada = estadoCitaRepository.findAll().stream()
+                .filter(e -> "Confirmada".equalsIgnoreCase(e.getNombre()))
+                .findFirst()
+                .orElseThrow(() -> new ResourceNotFoundException("Estado 'Confirmada' no configurado."));
+
+        cita.setEstado(estadoConfirmada);
         cita.setReservadaHasta(null);
         citaRepository.save(cita);
 
-        Pago pago = new Pago();
+        PagoTarjeta pago = new PagoTarjeta();
         pago.setCita(cita);
         pago.setNumeroTransaccion(UUID.randomUUID().toString());
         pago.setMonto(cita.getEspecialidad().getPrecio());
         pago.setUltimosCuatroDigitos(dto.getNumeroTarjeta().substring(dto.getNumeroTarjeta().length() - 4));
         pago.setNombreTitular(dto.getNombreTitular().toUpperCase());
         pago.setFechaPago(LocalDateTime.now());
-        pagoRepository.save(pago);
+        pagoTarjetaRepository.save(pago);
 
         emailService.enviarCorreo(
                 cita.getPaciente().getCorreo(),
@@ -111,5 +111,4 @@ public class PagoServiceImpl implements PagoService {
         }
         return suma % 10 == 0;
     }
-
 }

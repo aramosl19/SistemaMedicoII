@@ -19,8 +19,6 @@ import java.util.stream.Collectors;
 @Service
 public class CitaServiceImpl implements CitaService {
 
-    //Horario fijo (debo preguntarle al ingeniero si esta bien o debo cambiarlo el sabado.)
-
     private static final LocalTime HORA_INICIO = LocalTime.of(8,0);
     private static final LocalTime HORA_FIN = LocalTime.of(17,0);
     private static final int DURACION_MINUTOS = 30;
@@ -46,7 +44,6 @@ public class CitaServiceImpl implements CitaService {
                     return dto;
                 })
                 .collect(Collectors.toList());
-
     }
 
     @Override
@@ -70,7 +67,7 @@ public class CitaServiceImpl implements CitaService {
     }
 
     @Override
-    public CitaResponseDTO agendarCita(CitaRequestDTO dto) {
+    public CitaResponseDTO agendarCita(CitaRequestDTO dto, boolean creadaPorPersonalInterno) {
         if (!dto.getFechaHora().isAfter(LocalDateTime.now())) {
             throw new IllegalArgumentException("Debe seleccionar una fecha y hora futuras. Las citas no pueden agendarse en fechas pasadas o presentes.");
         }
@@ -98,10 +95,6 @@ public class CitaServiceImpl implements CitaService {
                 .findFirst()
                 .orElseThrow(()-> new ResourceNotFoundException("Estado 'Pendiente de pago' no configurado."));
 
-
-
-
-
         Cita cita = new Cita();
         cita.setPaciente(paciente);
         cita.setMedico(medico);
@@ -111,6 +104,8 @@ public class CitaServiceImpl implements CitaService {
         cita.setFechaHora(dto.getFechaHora());
         cita.setMotivo(dto.getMotivo());
         cita.setReservadaHasta(LocalDateTime.now().plusMinutes(MINUTOS_RESERVA));
+        cita.setFechaCreacion(LocalDateTime.now());
+        cita.setCreadaPorPersonalInterno(creadaPorPersonalInterno);
 
         citaRepository.save(cita);
 

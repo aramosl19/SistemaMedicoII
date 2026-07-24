@@ -37,6 +37,6 @@ public class CitaController {
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public CitaResponseDTO agendar(@Valid @RequestBody CitaRequestDTO dto) {
-        return citaService.agendarCita(dto);
+        return citaService.agendarCita(dto, false); // siempre viene del portal (CU-03)
     }
 }

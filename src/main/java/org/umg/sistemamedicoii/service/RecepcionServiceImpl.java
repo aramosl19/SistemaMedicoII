@@ -21,7 +21,7 @@ import java.util.List;
 public class RecepcionServiceImpl implements RecepcionService {
 
     private static final String ESTADO_PENDIENTE_PAGO = "Pendiente de pago";
-    private static final String ESTADO_PAGADA = "Pagada";
+    private static final String ESTADO_CONFIRMADA = "Confirmada";
     private static final String ESTADO_CANCELADA = "Cancelada";
     private static final String ESTADO_PACIENTE_PRESENTE = "Paciente Presente";
 
@@ -91,7 +91,7 @@ public class RecepcionServiceImpl implements RecepcionService {
             throw new IllegalArgumentException("La llegada de este paciente ya fue registrada previamente.");
         }
 
-        if (!ESTADO_PAGADA.equalsIgnoreCase(estadoActual)) {
+        if (!ESTADO_CONFIRMADA.equalsIgnoreCase(estadoActual)) {
             throw new IllegalArgumentException(
                     "No es posible registrar la llegada: la cita se encuentra en estado '" + estadoActual + "'.");
         }
