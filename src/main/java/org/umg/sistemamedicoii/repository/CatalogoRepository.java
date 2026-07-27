@@ -7,4 +7,5 @@ import java.util.List;
 
 public interface CatalogoRepository<T extends Catalogo> extends JpaRepository<T, Integer> {
     List<T> findByNombreIgnoreCaseAndActivoTrue(String nombre);
+
 }

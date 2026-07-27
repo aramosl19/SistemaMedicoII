@@ -18,17 +18,19 @@ import java.util.stream.Collectors;
 
 @Service
 public class CitaServiceImpl implements CitaService {
-
+    private static final String ESTADO_CANCELADA = "Cancelada";
     private static final LocalTime HORA_INICIO = LocalTime.of(8,0);
     private static final LocalTime HORA_FIN = LocalTime.of(17,0);
     private static final int DURACION_MINUTOS = 30;
     private static final int MINUTOS_RESERVA = 5;
 
+    @Autowired private TipoCitaRepository tipoCitaRepository;
     @Autowired private UsuarioRepository usuarioRepository;
     @Autowired private CitaRepository citaRepository;
     @Autowired private SucursalRepository sucursalRepository;
     @Autowired private EspecialidadRepository especialidadRepository;
     @Autowired private EstadoCitaRepository estadoCitaRepository;
+
 
     @Override
     public List<MedicoDisponibleResponseDTO> listarMedicosDisponibles(Integer sucursalId, Integer especialidadId){
@@ -57,8 +59,8 @@ public class CitaServiceImpl implements CitaService {
             cursor = cursor.plusMinutes(DURACION_MINUTOS);
         }
 
-        List<Cita> ocupadas = citaRepository.findByMedicoIdAndFechaHoraBetween(
-                medicoId, fecha.atTime(HORA_INICIO), fin);
+        List<Cita> ocupadas = citaRepository.findByMedicoIdAndFechaHoraBetweenAndEstado_NombreNot(
+                medicoId, fecha.atTime(HORA_INICIO), fin, ESTADO_CANCELADA);
         List<LocalDateTime> ocupadosList = ocupadas.stream().map(Cita::getFechaHora).collect(Collectors.toList());
 
         return slots.stream()
@@ -71,8 +73,9 @@ public class CitaServiceImpl implements CitaService {
         if (!dto.getFechaHora().isAfter(LocalDateTime.now())) {
             throw new IllegalArgumentException("Debe seleccionar una fecha y hora futuras. Las citas no pueden agendarse en fechas pasadas o presentes.");
         }
-
-        if (citaRepository.existsByMedicoIdAndFechaHora(dto.getMedicoId(),dto.getFechaHora())){
+        
+        if (citaRepository.existsByMedicoIdAndFechaHoraAndEstado_NombreNot(
+                dto.getMedicoId(), dto.getFechaHora(), ESTADO_CANCELADA)){
             throw new IllegalArgumentException("El horario seleccionado ya no esta disponible. Por favor, elija otro horario.");
         }
 
@@ -90,6 +93,8 @@ public class CitaServiceImpl implements CitaService {
                 .orElseThrow(()-> new ResourceNotFoundException("Sucursal no encontrada."));
         Especialidad especialidad = especialidadRepository.findById(dto.getEspecialidadId())
                 .orElseThrow(()-> new ResourceNotFoundException("Especialidad no encontrada."));
+        TipoCita tipoCita = tipoCitaRepository.findById(dto.getTipoCitaId())
+                .orElseThrow(() -> new ResourceNotFoundException("Tipo de cita no encontrado."));
         EstadoCita estadoPendiente = estadoCitaRepository.findAll().stream()
                 .filter(e -> "Pendiente de pago".equalsIgnoreCase(e.getNombre()))
                 .findFirst()
@@ -103,6 +108,8 @@ public class CitaServiceImpl implements CitaService {
         cita.setEstado(estadoPendiente);
         cita.setFechaHora(dto.getFechaHora());
         cita.setMotivo(dto.getMotivo());
+        cita.setTipoCita(tipoCita);
+        cita.setPrecio(tipoCita.getPrecio());
         cita.setReservadaHasta(LocalDateTime.now().plusMinutes(MINUTOS_RESERVA));
         cita.setFechaCreacion(LocalDateTime.now());
         cita.setCreadaPorPersonalInterno(creadaPorPersonalInterno);

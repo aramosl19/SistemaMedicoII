@@ -76,7 +76,7 @@ public class CajaServiceImpl implements CajaService {
         }
 
         String metodo = dto.getMetodoPago().trim().toUpperCase();
-        BigDecimal monto = cita.getEspecialidad().getPrecio();
+        BigDecimal monto = cita.getPrecio();
         String numeroTransaccion = UUID.randomUUID().toString();
         BigDecimal montoRecibido = null;
         BigDecimal cambio = null;
@@ -163,7 +163,7 @@ public class CajaServiceImpl implements CajaService {
         dto.setEspecialidadNombre(cita.getEspecialidad().getNombre());
         dto.setSucursalNombre(cita.getSucursal().getNombre());
         dto.setFechaHora(cita.getFechaHora());
-        dto.setMonto(cita.getEspecialidad().getPrecio());
+        dto.setMonto(cita.getPrecio());
         return dto;
     }
 }

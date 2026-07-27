@@ -8,9 +8,12 @@ import java.util.List;
 import java.util.Optional;
 
 public interface CitaRepository extends JpaRepository<Cita, Integer> {
-    List<Cita> findByMedicoIdAndFechaHoraBetween(Integer medicoId, LocalDateTime desde, LocalDateTime hasta);
 
-    boolean existsByMedicoIdAndFechaHora(Integer medicoId, LocalDateTime fechaHora);
+    boolean existsByMedicoIdAndFechaHoraAndEstado_NombreNot(
+            Integer medicoId, LocalDateTime fechaHora, String estadoNombre);
+
+    List<Cita> findByMedicoIdAndFechaHoraBetweenAndEstado_NombreNot(
+            Integer medicoId, LocalDateTime desde, LocalDateTime hasta, String estadoNombre);
 
     List<Cita> findByPaciente_IdAndEstado_NombreNotOrderByFechaHoraAsc(Integer pacienteId, String estadoNombre);
 

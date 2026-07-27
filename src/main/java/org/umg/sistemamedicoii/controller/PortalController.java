@@ -12,6 +12,7 @@ import org.umg.sistemamedicoii.dto.VerificarDpiRequestDTO;
 import org.umg.sistemamedicoii.dto.VerificarDpiResponseDTO;
 import org.umg.sistemamedicoii.service.UsuarioService;
 
+@CrossOrigin(origins = "*")
 @RestController
 @RequestMapping("/api/portal")
 public class PortalController {

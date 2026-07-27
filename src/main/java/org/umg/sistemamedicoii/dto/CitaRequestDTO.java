@@ -21,6 +21,9 @@ public class CitaRequestDTO {
     @NotNull(message = "Debe seleccionar una especialidad médica para continuar.")
     private Integer especialidadId;
 
+    @NotNull(message = "Debe seleccionar el tipo de cita.")
+    private Integer tipoCitaId;
+
     @NotNull(message = "Debe seleccionar una fecha y hora futuras. Las citas no pueden agendarse en fechas pasadas o presentes.")
     private LocalDateTime fechaHora;
 

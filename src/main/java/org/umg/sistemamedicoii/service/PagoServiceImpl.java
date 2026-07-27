@@ -36,7 +36,10 @@ public class PagoServiceImpl implements PagoService {
                 .orElseThrow(() -> new ResourceNotFoundException("Cita no encontrada."));
 
         if (cita.getReservadaHasta() != null && cita.getReservadaHasta().isBefore(LocalDateTime.now())) {
-            citaRepository.delete(cita);
+            EstadoCita estadoCancelada = estadoCitaRepository.findByNombre("Cancelada")
+                    .orElseThrow(() -> new ResourceNotFoundException("Estado 'Cancelada' no configurado."));
+            cita.setEstado(estadoCancelada);
+            citaRepository.save(cita);
             throw new IllegalArgumentException(
                     "El tiempo para confirmar su cita ha expirado. El horario seleccionado ha sido liberado. Por favor, seleccione un nuevo horario.");
         }
@@ -74,7 +77,7 @@ public class PagoServiceImpl implements PagoService {
         PagoTarjeta pago = new PagoTarjeta();
         pago.setCita(cita);
         pago.setNumeroTransaccion(UUID.randomUUID().toString());
-        pago.setMonto(cita.getEspecialidad().getPrecio());
+        pago.setMonto(cita.getPrecio());
         pago.setUltimosCuatroDigitos(dto.getNumeroTarjeta().substring(dto.getNumeroTarjeta().length() - 4));
         pago.setNombreTitular(dto.getNombreTitular().toUpperCase());
         pago.setFechaPago(LocalDateTime.now());

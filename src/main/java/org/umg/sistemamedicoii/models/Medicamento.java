@@ -10,8 +10,7 @@ import lombok.Setter;
 import java.math.BigDecimal;
 
 @Entity
-@Getter
-@Setter
+@Getter @Setter
 @Table(name = "medicamento")
 @AttributeOverride(name = "descripcion", column = @Column(name = "descripcion", nullable = false, length = 500))
 public class Medicamento extends Catalogo{

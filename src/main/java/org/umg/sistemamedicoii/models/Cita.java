@@ -34,6 +34,10 @@ public class Cita {
     private Especialidad especialidad;
 
     @ManyToOne
+    @JoinColumn(name = "tipo_cita_id", nullable = true) // true por ahora para evitar errores con citas de prueba que ya tengas
+    private TipoCita tipoCita;
+
+    @ManyToOne
     @JoinColumn(name = "estado_id", nullable = false)
     private EstadoCita estado;
     
@@ -58,4 +62,6 @@ public class Cita {
     @Column(nullable = false)
     private boolean creadaPorPersonalInterno = false;
 
+    @Column(nullable = true, precision = 10, scale = 2) // true por ahora, por si tienes datos viejos
+    private java.math.BigDecimal precio;
 }
