@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HIS - Sistema Hospitalario</title>
+
+    <!-- Tailwind CSS y Configuración de Paleta de Colores -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        corp: {
+                            bg: '#F8FAFC',      // 60% - Fondo gris muy claro
+                            panel: '#FFFFFF',   // 60% - Fondo blanco puro
+                            text: '#0F172A',    // 30% - Estructura y Texto (Azul pizarra)
+                            accent: '#2563EB'   // 10% - Acento Azul vibrante
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+
+    <!-- React & ReactDOM -->
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <!-- Google Fonts: Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .bg-medical {
+            background-image: url('https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?q=80&w=2000&auto=format&fit=crop');
+            background-size: cover;
+            background-position: center;
+        }
+        .fade-in { animation: fadeIn 0.4s ease-in-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+</head>
+<body class="bg-corp-bg text-corp-text antialiased overflow-hidden">
+<div id="root"></div>
+
+<script type="text/babel">
+    const { useState } = React;
+
+    // --- COMPONENTE DASHBOARD (Lo que ves DESPUÉS de loguearte) ---
+    function Dashboard({ usuario, onLogout }) {
+        return (
+            <div className="min-h-screen bg-corp-bg flex fade-in">
+                {/* Sidebar Estructura Oscura (30%) */}
+                <aside className="w-64 bg-corp-text text-white flex flex-col shadow-xl z-20">
+                    <div className="h-16 flex items-center px-6 border-b border-gray-800">
+                        <svg className="w-7 h-7 text-corp-accent mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path></svg>
+                        <span className="text-xl font-bold tracking-wide">HIS<span className="text-corp-accent font-light">System</span></span>
+                    </div>
+
+                    <div className="flex-1 py-6 px-4 space-y-2">
+                        <div className="bg-corp-accent text-white px-4 py-3 rounded-lg flex items-center shadow-md shadow-corp-accent/30 transition-all">
+                            <svg className="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg>
+                            <span className="font-medium text-sm">Inicio</span>
+                        </div>
+                        <div className="hover:bg-gray-800 text-gray-300 px-4 py-3 rounded-lg flex items-center cursor-pointer transition-colors">
+                            <svg className="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                            <span className="font-medium text-sm">{usuario.rol === 'Paciente' ? 'Mis Citas' : 'Agenda Médica'}</span>
+                        </div>
+                    </div>
+
+                    <div className="p-4 border-t border-gray-800">
+                        <button onClick={onLogout} className="w-full flex items-center justify-center space-x-2 hover:bg-gray-800 text-gray-400 hover:text-white py-2.5 rounded-lg transition-colors text-sm font-medium">
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
+                            <span>Cerrar Sesión</span>
+                        </button>
+                    </div>
+                </aside>
+
+                {/* Main Content (60% Fondo Claro) */}
+                <main className="flex-1 flex flex-col h-screen overflow-hidden">
+                    <header className="h-16 bg-corp-panel border-b border-gray-200 flex items-center justify-between px-8 z-10">
+                        <h2 className="text-lg font-semibold text-corp-text">Panel Principal</h2>
+                        <div className="flex items-center space-x-3">
+                            <span className="text-xs font-semibold tracking-wide text-corp-accent bg-blue-50 px-3 py-1 rounded-full uppercase border border-blue-100">{usuario.rol}</span>
+                            <div className="h-9 w-9 rounded-full bg-corp-text flex items-center justify-center text-white font-bold shadow-sm">
+                                {usuario.nombreCompleto.charAt(0).toUpperCase()}
+                            </div>
+                        </div>
+                    </header>
+
+                    <div className="p-8 flex-1 overflow-y-auto">
+                        <div className="mb-8">
+                            <h1 className="text-3xl font-bold text-corp-text tracking-tight">¡Hola, {usuario.nombreCompleto.split(' ')[0]}!</h1>
+                            <p className="text-gray-500 mt-1.5 text-sm">El sistema está conectado y en línea.</p>
+                        </div>
+
+                        {/* Tarjetas de Información */}
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            <div className="bg-corp-panel p-6 rounded-xl border border-gray-200 shadow-sm flex items-center space-x-4 transition hover:shadow-md">
+                                <div className="p-3 bg-blue-50 text-corp-accent rounded-lg">
+                                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                                </div>
+                                <div>
+                                    <p className="text-gray-500 text-xs font-semibold uppercase tracking-wider">Citas Hoy</p>
+                                    <p className="text-2xl font-bold text-corp-text">0</p>
+                                </div>
+                            </div>
+                            <div className="bg-corp-panel p-6 rounded-xl border border-gray-200 shadow-sm flex items-center space-x-4 transition hover:shadow-md">
+                                <div className="p-3 bg-blue-50 text-corp-accent rounded-lg">
+                                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                                </div>
+                                <div>
+                                    <p className="text-gray-500 text-xs font-semibold uppercase tracking-wider">Estado de Red</p>
+                                    <p className="text-xl font-bold text-corp-text">Óptimo</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="mt-8 bg-corp-panel border border-gray-200 shadow-sm rounded-xl p-8 text-center h-64 flex flex-col justify-center items-center">
+                            <svg className="w-12 h-12 text-gray-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
+                            <p className="text-corp-text font-medium">No hay actividad reciente.</p>
+                            <p className="text-gray-400 text-sm mt-1">Conexión con PostgreSQL establecida correctamente.</p>
+                        </div>
+                    </div>
+                </main>
+            </div>
+        );
+    }
+
+    // --- COMPONENTE LOGIN (Diseño Corporativo Profesional) ---
+    function Login({ onLoginSuccess }) {
+        const [nombreUsuario, setNombreUsuario] = useState('');
+        const [password, setPassword] = useState('');
+        const [error, setError] = useState(null);
+        const [cargando, setCargando] = useState(false);
+
+        const handleLogin = async (e) => {
+            e.preventDefault();
+            setCargando(true);
+            setError(null);
+
+            try {
+                const response = await fetch('http://localhost:8080/api/portal/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ nombreUsuario, password })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    onLoginSuccess(data);
+                } else {
+                    // Muestra el mensaje exacto configurado en el backend (ej. 5 intentos)
+                    setError(data.error || 'Credenciales inválidas.');
+                }
+            } catch (err) {
+                setError('Error de conexión. Verifique que el servidor HIS esté en ejecución.');
+            } finally {
+                setCargando(false);
+            }
+        };
+
+        return (
+            <div className="w-full min-h-screen flex bg-corp-bg fade-in">
+
+                {/* Lado Izquierdo - Imagen y Estructura */}
+                <div className="hidden lg:flex lg:w-1/2 bg-medical relative items-center justify-center">
+                    {/* Overlay Azul Pizarra */}
+                    <div className="absolute inset-0 bg-corp-text/90 backdrop-blur-sm"></div>
+
+                    <div className="relative z-10 p-12 text-white max-w-xl">
+                        <h1 className="text-4xl font-bold tracking-tight mb-4 leading-tight">
+                            Portal Del Hospital El Milagro
+                        </h1>
+                        <p className="text-base text-gray-300 leading-relaxed">
+                            Plataforma unificada para la gestión de pacientes, citas médicas, inventarios de farmacia y servicios de laboratorio.
+                        </p>
+                    </div>
+                </div>
+
+                {/* Lado Derecho - Formulario Minimalista */}
+                <div className="w-full lg:w-1/2 flex items-center justify-center bg-corp-panel p-8 shadow-2xl z-10">
+                    <div className="w-full max-w-md">
+
+                        <div className="mb-10">
+                            <h2 className="text-2xl font-bold text-corp-text tracking-tight mb-1">Acceso al Sistema</h2>
+                            <p className="text-sm text-gray-500">Ingrese sus credenciales autorizadas para continuar.</p>
+                        </div>
+
+                        <form onSubmit={handleLogin} className="space-y-5">
+                            <div>
+                                <label className="block text-sm font-semibold text-corp-text mb-1.5">Usuario</label>
+                                <input
+                                    type="text"
+                                    required
+                                    value={nombreUsuario}
+                                    onChange={(e) => setNombreUsuario(e.target.value)}
+                                    className="w-full px-4 py-3 bg-corp-bg border border-gray-200 rounded-lg text-sm text-corp-text placeholder-gray-400 focus:outline-none focus:border-corp-accent focus:ring-1 focus:ring-corp-accent transition-colors"
+                                    placeholder="Ingrese su usuario"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-semibold text-corp-text mb-1.5">Contraseña</label>
+                                <input
+                                    type="password"
+                                    required
+                                    value={password}
+                                    onChange={(e) => setPassword(e.target.value)}
+                                    className="w-full px-4 py-3 bg-corp-bg border border-gray-200 rounded-lg text-sm text-corp-text placeholder-gray-400 focus:outline-none focus:border-corp-accent focus:ring-1 focus:ring-corp-accent transition-colors"
+                                    placeholder="••••••••••••"
+                                />
+                            </div>
+
+                            {error && (
+                                <div className="p-3 bg-red-50 border-l-4 border-red-500 text-red-700 text-sm font-medium fade-in">
+                                    {error}
+                                </div>
+                            )}
+
+                            <button
+                                type="submit"
+                                disabled={cargando}
+                                className="w-full flex justify-center items-center py-3 px-4 border border-transparent rounded-lg text-sm font-bold text-white bg-corp-accent hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-corp-accent disabled:opacity-70 transition-colors mt-2"
+                            >
+                                {cargando ? (
+                                    <svg className="animate-spin h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
+                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                    </svg>
+                                ) : 'Iniciar Sesión'}
+                            </button>
+                        </form>
+
+                        {/* Enlace a Registro (CU-02) */}
+                        <div className="mt-8 pt-6 border-t border-gray-100 text-center">
+                            <p className="text-sm text-gray-500">¿No tiene una cuenta de paciente?</p>
+                            <a href="#" className="text-sm font-semibold text-corp-accent hover:underline mt-1 inline-block">Registrarse en el portal</a>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
+    function App() {
+        const [usuarioLogueado, setUsuarioLogueado] = useState(null);
+
+        if (usuarioLogueado) {
+            return <Dashboard usuario={usuarioLogueado} onLogout={() => setUsuarioLogueado(null)} />;
+        }
+
+        return <Login onLoginSuccess={(datosUsuario) => setUsuarioLogueado(datosUsuario)} />;
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
+</script>
+</body>
+</html>
