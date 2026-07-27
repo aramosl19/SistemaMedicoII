@@ -3,6 +3,7 @@ package org.umg.sistemamedicoii.models;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
+import org.umg.sistemamedicoii.enums.TipoConceptoCobro;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -16,9 +17,12 @@ public class PagoEfectivo {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
 
-    @OneToOne
-    @JoinColumn(name = "cita_id", nullable = false, unique = true)
-    private Cita cita;
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    private TipoConceptoCobro tipoConcepto;
+
+    @Column(nullable = false)
+    private Integer referenciaId;
 
     @Column(nullable = false, unique = true, length = 36)
     private String numeroTransaccion;

@@ -29,7 +29,7 @@ public class CitaServiceImpl implements CitaService {
     @Autowired private CitaRepository citaRepository;
     @Autowired private SucursalRepository sucursalRepository;
     @Autowired private EspecialidadRepository especialidadRepository;
-    @Autowired private EstadoCitaRepository estadoCitaRepository;
+    @Autowired private org.umg.sistemamedicoii.config.EstadoCitaCache estadoCache;
 
 
     @Override
@@ -95,11 +95,7 @@ public class CitaServiceImpl implements CitaService {
                 .orElseThrow(()-> new ResourceNotFoundException("Especialidad no encontrada."));
         TipoCita tipoCita = tipoCitaRepository.findById(dto.getTipoCitaId())
                 .orElseThrow(() -> new ResourceNotFoundException("Tipo de cita no encontrado."));
-        EstadoCita estadoPendiente = estadoCitaRepository.findAll().stream()
-                .filter(e -> "Pendiente de pago".equalsIgnoreCase(e.getNombre()))
-                .findFirst()
-                .orElseThrow(()-> new ResourceNotFoundException("Estado 'Pendiente de pago' no configurado."));
-
+        EstadoCita estadoPendiente = estadoCache.getEstado(org.umg.sistemamedicoii.enums.EstadoCitaEnum.PENDIENTE_PAGO);
         Cita cita = new Cita();
         cita.setPaciente(paciente);
         cita.setMedico(medico);

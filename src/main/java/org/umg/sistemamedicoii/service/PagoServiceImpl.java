@@ -3,12 +3,17 @@ package org.umg.sistemamedicoii.service;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.umg.sistemamedicoii.config.EstadoCitaCache;
 import org.umg.sistemamedicoii.dto.PagoRequestDTO;
 import org.umg.sistemamedicoii.dto.PagoResponseDTO;
+import org.umg.sistemamedicoii.enums.EstadoCitaEnum;
+import org.umg.sistemamedicoii.enums.TipoConceptoCobro;
 import org.umg.sistemamedicoii.exception.PagoRechazadoException;
 import org.umg.sistemamedicoii.exception.ResourceNotFoundException;
-import org.umg.sistemamedicoii.models.*;
-import org.umg.sistemamedicoii.repository.*;
+import org.umg.sistemamedicoii.models.Cita;
+import org.umg.sistemamedicoii.models.PagoTarjeta;
+import org.umg.sistemamedicoii.repository.CitaRepository;
+import org.umg.sistemamedicoii.repository.PagoTarjetaRepository;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -26,7 +31,7 @@ public class PagoServiceImpl implements PagoService {
 
     @Autowired private CitaRepository citaRepository;
     @Autowired private PagoTarjetaRepository pagoTarjetaRepository;
-    @Autowired private EstadoCitaRepository estadoCitaRepository;
+    @Autowired private EstadoCitaCache estadoCache;
     @Autowired private EmailService emailService;
 
     @Override
@@ -36,15 +41,13 @@ public class PagoServiceImpl implements PagoService {
                 .orElseThrow(() -> new ResourceNotFoundException("Cita no encontrada."));
 
         if (cita.getReservadaHasta() != null && cita.getReservadaHasta().isBefore(LocalDateTime.now())) {
-            EstadoCita estadoCancelada = estadoCitaRepository.findByNombre("Cancelada")
-                    .orElseThrow(() -> new ResourceNotFoundException("Estado 'Cancelada' no configurado."));
-            cita.setEstado(estadoCancelada);
+            cita.setEstado(estadoCache.getEstado(EstadoCitaEnum.CANCELADA));
             citaRepository.save(cita);
             throw new IllegalArgumentException(
                     "El tiempo para confirmar su cita ha expirado. El horario seleccionado ha sido liberado. Por favor, seleccione un nuevo horario.");
         }
 
-        if (pagoTarjetaRepository.existsByCitaId(cita.getId())) {
+        if (pagoTarjetaRepository.existsByTipoConceptoAndReferenciaId(TipoConceptoCobro.CITA, cita.getId())) {
             throw new IllegalArgumentException("Esta cita ya fue pagada.");
         }
 
@@ -65,17 +68,13 @@ public class PagoServiceImpl implements PagoService {
                     "Error al procesar el pago. Por favor, intente nuevamente o contacte a su banco.");
         }
 
-        EstadoCita estadoConfirmada = estadoCitaRepository.findAll().stream()
-                .filter(e -> "Confirmada".equalsIgnoreCase(e.getNombre()))
-                .findFirst()
-                .orElseThrow(() -> new ResourceNotFoundException("Estado 'Confirmada' no configurado."));
-
-        cita.setEstado(estadoConfirmada);
+        cita.setEstado(estadoCache.getEstado(EstadoCitaEnum.CONFIRMADA));
         cita.setReservadaHasta(null);
         citaRepository.save(cita);
 
         PagoTarjeta pago = new PagoTarjeta();
-        pago.setCita(cita);
+        pago.setTipoConcepto(TipoConceptoCobro.CITA);
+        pago.setReferenciaId(cita.getId());
         pago.setNumeroTransaccion(UUID.randomUUID().toString());
         pago.setMonto(cita.getPrecio());
         pago.setUltimosCuatroDigitos(dto.getNumeroTarjeta().substring(dto.getNumeroTarjeta().length() - 4));

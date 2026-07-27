@@ -7,10 +7,8 @@ import org.umg.sistemamedicoii.dto.CitaRecepcionResponseDTO;
 import org.umg.sistemamedicoii.dto.ResultadoBusquedaRecepcionResponseDTO;
 import org.umg.sistemamedicoii.exception.ResourceNotFoundException;
 import org.umg.sistemamedicoii.models.Cita;
-import org.umg.sistemamedicoii.models.EstadoCita;
 import org.umg.sistemamedicoii.models.Usuario;
 import org.umg.sistemamedicoii.repository.CitaRepository;
-import org.umg.sistemamedicoii.repository.EstadoCitaRepository;
 import org.umg.sistemamedicoii.repository.UsuarioRepository;
 
 import java.time.LocalDate;
@@ -27,7 +25,7 @@ public class RecepcionServiceImpl implements RecepcionService {
 
     @Autowired private CitaRepository citaRepository;
     @Autowired private UsuarioRepository usuarioRepository;
-    @Autowired private EstadoCitaRepository estadoCitaRepository;
+    @Autowired private org.umg.sistemamedicoii.config.EstadoCitaCache estadoCache;
 
     @Override
     public BusquedaRecepcionResponseDTO buscar(Integer numeroCita, String dpi) {
@@ -73,44 +71,33 @@ public class RecepcionServiceImpl implements RecepcionService {
     @Override
     public CitaRecepcionResponseDTO registrarLlegada(Integer citaId, boolean emergencia) {
         Cita cita = citaRepository.findById(citaId)
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        "No se encontró una cita asociada a los parámetros ingresados. Verifique los datos e intente nuevamente."));
+                .orElseThrow(() -> new ResourceNotFoundException("No se encontró la cita ingresada."));
 
         String estadoActual = cita.getEstado().getNombre();
 
-        if (ESTADO_CANCELADA.equalsIgnoreCase(estadoActual)) {
+        if (org.umg.sistemamedicoii.enums.EstadoCitaEnum.CANCELADA.getNombreBd().equalsIgnoreCase(estadoActual)) {
             throw new IllegalArgumentException("La cita fue cancelada. El paciente debe agendar una nueva cita.");
         }
-
-        if (ESTADO_PENDIENTE_PAGO.equalsIgnoreCase(estadoActual)) {
-            throw new IllegalArgumentException(
-                    "La cita del paciente tiene estado 'Pendiente de pago'. Debe realizar el pago en caja antes de ser atendido.");
+        if (org.umg.sistemamedicoii.enums.EstadoCitaEnum.PENDIENTE_PAGO.getNombreBd().equalsIgnoreCase(estadoActual)) {
+            throw new IllegalArgumentException("La cita tiene estado 'Pendiente de pago'. Debe realizar el pago en caja.");
         }
-
-        if (ESTADO_PACIENTE_PRESENTE.equalsIgnoreCase(estadoActual)) {
+        if (org.umg.sistemamedicoii.enums.EstadoCitaEnum.PACIENTE_PRESENTE.getNombreBd().equalsIgnoreCase(estadoActual)) {
             throw new IllegalArgumentException("La llegada de este paciente ya fue registrada previamente.");
         }
-
-        if (!ESTADO_CONFIRMADA.equalsIgnoreCase(estadoActual)) {
-            throw new IllegalArgumentException(
-                    "No es posible registrar la llegada: la cita se encuentra en estado '" + estadoActual + "'.");
+        if (!org.umg.sistemamedicoii.enums.EstadoCitaEnum.CONFIRMADA.getNombreBd().equalsIgnoreCase(estadoActual)) {
+            throw new IllegalArgumentException("No es posible registrar la llegada: la cita se encuentra en estado '" + estadoActual + "'.");
         }
 
-        EstadoCita pacientePresente = estadoCitaRepository.findByNombre(ESTADO_PACIENTE_PRESENTE)
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        "Estado 'Paciente Presente' no configurado en el catálogo estado_cita."));
-
-        cita.setEstado(pacientePresente);
+        // Usamos el caché aquí
+        cita.setEstado(estadoCache.getEstado(org.umg.sistemamedicoii.enums.EstadoCitaEnum.PACIENTE_PRESENTE));
         cita.setHoraLlegada(LocalDateTime.now());
         cita.setEmergencia(emergencia);
         citaRepository.save(cita);
 
         CitaRecepcionResponseDTO respuesta = toRecepcionDTO(cita);
         respuesta.setMensaje(emergencia
-                ? "Paciente " + cita.getPaciente().getNombreCompleto()
-                  + " registrado con prioridad de EMERGENCIA. El paciente debe pasar directamente a toma de signos vitales."
-                : "La llegada del paciente " + cita.getPaciente().getNombreCompleto()
-                  + " ha sido registrada exitosamente. El paciente debe pasar a la sala de espera.");
+                ? "Paciente " + cita.getPaciente().getNombreCompleto() + " registrado con prioridad de EMERGENCIA. Debe pasar directamente a toma de signos vitales."
+                : "La llegada del paciente " + cita.getPaciente().getNombreCompleto() + " ha sido registrada exitosamente. Debe pasar a la sala de espera.");
         return respuesta;
     }
 
