@@ -33,4 +33,7 @@ public class DetalleReceta {
 
     @Column(nullable = true, length = 500)
     private String indicaciones;
+
+    @Column(nullable = false)
+    private Integer cantidad;
 }

@@ -26,4 +26,6 @@ public class Medicamento extends Catalogo{
     @Column(nullable = true)
     private Integer minimumStock;
 
+    @Column(nullable = false)
+    private Integer stockActual = 0;
 }

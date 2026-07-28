@@ -1,15 +1,18 @@
-
 package org.umg.sistemamedicoii.dto;
 
 import lombok.Getter;
 import lombok.Setter;
+import java.math.BigDecimal;
 
 @Getter @Setter
-public class DetalleRecetaRequestDTO {
-    private Integer medicamentoId;
+public class DetalleRecetaResponseDTO {
+    private Integer id;
+    private String medicamentoNombre;
     private String dosis;
     private String frecuencia;
     private String duracion;
     private String indicaciones;
     private Integer cantidad;
+    private BigDecimal precioUnitario;
+    private BigDecimal subtotal;
 }
