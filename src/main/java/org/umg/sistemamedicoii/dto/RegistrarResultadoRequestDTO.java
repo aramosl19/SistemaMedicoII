@@ -10,5 +10,6 @@ public class RegistrarResultadoRequestDTO {
     private String valorResultado;
     private String unidad;
     private boolean fueraDeRango;
+    private String rangoReferencia;
     private String notasResultado;
 }

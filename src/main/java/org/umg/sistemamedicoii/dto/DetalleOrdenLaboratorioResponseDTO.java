@@ -18,6 +18,7 @@ public class DetalleOrdenLaboratorioResponseDTO {
     private String unidad;
     private LocalDateTime fechaResultado;
     private boolean fueraDeRango;
+    private String rangoReferencia;
     private String notasResultado;
 
     private boolean publicado;

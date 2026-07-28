@@ -46,22 +46,27 @@ public class LaboratorioResultadoServiceImpl implements LaboratorioResultadoServ
                     "No es posible registrar resultados: la orden se encuentra en estado '" + orden.getEstado().getNombre() + "'.");
         }
 
-        if (dto.getValorResultado() == null || dto.getValorResultado().isBlank()) {
-            throw new IllegalArgumentException("El valor del resultado es obligatorio.");
-        }
         if (dto.getUnidad() == null || dto.getUnidad().isBlank()) {
             throw new IllegalArgumentException("La unidad del resultado es obligatoria.");
+        }
+        if (dto.getRangoReferencia() == null || dto.getRangoReferencia().isBlank()) {
+            throw new IllegalArgumentException("El rango de referencia del examen es obligatorio.");
         }
 
         detalle.setValorResultado(dto.getValorResultado());
         detalle.setUnidad(dto.getUnidad());
+        detalle.setRangoReferencia(dto.getRangoReferencia());
         detalle.setFueraDeRango(dto.isFueraDeRango());
         detalle.setNotasResultado(dto.getNotasResultado());
         detalle.setFechaResultado(LocalDateTime.now());
 
         detalleOrdenLaboratorioRepository.save(detalle);
 
-        return toDetalleResponseDTO(detalle, "Resultado guardado exitosamente.");
+        String mensaje = detalle.isFueraDeRango()
+                ? "Resultado guardado exitosamente. Los resultados están fuera del rango de referencia normal. Requiere revisión."
+                : "Resultado guardado exitosamente.";
+
+        return toDetalleResponseDTO(detalle, mensaje);
     }
 
     @Override
@@ -130,6 +135,7 @@ public class LaboratorioResultadoServiceImpl implements LaboratorioResultadoServ
         dto.setMonto(detalle.getMonto());
         dto.setValorResultado(detalle.getValorResultado());
         dto.setUnidad(detalle.getUnidad());
+        dto.setRangoReferencia(detalle.getRangoReferencia());
         dto.setFechaResultado(detalle.getFechaResultado());
         dto.setFueraDeRango(detalle.isFueraDeRango());
         dto.setNotasResultado(detalle.getNotasResultado());

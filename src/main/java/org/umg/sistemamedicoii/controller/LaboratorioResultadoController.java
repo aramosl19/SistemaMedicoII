@@ -33,7 +33,12 @@ public class LaboratorioResultadoController {
         return laboratorioResultadoService.registrarResultado(detalleId, dto);
     }
 
+
+
     @PostMapping("/examenes/{detalleId}/publicar")
+    // TODO (seguridad pendiente, RN-CU09-02 / RNF-024): restringir este endpoint a rol
+    // "SupervisorLaboratorio" (o "Administrador") una vez esté activo Spring Security.
+    // registrarResultado() se mantiene abierto a rol "Personal de Laboratorio".
     public DetalleOrdenLaboratorioResponseDTO publicarResultado(@PathVariable Integer detalleId) {
         return laboratorioResultadoService.publicarResultado(detalleId);
     }

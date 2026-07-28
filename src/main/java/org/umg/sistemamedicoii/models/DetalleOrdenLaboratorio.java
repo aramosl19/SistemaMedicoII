@@ -42,6 +42,9 @@ public class DetalleOrdenLaboratorio {
     @Column(nullable = false)
     private boolean fueraDeRango = false;
 
+    @Column(nullable = true, length = 100)
+    private String rangoReferencia;
+
     @Column(nullable = true, length = 1000)
     private String notasResultado;
 
