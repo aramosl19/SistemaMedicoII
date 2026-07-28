@@ -23,4 +23,6 @@ public interface CitaRepository extends JpaRepository<Cita, Integer> {
     Optional<Cita> findByIdAndEstado_Nombre(Integer id, String estadoNombre);
 
     List<Cita> findByPaciente_IdAndEstado_NombreOrderByFechaHoraAsc(Integer pacienteId, String estadoNombre);
+
+    List<Cita> findByMedicoIdAndEstado_NombreOrderByEmergenciaDescFechaHoraAsc(Integer medicoId, String estadoNombre);
 }
