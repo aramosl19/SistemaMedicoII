@@ -2,7 +2,7 @@ package org.umg.sistemamedicoii.service;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
-import org.umg.sistemamedicoii.dto.CobroCajaRequestDTO;
+import org.umg.sistemamedicoii.dto.DatosCobroRequestDTO;
 import org.umg.sistemamedicoii.enums.TipoConceptoCobro;
 import org.umg.sistemamedicoii.models.PagoEfectivo;
 import org.umg.sistemamedicoii.repository.PagoEfectivoRepository;
@@ -22,7 +22,8 @@ public class PagoEfectivoStrategy implements ProcesadorPagoStrategy {
     }
 
     @Override
-    public BigDecimal[] procesarPago(CobroCajaRequestDTO dto, BigDecimal montoACobrar, Integer referenciaId, String nombreTitular, String numeroTransaccion) {
+    public BigDecimal[] procesarPago(DatosCobroRequestDTO dto, BigDecimal montoACobrar, Integer referenciaId,
+                                     String nombreTitular, String numeroTransaccion, TipoConceptoCobro tipoConcepto) {
         if (dto.getMontoRecibido() == null) {
             throw new IllegalArgumentException("Debe ingresar el monto recibido.");
         }
@@ -33,7 +34,7 @@ public class PagoEfectivoStrategy implements ProcesadorPagoStrategy {
         BigDecimal cambio = dto.getMontoRecibido().subtract(montoACobrar);
 
         PagoEfectivo pago = new PagoEfectivo();
-        pago.setTipoConcepto(TipoConceptoCobro.CITA);
+        pago.setTipoConcepto(tipoConcepto);
         pago.setReferenciaId(referenciaId);
         pago.setNumeroTransaccion(numeroTransaccion);
         pago.setMonto(montoACobrar);
