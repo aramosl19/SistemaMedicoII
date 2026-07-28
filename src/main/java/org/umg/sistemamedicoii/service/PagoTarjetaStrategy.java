@@ -2,7 +2,7 @@ package org.umg.sistemamedicoii.service;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
-import org.umg.sistemamedicoii.dto.CobroCajaRequestDTO;
+import org.umg.sistemamedicoii.dto.DatosCobroRequestDTO;
 import org.umg.sistemamedicoii.enums.TipoConceptoCobro;
 import org.umg.sistemamedicoii.exception.PagoRechazadoException;
 import org.umg.sistemamedicoii.models.PagoTarjeta;
@@ -27,7 +27,8 @@ public class PagoTarjetaStrategy implements ProcesadorPagoStrategy {
     }
 
     @Override
-    public BigDecimal[] procesarPago(CobroCajaRequestDTO dto, BigDecimal montoACobrar, Integer referenciaId, String nombreTitular, String numeroTransaccion) {
+    public BigDecimal[] procesarPago(DatosCobroRequestDTO dto, BigDecimal montoACobrar, Integer referenciaId,
+                                     String nombreTitular, String numeroTransaccion, TipoConceptoCobro tipoConcepto) {
         if (dto.getUltimosCuatroDigitos() == null || !dto.getUltimosCuatroDigitos().matches("\\d{4}")) {
             throw new IllegalArgumentException("Ingrese los últimos 4 dígitos de la tarjeta.");
         }
@@ -36,7 +37,7 @@ public class PagoTarjetaStrategy implements ProcesadorPagoStrategy {
         }
 
         PagoTarjeta pago = new PagoTarjeta();
-        pago.setTipoConcepto(TipoConceptoCobro.CITA);
+        pago.setTipoConcepto(tipoConcepto);
         pago.setReferenciaId(referenciaId);
         pago.setNumeroTransaccion(numeroTransaccion);
         pago.setMonto(montoACobrar);

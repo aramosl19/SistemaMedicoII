@@ -9,10 +9,10 @@ import lombok.Setter;
 import java.math.BigDecimal;
 
 @Getter @Setter
-public class CobroCajaRequestDTO implements DatosCobroRequestDTO {
+public class CobroLaboratorioRequestDTO implements DatosCobroRequestDTO {
 
-    @NotNull(message = "Debe indicar la cita a cobrar.")
-    private Integer citaId;
+    @NotNull(message = "Debe indicar la orden de laboratorio a cobrar.")
+    private Integer ordenId;
 
     @NotBlank(message = "Debe seleccionar un método de pago.")
     private String metodoPago;

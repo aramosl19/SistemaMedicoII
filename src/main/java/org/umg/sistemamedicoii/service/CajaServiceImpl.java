@@ -78,7 +78,7 @@ public class CajaServiceImpl implements CajaService {
                 .findFirst()
                 .orElseThrow(() -> new IllegalArgumentException("El método de pago seleccionado no está disponible. Los métodos aceptados son: efectivo (Quetzales), tarjeta de crédito (Visa/Mastercard) o tarjeta de débito."));
 
-        BigDecimal[] montos = estrategia.procesarPago(dto, cita.getPrecio(), cita.getId(), cita.getPaciente().getNombreCompleto(), numeroTransaccion);
+        BigDecimal[] montos = estrategia.procesarPago(dto, cita.getPrecio(), cita.getId(), cita.getPaciente().getNombreCompleto(), numeroTransaccion,TipoConceptoCobro.CITA);
 
         // Actualizamos estado sacándolo directamente del Caché (Sin ir a la BD)
         cita.setEstado(estadoCache.getEstado(EstadoCitaEnum.CONFIRMADA));
