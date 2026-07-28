@@ -140,6 +140,7 @@ public class UsuarioServiceImpl implements UsuarioService{
         Rol rol = rolRepository.findById(dto.getRolId())
                 .orElseThrow(()-> new ResourceNotFoundException("Rol no encontrado"+dto.getRolId()));
 
+        validarEspecialidadSiEsMedico(rol, dto);
         usuario.setNombreCompleto(dto.getNombreCompleto());
         usuario.setDpi(dto.getDpi());
         usuario.setCorreo(dto.getCorreo());
@@ -156,6 +157,16 @@ public class UsuarioServiceImpl implements UsuarioService{
             usuario.setPassword(passwordEncoder.encode(dto.getPassword()));
         }
 
+        if (dto.getSucursalId() != null) {
+            Sucursal sucursal = sucursalRepository.findById(dto.getSucursalId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Sucursal no encontrada con id " + dto.getSucursalId()));
+            usuario.setSucursal(sucursal);
+        }
+        if (dto.getEspecialidadId() != null) {
+            Especialidad especialidad = especialidadRepository.findById(dto.getEspecialidadId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Especialidad no encontrada con id " + dto.getEspecialidadId()));
+            usuario.setEspecialidad(especialidad);
+        }
         return toResponseDTO(usuarioRepository.save(usuario));
     }
 

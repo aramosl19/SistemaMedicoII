@@ -89,6 +89,12 @@ public class CitaServiceImpl implements CitaService {
         if (medico.getRol() == null || !"Médico".equalsIgnoreCase(medico.getRol().getNombre())) {
             throw new IllegalArgumentException("El médico seleccionado no es válido.");
         }
+        if (medico.getSucursal() == null || !medico.getSucursal().getId().equals(dto.getSucursalId())) {
+            throw new IllegalArgumentException("El médico seleccionado no pertenece a la sucursal indicada.");
+        }
+        if (medico.getEspecialidad() == null || !medico.getEspecialidad().getId().equals(dto.getEspecialidadId())) {
+            throw new IllegalArgumentException("El médico seleccionado no pertenece a la especialidad indicada.");
+        }
         Sucursal sucursal = sucursalRepository.findById(dto.getSucursalId())
                 .orElseThrow(()-> new ResourceNotFoundException("Sucursal no encontrada."));
         Especialidad especialidad = especialidadRepository.findById(dto.getEspecialidadId())
