@@ -49,6 +49,8 @@ public abstract class CatalogoServiceImpl<T extends Catalogo> implements Catalog
 
     @Override
     public void eliminar(Integer id) {
-        getRepository().deleteById(id);
+        T entidad = obtenerPorId(id);
+        entidad.setActivo(false);
+        getRepository().save(entidad);
     }
 }
