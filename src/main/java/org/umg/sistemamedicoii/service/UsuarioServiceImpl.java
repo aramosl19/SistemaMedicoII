@@ -172,8 +172,9 @@ public class UsuarioServiceImpl implements UsuarioService{
 
     @Override
     public void eliminar(Integer id) {
-        buscarUsuarioOlanzar(id);
-        usuarioRepository.deleteById(id);
+        Usuario usuario = buscarUsuarioOlanzar(id);
+        usuario.setActivo(false);
+        usuarioRepository.save(usuario);
     }
 
     @Override
