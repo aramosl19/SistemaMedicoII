@@ -4,10 +4,14 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 import org.umg.sistemamedicoii.dto.*;
 import org.umg.sistemamedicoii.service.ConsultaMedicaService;
+import org.umg.sistemamedicoii.service.RecetaMedicaService;
 
 @RestController
 @RequestMapping("/api/medico")
 public class ConsultaMedicaController {
+
+    @Autowired
+    private RecetaMedicaService recetaMedicaService;
 
     @Autowired
     private ConsultaMedicaService consultaMedicaService;
@@ -37,5 +41,12 @@ public class ConsultaMedicaController {
     @PostMapping("/citas/{id}/finalizar-atencion")
     public CitaConsultaResponseDTO finalizarAtencion(@PathVariable Integer id) {
         return consultaMedicaService.finalizarAtencion(id);
+    }
+
+    @PostMapping("/citas/{id}/receta")
+    public RecetaMedicaResponseDTO generarReceta(
+            @PathVariable Integer id,
+            @RequestBody RecetaRequestDTO dto) {
+        return recetaMedicaService.generarReceta(id, dto);
     }
 }
