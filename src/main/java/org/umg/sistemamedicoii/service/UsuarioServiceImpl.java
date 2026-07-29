@@ -34,6 +34,7 @@ public class UsuarioServiceImpl implements UsuarioService{
     private static final int MAX_INTENTOS_FALLIDOS = 5;
     private static final int MINUTOS_BLOQUEO = 15;
 
+    @Autowired private org.umg.sistemamedicoii.repository.AuditoriaRepository auditoriaRepo;
     @Autowired private UsuarioRepository usuarioRepository;
     @Autowired private RolRepository rolRepository;
     @Autowired private SucursalRepository sucursalRepository;
@@ -316,5 +317,15 @@ public class UsuarioServiceImpl implements UsuarioService{
         dto.setEspecialidadNombre(u.getEspecialidad()!=null? u.getEspecialidad().getNombre():null);
         dto.setActivo(u.isActivo());
         return dto;
+    }
+    private void registrarAuditoria(String accion, Integer entidadId, String detalle) {
+        org.umg.sistemamedicoii.models.Auditoria log = new org.umg.sistemamedicoii.models.Auditoria();
+        log.setAccion(accion);
+        log.setEntidadAfectada("USUARIO");
+        log.setEntidadId(entidadId);
+        log.setDetalle(detalle);
+        log.setUsuarioEjecutorId(null); //Llenar cuando se implemente Spring Security
+        log.setFechaHora(LocalDateTime.now());
+        auditoriaRepo.save(log);
     }
 }
