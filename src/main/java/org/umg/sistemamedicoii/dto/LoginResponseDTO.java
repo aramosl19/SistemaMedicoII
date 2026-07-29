@@ -9,4 +9,5 @@ public class LoginResponseDTO {
     private String nombreCompleto;
     private String nombreUsuario;
     private String rol;
+    private String token;
 }
