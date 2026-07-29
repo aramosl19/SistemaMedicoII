@@ -27,4 +27,10 @@ public class DespachoFarmaciaController {
     public DespachoFarmaciaResponseDTO despachar(@Valid @RequestBody DespachoFarmaciaRequestDTO dto) {
         return despachoFarmaciaService.despachar(dto);
     }
+
+    @PostMapping("/recetas/{id}/rechazar")
+    public java.util.Map<String, String> rechazarReceta(@PathVariable Integer id) {
+        despachoFarmaciaService.rechazarReceta(id);
+        return java.util.Map.of("mensaje", "Receta anulada. El paciente no adquirió los medicamentos.");
+    }
 }

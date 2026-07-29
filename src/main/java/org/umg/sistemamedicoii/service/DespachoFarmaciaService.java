@@ -9,4 +9,5 @@ import java.util.List;
 public interface DespachoFarmaciaService {
     List<RecetaVigenteResponseDTO> buscarRecetasVigentes(String dpi);
     DespachoFarmaciaResponseDTO despachar(DespachoFarmaciaRequestDTO dto);
+    void rechazarReceta(Integer recetaId);
 }

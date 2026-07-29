@@ -12,6 +12,7 @@ import java.math.BigDecimal;
 @Getter @Setter
 public class DespachoFarmaciaRequestDTO implements DatosCobroRequestDTO {
 
+
     @NotNull(message = "Debe indicar la receta a despachar.")
     private Integer recetaId;
 
@@ -22,4 +23,8 @@ public class DespachoFarmaciaRequestDTO implements DatosCobroRequestDTO {
 
     @Pattern(regexp = "\\d{4}", message = "Ingrese los últimos 4 dígitos de la tarjeta.")
     private String ultimosCuatroDigitos;
+
+    @NotNull(message = "Debe enviar los items a despachar.")
+    private java.util.List<ItemDespachoRequestDTO> items;
+    
 }
