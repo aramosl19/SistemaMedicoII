@@ -8,4 +8,5 @@ import java.util.List;
 
 public interface OrdenLaboratorioRepository extends JpaRepository<OrdenLaboratorio, Integer> {
     List<OrdenLaboratorio> findByEstadoOrderByFechaCreacionAsc(EstadoOrdenLaboratorioEnum estado);
+    List<OrdenLaboratorio> findByEstadoAndCita_Paciente_DpiOrderByFechaCreacionAsc(EstadoOrdenLaboratorioEnum estado, String dpi);
 }

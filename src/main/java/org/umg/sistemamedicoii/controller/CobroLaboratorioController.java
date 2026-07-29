@@ -18,4 +18,11 @@ public class CobroLaboratorioController {
     public CobroLaboratorioResponseDTO cobrar(@Valid @RequestBody CobroLaboratorioRequestDTO dto) {
         return cobroLaboratorioService.cobrar(dto);
     }
+
+    @GetMapping("/ordenes/buscar")
+    public java.util.List<org.umg.sistemamedicoii.dto.OrdenLaboratorioResponseDTO> buscarOrdenes(
+            @RequestParam(required = false) Integer numeroOrden,
+            @RequestParam(required = false) String dpi) {
+        return cobroLaboratorioService.buscarOrdenesPendientes(numeroOrden, dpi);
+    }
 }

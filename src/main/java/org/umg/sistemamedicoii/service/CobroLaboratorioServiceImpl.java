@@ -56,4 +56,29 @@ public class CobroLaboratorioServiceImpl implements CobroLaboratorioService {
         respuesta.setMensaje("Cobro de laboratorio registrado exitosamente. La orden queda habilitada para la toma de muestras.");
         return respuesta;
     }
+
+    @Override
+    public List<org.umg.sistemamedicoii.dto.OrdenLaboratorioResponseDTO> buscarOrdenesPendientes(Integer numeroOrden, String dpi) {
+        if (numeroOrden == null && (dpi == null || dpi.isBlank())) {
+            throw new IllegalArgumentException("Debe ingresar un número de orden o DPI para buscar.");
+        }
+        List<OrdenLaboratorio> ordenes = new java.util.ArrayList<>();
+        if (numeroOrden != null) {
+            ordenLaboratorioRepository.findById(numeroOrden)
+                    .filter(o -> o.getEstado() == EstadoOrdenLaboratorioEnum.PENDIENTE)
+                    .ifPresent(ordenes::add);
+        } else {
+            // Consulta directa a base de datos, evita NullPointerExceptions de Java y es escalable
+            ordenes = ordenLaboratorioRepository.findByEstadoAndCita_Paciente_DpiOrderByFechaCreacionAsc(EstadoOrdenLaboratorioEnum.PENDIENTE, dpi);
+        }
+
+        return ordenes.stream().map(o -> {
+            org.umg.sistemamedicoii.dto.OrdenLaboratorioResponseDTO dto = new org.umg.sistemamedicoii.dto.OrdenLaboratorioResponseDTO();
+            dto.setId(o.getId());
+            dto.setPacienteNombre(o.getCita().getPaciente().getNombreCompleto());
+            dto.setMontoTotal(o.getMontoTotal());
+            dto.setFechaCreacion(o.getFechaCreacion());
+            return dto;
+        }).toList();
+    }
 }
