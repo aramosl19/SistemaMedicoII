@@ -19,8 +19,10 @@ public class DespachoFarmaciaController {
     private DespachoFarmaciaService despachoFarmaciaService;
 
     @GetMapping("/recetas/buscar")
-    public List<RecetaVigenteResponseDTO> buscarRecetas(@RequestParam String dpi) {
-        return despachoFarmaciaService.buscarRecetasVigentes(dpi);
+    public List<RecetaVigenteResponseDTO> buscarRecetas(
+            @RequestParam(required = false) Integer recetaId,
+            @RequestParam(required = false) String dpi) {
+        return despachoFarmaciaService.buscarRecetasVigentes(recetaId, dpi);
     }
 
     @PostMapping("/despacho")

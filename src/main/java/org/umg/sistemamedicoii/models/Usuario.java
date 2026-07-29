@@ -4,6 +4,7 @@ package org.umg.sistemamedicoii.models;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
+import org.umg.sistemamedicoii.config.CryptoConverter;
 
 import java.time.LocalDateTime;
 
@@ -19,10 +20,12 @@ public class Usuario {
     @Column(nullable = false, length = 100)
     private String nombreCompleto;
 
-    @Column(nullable = true,unique = true, length = 13)
+    @Column(nullable = true, unique = true, length = 255)
+    @Convert(converter = CryptoConverter.class)
     private String dpi;
 
-    @Column(nullable = true)
+    @Column(nullable = true, length = 255)
+    @Convert(converter = CryptoConverter.class)
     private String nit;
 
     @Column(nullable = false, unique = true)

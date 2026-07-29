@@ -46,8 +46,6 @@ public interface UsuarioRepository extends JpaRepository<Usuario, Integer> {
             nativeQuery = true)
     Page<Usuario> buscarPorNombreUsuario(@Param("valor") String valor, Pageable pageable);
 
-    @Query(value = "SELECT * FROM usuario u WHERE unaccent(u.dpi) ILIKE unaccent(CONCAT('%', :valor, '%'))",
-            countQuery = "SELECT count(*) FROM usuario u WHERE unaccent(u.dpi) ILIKE unaccent(CONCAT('%', :valor, '%'))",
-            nativeQuery = true)
+    @Query("SELECT u FROM Usuario u WHERE u.dpi = :valor")
     Page<Usuario> buscarPorDpi(@Param("valor") String valor, Pageable pageable);
 }

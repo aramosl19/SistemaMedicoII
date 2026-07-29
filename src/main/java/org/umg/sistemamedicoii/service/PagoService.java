@@ -4,5 +4,5 @@ import org.umg.sistemamedicoii.dto.PagoRequestDTO;
 import org.umg.sistemamedicoii.dto.PagoResponseDTO;
 
 public interface PagoService {
-    PagoResponseDTO procesarPago(PagoRequestDTO dto);
+    PagoResponseDTO procesarPago(PagoRequestDTO dto, String idempotencyKey);
 }

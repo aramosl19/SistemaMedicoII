@@ -11,13 +11,16 @@ import org.umg.sistemamedicoii.enums.TipoConceptoCobro;
 import org.umg.sistemamedicoii.exception.PagoRechazadoException;
 import org.umg.sistemamedicoii.exception.ResourceNotFoundException;
 import org.umg.sistemamedicoii.models.Cita;
+import org.umg.sistemamedicoii.models.IdempotencyKey;
 import org.umg.sistemamedicoii.models.PagoTarjeta;
 import org.umg.sistemamedicoii.repository.CitaRepository;
+import org.umg.sistemamedicoii.repository.IdempotencyKeyRepository;
 import org.umg.sistemamedicoii.repository.PagoTarjetaRepository;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.YearMonth;
+import java.util.Optional;
 import java.util.UUID;
 
 @Service
@@ -33,9 +36,17 @@ public class PagoServiceImpl implements PagoService {
     @Autowired private PagoTarjetaRepository pagoTarjetaRepository;
     @Autowired private EstadoCitaCache estadoCache;
     @Autowired private EmailService emailService;
+    @Autowired private IdempotencyKeyRepository idempotencyKeyRepository;
 
     @Override
-    public PagoResponseDTO procesarPago(PagoRequestDTO dto) {
+    public PagoResponseDTO procesarPago(PagoRequestDTO dto, String idempotencyKey) {
+
+        // RNF-016: si esta clave ya se procesó antes (ej. reintento de red del
+        // cliente), devolvemos la misma respuesta guardada sin volver a cobrar.
+        Optional<IdempotencyKey> existente = idempotencyKeyRepository.findByClave(idempotencyKey);
+        if (existente.isPresent()) {
+            return mapearDesdeIdempotencyKey(existente.get());
+        }
 
         Cita cita = citaRepository.findById(dto.getCitaId())
                 .orElseThrow(() -> new ResourceNotFoundException("Cita no encontrada."));
@@ -96,6 +107,33 @@ public class PagoServiceImpl implements PagoService {
         response.setFechaHoraCita(cita.getFechaHora());
         response.setMonto(pago.getMonto());
         response.setMensaje("¡Pago realizado exitosamente! Su cita ha sido confirmada.");
+
+        // RNF-016: guardamos la clave junto con la respuesta, para poder
+        // reproducirla si el cliente reintenta con la misma clave.
+        IdempotencyKey registro = new IdempotencyKey();
+        registro.setClave(idempotencyKey);
+        registro.setCitaId(cita.getId());
+        registro.setNumeroTransaccion(response.getNumeroTransaccion());
+        registro.setMedicoNombre(response.getMedicoNombre());
+        registro.setEspecialidadNombre(response.getEspecialidadNombre());
+        registro.setSucursalNombre(response.getSucursalNombre());
+        registro.setFechaHoraCita(response.getFechaHoraCita());
+        registro.setMonto(response.getMonto());
+        registro.setMensaje(response.getMensaje());
+        idempotencyKeyRepository.save(registro);
+
+        return response;
+    }
+
+    private PagoResponseDTO mapearDesdeIdempotencyKey(IdempotencyKey registro) {
+        PagoResponseDTO response = new PagoResponseDTO();
+        response.setNumeroTransaccion(registro.getNumeroTransaccion());
+        response.setMedicoNombre(registro.getMedicoNombre());
+        response.setEspecialidadNombre(registro.getEspecialidadNombre());
+        response.setSucursalNombre(registro.getSucursalNombre());
+        response.setFechaHoraCita(registro.getFechaHoraCita());
+        response.setMonto(registro.getMonto());
+        response.setMensaje(registro.getMensaje());
         return response;
     }
 

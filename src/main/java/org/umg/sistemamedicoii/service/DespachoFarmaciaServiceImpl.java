@@ -30,8 +30,21 @@ public class DespachoFarmaciaServiceImpl implements DespachoFarmaciaService {
     @Autowired private List<ProcesadorPagoStrategy> estrategiasPago;
 
     @Override
-    public List<RecetaVigenteResponseDTO> buscarRecetasVigentes(String dpi) {
-        return recetaMedicaRepository.findByCita_Paciente_DpiAndActivoTrueOrderByFechaEmisionDesc(dpi).stream()
+    public List<RecetaVigenteResponseDTO> buscarRecetasVigentes(Integer recetaId, String dpi) {
+        if (recetaId == null && (dpi == null || dpi.isBlank())) {
+            throw new IllegalArgumentException("Debe ingresar un ID de receta o DPI para buscar.");
+        }
+
+        List<RecetaMedica> recetas = new ArrayList<>();
+        if (recetaId != null) {
+            recetaMedicaRepository.findById(recetaId)
+                    .filter(RecetaMedica::isActivo)
+                    .ifPresent(recetas::add);
+        } else {
+            recetas = recetaMedicaRepository.findByCita_Paciente_DpiAndActivoTrueOrderByFechaEmisionDesc(dpi);
+        }
+
+        return recetas.stream()
                 .filter(this::esVigente)
                 .map(this::toVigenteDTO)
                 .collect(Collectors.toList());

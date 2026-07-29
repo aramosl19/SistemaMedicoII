@@ -13,9 +13,11 @@ public class PagoController {
 
     @Autowired
     private PagoService pagoService;
-
+    
     @PostMapping
-    public PagoResponseDTO pagar(@Valid @RequestBody PagoRequestDTO dto) {
-        return pagoService.procesarPago(dto);
+    public PagoResponseDTO pagar(
+            @Valid @RequestBody PagoRequestDTO dto,
+            @RequestHeader("Idempotency-Key") String idempotencyKey) {
+        return pagoService.procesarPago(dto, idempotencyKey);
     }
 }
