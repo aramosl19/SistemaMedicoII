@@ -23,10 +23,8 @@ public class DetalleOrdenLaboratorio {
 
     @ManyToOne
     @JoinColumn(name = "examen_id", nullable = false)
-    private Laboratorio examen;
+    private ExamenLaboratorio examen;
 
-    // Copia del precio del catálogo al momento de crear la orden,
-    // para que un cambio futuro de precio no altere órdenes ya generadas.
     @Column(nullable = false, precision = 10, scale = 2)
     private BigDecimal monto;
 

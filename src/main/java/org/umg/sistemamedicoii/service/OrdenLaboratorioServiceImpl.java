@@ -10,10 +10,10 @@ import org.umg.sistemamedicoii.enums.EstadoOrdenLaboratorioEnum;
 import org.umg.sistemamedicoii.exception.ResourceNotFoundException;
 import org.umg.sistemamedicoii.models.Cita;
 import org.umg.sistemamedicoii.models.DetalleOrdenLaboratorio;
-import org.umg.sistemamedicoii.models.Laboratorio;
+import org.umg.sistemamedicoii.models.ExamenLaboratorio;
 import org.umg.sistemamedicoii.models.OrdenLaboratorio;
 import org.umg.sistemamedicoii.repository.CitaRepository;
-import org.umg.sistemamedicoii.repository.LaboratorioRepository;
+import org.umg.sistemamedicoii.repository.ExamenLaboratorioRepository;
 import org.umg.sistemamedicoii.repository.OrdenLaboratorioRepository;
 
 import java.math.BigDecimal;
@@ -25,7 +25,7 @@ import java.util.stream.Collectors;
 public class OrdenLaboratorioServiceImpl implements OrdenLaboratorioService {
 
     @Autowired private CitaRepository citaRepository;
-    @Autowired private LaboratorioRepository laboratorioRepository;
+    @Autowired private ExamenLaboratorioRepository examenLaboratorioRepository;
     @Autowired private OrdenLaboratorioRepository ordenLaboratorioRepository;
 
     @Override
@@ -53,15 +53,19 @@ public class OrdenLaboratorioServiceImpl implements OrdenLaboratorioService {
 
         BigDecimal montoTotal = BigDecimal.ZERO;
         for (Integer examenId : dto.getExamenesIds()) {
-            Laboratorio examen = laboratorioRepository.findById(examenId)
+            ExamenLaboratorio examen = examenLaboratorioRepository.findById(examenId)
                     .orElseThrow(() -> new ResourceNotFoundException("No se encontró el examen con id " + examenId + "."));
 
             DetalleOrdenLaboratorio detalle = new DetalleOrdenLaboratorio();
             detalle.setOrden(orden);
             detalle.setExamen(examen);
             detalle.setMonto(examen.getPrecio());
-            orden.getDetalles().add(detalle);
 
+            // Prellena el rango y la unidad para el laboratorista
+            detalle.setRangoReferencia(examen.getRangoReferencia());
+            detalle.setUnidad(examen.getUnidadMedida());
+
+            orden.getDetalles().add(detalle);
             montoTotal = montoTotal.add(examen.getPrecio());
         }
         orden.setMontoTotal(montoTotal);

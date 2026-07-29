@@ -6,6 +6,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 import org.umg.sistemamedicoii.dto.MovimientoInventarioRequestDTO;
 import org.umg.sistemamedicoii.dto.MovimientoInventarioResponseDTO;
+import org.umg.sistemamedicoii.dto.ResumenMensualInventarioResponseDTO;
 import org.umg.sistemamedicoii.service.MovimientoInventarioService;
 
 import java.util.List;
@@ -26,5 +27,18 @@ public class MovimientoInventarioController {
     @ResponseStatus(HttpStatus.CREATED)
     public MovimientoInventarioResponseDTO registrarMovimiento(@Valid @RequestBody MovimientoInventarioRequestDTO dto) {
         return movimientoService.registrarMovimiento(dto);
+    }
+
+    @GetMapping("/resumen")
+    public List<ResumenMensualInventarioResponseDTO> generarResumenMensual(
+            @RequestParam Integer sucursalId,
+            @RequestParam int anio,
+            @RequestParam int mes) {
+
+        if (mes < 1 || mes > 12) {
+            throw new IllegalArgumentException("El mes debe estar entre 1 y 12.");
+        }
+
+        return movimientoService.generarResumenMensual(sucursalId, anio, mes);
     }
 }

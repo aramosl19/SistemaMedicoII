@@ -1,4 +1,6 @@
 package org.umg.sistemamedicoii.service;
 
-public class ExamenLaboratorioService {
+import org.umg.sistemamedicoii.models.ExamenLaboratorio;
+
+public interface ExamenLaboratorioService extends CatalogoService<ExamenLaboratorio> {
 }
