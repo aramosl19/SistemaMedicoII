@@ -1,0 +1,39 @@
+$kind: http-request
+url: "{{base_url}}/api/medico/citas/{{cita_id}}/receta"
+method: POST
+body:
+  type: json
+  content: |-
+    {
+      "medicamentos": [
+        {
+          "medicamentoId": "{{medicamento_id}}",
+          "dosis": "500mg",
+          "frecuencia": "cada 8 horas",
+          "duracion": "5 dias",
+          "indicaciones": "Tomar con alimentos",
+          "cantidad": 15
+        }
+      ],
+      "notas": "Suspender si hay alergia."
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('Status 2xx', function () {
+          pm.expect(pm.response.code).to.be.oneOf([200,201]);
+      });
+      if (pm.response.code === 200 || pm.response.code === 201) {
+          var jsonData = pm.response.json();
+          if (jsonData.id !== undefined) {
+              pm.collectionVariables.set('receta_id', jsonData.id);
+          }
+      }
+      if (pm.response.code === 200 || pm.response.code === 201) {
+          var jsonData = pm.response.json();
+          if (jsonData.medicamentos && jsonData.medicamentos.length > 0 && jsonData.medicamentos[0].id !== undefined) {
+              pm.collectionVariables.set('detalle_receta_id', jsonData.medicamentos[0].id);
+          }
+      }
+    language: text/javascript
+order: 5000

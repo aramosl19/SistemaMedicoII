@@ -1,0 +1,12 @@
+$kind: http-request
+description: Usar sobre una cita distinta a la que ya se atendio, para no romper el flujo anterior.
+url: "{{base_url}}/api/medico/citas/{{cita_id}}/no-asistio"
+method: POST
+body:
+  type: json
+  content: "{}"
+scripts:
+  - type: afterResponse
+    code: pm.test('Status 2xx', function(){ pm.expect(pm.response.code).to.be.oneOf([200,201]); });
+    language: text/javascript
+order: 6000

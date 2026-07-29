@@ -1,0 +1,21 @@
+$kind: http-request
+url: "{{base_url}}/api/agenda/tareas/{{tarea_id}}"
+method: PUT
+body:
+  type: json
+  content: |-
+    {
+      "titulo": "Revisar resultados pendientes (actualizado)",
+      "descripcion": "Revisar 3 ordenes de laboratorio",
+      "prioridad": 2,
+      "fechaLimite": "{{fecha_hora_futura}}",
+      "completada": false
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('Status 2xx', function () {
+          pm.expect(pm.response.code).to.be.oneOf([200,201]);
+      });
+    language: text/javascript
+order: 7000

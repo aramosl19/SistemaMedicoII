@@ -1,0 +1,24 @@
+$kind: http-request
+url: "{{base_url}}/api/enfermeria/citas/{{cita_id}}/signos-vitales"
+method: POST
+body:
+  type: json
+  content: |-
+    {
+      "enfermeroId": "{{usuario_id}}",
+      "presionSistolica": 120,
+      "presionDiastolica": 80,
+      "temperatura": 36.8,
+      "peso": 70.5,
+      "talla": 1.7,
+      "frecuenciaCardiaca": 76,
+      "emergencia": false
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('Status 2xx', function () {
+          pm.expect(pm.response.code).to.be.oneOf([200,201]);
+      });
+    language: text/javascript
+order: 2000

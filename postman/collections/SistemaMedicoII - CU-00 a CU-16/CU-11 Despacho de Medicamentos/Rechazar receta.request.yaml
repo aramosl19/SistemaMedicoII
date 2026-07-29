@@ -1,0 +1,15 @@
+$kind: http-request
+description: Usar sobre una receta distinta a la que ya se despacho arriba.
+url: "{{base_url}}/api/farmacia/recetas/{{receta_id}}/rechazar"
+method: POST
+body:
+  type: json
+  content: |-
+    {
+      "motivo": "Medicamento sin existencia y sin sustituto disponible"
+    }
+scripts:
+  - type: afterResponse
+    code: pm.test('Status 2xx', function(){ pm.expect(pm.response.code).to.be.oneOf([200,201]); });
+    language: text/javascript
+order: 3000

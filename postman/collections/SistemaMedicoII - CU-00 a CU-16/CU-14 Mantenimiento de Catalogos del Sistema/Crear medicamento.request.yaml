@@ -1,0 +1,28 @@
+$kind: http-request
+url: "{{base_url}}/api/medicamentos"
+method: POST
+body:
+  type: json
+  content: |-
+    {
+      "nombre": "Paracetamol 500mg",
+      "descripcion": "Analgesico y antipiretico",
+      "precio": 5.5,
+      "unidad": "tableta",
+      "controlled": false,
+      "minimumStock": 20
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('Status 2xx', function () {
+          pm.expect(pm.response.code).to.be.oneOf([200,201]);
+      });
+      if (pm.response.code === 200 || pm.response.code === 201) {
+          var jsonData = pm.response.json();
+          if (jsonData.id !== undefined) {
+              pm.collectionVariables.set('medicamento_id', jsonData.id);
+          }
+      }
+    language: text/javascript
+order: 2000

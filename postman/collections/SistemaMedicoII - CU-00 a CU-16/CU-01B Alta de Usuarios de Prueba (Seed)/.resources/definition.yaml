@@ -1,0 +1,3 @@
+$kind: collection
+description: Crea los 5 usuarios base (uno por rol) sobre los catalogos sembrados por el script SQL. Correr ANTES de CU-00 / CU-01. Guarda automaticamente usuario_admin_id, medico_id, paciente_directo_id, enfermero_id y cajero_id como variables de coleccion.
+order: 3000

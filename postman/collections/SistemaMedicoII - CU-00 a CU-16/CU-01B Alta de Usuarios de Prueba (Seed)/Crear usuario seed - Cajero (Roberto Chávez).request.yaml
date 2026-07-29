@@ -1,0 +1,35 @@
+$kind: http-request
+url: "{{base_url}}/api/usuarios"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: json
+  content: |-
+    {
+      "nombreCompleto": "Roberto Emilio Chávez Aguilar",
+      "dpi": "6789012345456",
+      "nit": "67890126",
+      "correo": "roberto.chavez@hospital.com",
+      "nombreUsuario": "rchavezag",
+      "password": "CajeroSeguro2026!",
+      "telefono": "55678901",
+      "numeroSeguro": "SEG-00055",
+      "rolId": 5,
+      "sucursalId": 1,
+      "activo": true
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('Status 2xx', function () {
+          pm.expect(pm.response.code).to.be.oneOf([200,201]);
+      });
+      if (pm.response.code === 200 || pm.response.code === 201) {
+          var jsonData = pm.response.json();
+          if (jsonData.id !== undefined) {
+              pm.collectionVariables.set('cajero_id', jsonData.id);
+          }
+      }
+    language: text/javascript
+order: 5000

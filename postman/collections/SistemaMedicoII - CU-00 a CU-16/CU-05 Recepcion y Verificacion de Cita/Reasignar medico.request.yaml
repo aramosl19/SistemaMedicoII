@@ -1,0 +1,18 @@
+$kind: http-request
+url: "{{base_url}}/api/recepcion/citas/{{cita_id}}/reasignar"
+method: POST
+body:
+  type: json
+  content: |-
+    {
+      "nuevoMedicoId": "{{medico_id}}",
+      "motivoReasignacion": "Medico original no disponible"
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('Status 2xx', function () {
+          pm.expect(pm.response.code).to.be.oneOf([200,201]);
+      });
+    language: text/javascript
+order: 5000

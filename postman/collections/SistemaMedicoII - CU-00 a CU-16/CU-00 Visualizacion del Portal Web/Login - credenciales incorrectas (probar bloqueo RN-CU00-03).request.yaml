@@ -1,0 +1,19 @@
+$kind: http-request
+description: Repite esta peticion 5 veces seguidas para verificar el bloqueo temporal de 15 min (RN-GLOBAL-007).
+url: "{{base_url}}/api/portal/login"
+method: POST
+body:
+  type: json
+  content: |-
+    {
+      "nombreUsuario": "{{usuario_admin}}",
+      "password": "incorrecta123"
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('Rechaza credenciales invalidas', function () {
+          pm.expect(pm.response.code).to.not.equal(200);
+      });
+    language: text/javascript
+order: 4000

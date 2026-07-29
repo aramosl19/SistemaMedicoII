@@ -1,0 +1,23 @@
+$kind: http-request
+url: "{{base_url}}/api/inventario/movimientos"
+method: POST
+body:
+  type: json
+  content: |-
+    {
+      "medicamentoId": "{{medicamento_id}}",
+      "sucursalId": "{{sucursal_id}}",
+      "tipoMovimiento": 1,
+      "cantidad": 100,
+      "costoUnitario": 3.2,
+      "referencia": "Factura 00123",
+      "motivo": "Compra a proveedor"
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('Status 2xx', function () {
+          pm.expect(pm.response.code).to.be.oneOf([200,201]);
+      });
+    language: text/javascript
+order: 2000

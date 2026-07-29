@@ -1,0 +1,27 @@
+$kind: http-request
+description: "Genera manualmente un GUID unico en la variable de coleccion 'idempotency_key' antes de correr esta request (Pre-request Script sugerido: pm.collectionVariables.set('idempotency_key', pm.variables.replaceIn('{{$guid}}')))."
+url: "{{base_url}}/api/pagos"
+method: POST
+headers:
+  Idempotency-Key: "{{idempotency_key}}"
+body:
+  type: json
+  content: |-
+    {
+      "citaId": "{{cita_id}}",
+      "numeroTarjeta": "4111111111111111",
+      "nombreTitular": "Usuario De Prueba Postman",
+      "vencimiento": "12/29",
+      "cvv": "123"
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      if (!pm.collectionVariables.get('idempotency_key')) {
+          pm.collectionVariables.set('idempotency_key', require('uuid').v4 ? require('uuid').v4() : (Date.now() + '-' + Math.random()));
+      }
+      pm.test('Status 2xx', function () {
+          pm.expect(pm.response.code).to.be.oneOf([200,201]);
+      });
+    language: text/javascript
+order: 1000

@@ -1,0 +1,35 @@
+$kind: collection
+name: SistemaMedicoII - CU-00 a CU-16
+description: "Coleccion de pruebas para los 17 casos de uso de SistemaMedicoII. Corre las carpetas EN ORDEN (CU-00 -> CU-16) porque varias peticiones reutilizan ids generados por peticiones anteriores (paciente_id, cita_id, receta_id, etc.) guardados como variables de coleccion. Antes de correr, llena manualmente en la pestaña Variables: rol_id, sucursal_id, especialidad_id, medico_id, tipo_cita_id, cie10_id, laboratorio_id, fecha_futura, fecha_hora_futura, fecha_hora_seguimiento, usuario_admin, password_admin, dpi_paciente_existente -- con datos que ya existan en tu base de datos (sembrados por tus catalogos)."
+variables:
+  base_url: http://localhost:8080
+  rol_id: "4"
+  sucursal_id: "1"
+  especialidad_id: "1"
+  medico_id: ""
+  tipo_cita_id: "1"
+  cie10_id: "1"
+  laboratorio_id: "1"
+  detalle_orden_id: ""
+  detalle_receta_id: ""
+  fecha_futura: 2026-08-15
+  fecha_hora_futura: 2026-08-15T09:00:00
+  fecha_hora_seguimiento: 2026-08-22T09:00:00
+  usuario_admin: dcastillm
+  password_admin: AdminSeguro2026!
+  dpi_paciente_existente: "2345678901012"
+  idempotency_key: ""
+  usuario_id: ""
+  paciente_id: ""
+  cita_id: ""
+  receta_id: ""
+  orden_laboratorio_id: ""
+  medicamento_id: ""
+  examen_laboratorio_id: ""
+  sucursal_id_nueva: ""
+  especialidad_id_nueva: ""
+  evento_id: ""
+  tarea_id: ""
+  usuario_admin_id: ""
+  enfermero_id: ""
+  cajero_id: ""

@@ -1,0 +1,28 @@
+$kind: http-request
+url: "{{base_url}}/api/examenes-laboratorio"
+method: POST
+body:
+  type: json
+  content: |-
+    {
+      "nombre": "Glucosa en ayunas",
+      "descripcion": "Medicion de glucosa en sangre",
+      "precio": 45.0,
+      "laboratorioId": "{{laboratorio_id}}",
+      "rangoReferencia": "70-100",
+      "unidadMedida": "mg/dL"
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('Status 2xx', function () {
+          pm.expect(pm.response.code).to.be.oneOf([200,201]);
+      });
+      if (pm.response.code === 200 || pm.response.code === 201) {
+          var jsonData = pm.response.json();
+          if (jsonData.id !== undefined) {
+              pm.collectionVariables.set('examen_laboratorio_id', jsonData.id);
+          }
+      }
+    language: text/javascript
+order: 3000

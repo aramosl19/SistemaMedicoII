@@ -1,0 +1,36 @@
+$kind: http-request
+url: "{{base_url}}/api/usuarios"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: json
+  content: |-
+    {
+      "nombreCompleto": "María José Pérez Lima",
+      "dpi": "1234567890101",
+      "nit": "12345671",
+      "correo": "maria.perez@hospital.com",
+      "nombreUsuario": "mperezli",
+      "password": "MedicoSeguro2026!",
+      "telefono": "55123456",
+      "numeroSeguro": "SEG-00050",
+      "rolId": 2,
+      "sucursalId": 1,
+      "especialidadId": 1,
+      "activo": true
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('Status 2xx', function () {
+          pm.expect(pm.response.code).to.be.oneOf([200,201]);
+      });
+      if (pm.response.code === 200 || pm.response.code === 201) {
+          var jsonData = pm.response.json();
+          if (jsonData.id !== undefined) {
+              pm.collectionVariables.set('medico_id', jsonData.id);
+          }
+      }
+    language: text/javascript
+order: 2000

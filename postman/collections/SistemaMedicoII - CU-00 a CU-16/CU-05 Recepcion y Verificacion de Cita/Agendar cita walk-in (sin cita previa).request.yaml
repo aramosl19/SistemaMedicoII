@@ -1,0 +1,23 @@
+$kind: http-request
+url: "{{base_url}}/api/recepcion/citas"
+method: POST
+body:
+  type: json
+  content: |-
+    {
+      "pacienteId": "{{paciente_id}}",
+      "medicoId": "{{medico_id}}",
+      "sucursalId": "{{sucursal_id}}",
+      "especialidadId": "{{especialidad_id}}",
+      "tipoCitaId": "{{tipo_cita_id}}",
+      "fechaHora": "{{fecha_hora_futura}}",
+      "motivo": "Paciente llega sin cita previa, atencion de emergencia menor."
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('Status 2xx', function () {
+          pm.expect(pm.response.code).to.be.oneOf([200,201]);
+      });
+    language: text/javascript
+order: 4000

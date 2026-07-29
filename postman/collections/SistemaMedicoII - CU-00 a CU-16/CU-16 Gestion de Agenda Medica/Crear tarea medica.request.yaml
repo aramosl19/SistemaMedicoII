@@ -1,0 +1,27 @@
+$kind: http-request
+url: "{{base_url}}/api/agenda/medicos/{{medico_id}}/tareas"
+method: POST
+body:
+  type: json
+  content: |-
+    {
+      "titulo": "Revisar resultados pendientes",
+      "descripcion": "Revisar 3 ordenes de laboratorio",
+      "prioridad": 1,
+      "fechaLimite": "{{fecha_hora_futura}}",
+      "completada": false
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('Status 2xx', function () {
+          pm.expect(pm.response.code).to.be.oneOf([200,201]);
+      });
+      if (pm.response.code === 200 || pm.response.code === 201) {
+          var jsonData = pm.response.json();
+          if (jsonData.id !== undefined) {
+              pm.collectionVariables.set('tarea_id', jsonData.id);
+          }
+      }
+    language: text/javascript
+order: 6000

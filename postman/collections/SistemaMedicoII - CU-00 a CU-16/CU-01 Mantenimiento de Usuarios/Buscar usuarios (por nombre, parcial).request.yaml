@@ -1,0 +1,16 @@
+$kind: http-request
+url: "{{base_url}}/api/usuarios/buscar?campo=nombre&valor=prueba&page=0&size=10"
+method: GET
+queryParams:
+  campo: nombre
+  valor: prueba
+  page: "0"
+  size: "10"
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('Status 2xx', function () {
+          pm.expect(pm.response.code).to.be.oneOf([200,201]);
+      });
+    language: text/javascript
+order: 6000

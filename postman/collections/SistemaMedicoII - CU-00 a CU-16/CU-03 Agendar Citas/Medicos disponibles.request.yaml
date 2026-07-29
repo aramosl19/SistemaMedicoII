@@ -1,0 +1,14 @@
+$kind: http-request
+url: "{{base_url}}/api/citas/medicos-disponibles?sucursalId={{sucursal_id}}&especialidadId={{especialidad_id}}"
+method: GET
+queryParams:
+  sucursalId: "{{sucursal_id}}"
+  especialidadId: "{{especialidad_id}}"
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('Status 2xx', function () {
+          pm.expect(pm.response.code).to.be.oneOf([200,201]);
+      });
+    language: text/javascript
+order: 1000

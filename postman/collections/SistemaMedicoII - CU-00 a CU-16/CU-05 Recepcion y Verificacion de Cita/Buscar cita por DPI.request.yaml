@@ -1,0 +1,13 @@
+$kind: http-request
+url: "{{base_url}}/api/recepcion/citas/buscar?dpi=9876543210123"
+method: GET
+queryParams:
+  dpi: "9876543210123"
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('Status 2xx', function () {
+          pm.expect(pm.response.code).to.be.oneOf([200,201]);
+      });
+    language: text/javascript
+order: 2000

@@ -1,0 +1,20 @@
+$kind: http-request
+url: "{{base_url}}/api/pagos"
+method: POST
+headers:
+  Idempotency-Key: "{{$guid}}"
+body:
+  type: json
+  content: |-
+    {
+      "citaId": "{{cita_id}}",
+      "numeroTarjeta": "4000000000000200",
+      "nombreTitular": "Usuario De Prueba Postman",
+      "vencimiento": "12/29",
+      "cvv": "123"
+    }
+scripts:
+  - type: afterResponse
+    code: pm.test('Rechaza el pago', function(){ pm.expect(pm.response.code).to.not.equal(200); });
+    language: text/javascript
+order: 3000

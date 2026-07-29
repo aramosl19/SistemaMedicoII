@@ -1,0 +1,21 @@
+$kind: http-request
+url: "{{base_url}}/api/laboratorio/examenes/{{detalle_orden_id}}/resultado"
+method: POST
+body:
+  type: json
+  content: |-
+    {
+      "valorResultado": "95",
+      "unidad": "mg/dL",
+      "fueraDeRango": false,
+      "rangoReferencia": "70-100",
+      "notasResultado": "Sin observaciones"
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('Status 2xx', function () {
+          pm.expect(pm.response.code).to.be.oneOf([200,201]);
+      });
+    language: text/javascript
+order: 4000

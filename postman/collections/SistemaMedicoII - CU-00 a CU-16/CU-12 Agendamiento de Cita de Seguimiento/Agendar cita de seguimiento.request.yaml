@@ -1,0 +1,25 @@
+$kind: http-request
+url: "{{base_url}}/api/medico/citas/{{cita_id}}/seguimiento"
+method: POST
+body:
+  type: json
+  content: |-
+    {
+      "pacienteId": "{{paciente_id}}",
+      "medicoId": "{{medico_id}}",
+      "sucursalId": "{{sucursal_id}}",
+      "especialidadId": "{{especialidad_id}}",
+      "tipoCitaId": "{{tipo_cita_id}}",
+      "fechaHora": "{{fecha_hora_seguimiento}}",
+      "motivo": "Control de evolucion del tratamiento indicado",
+      "citaPadreId": "{{cita_id}}",
+      "tipoSeguimiento": "CONTROL"
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('Status 2xx', function () {
+          pm.expect(pm.response.code).to.be.oneOf([200,201]);
+      });
+    language: text/javascript
+order: 1000

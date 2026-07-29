@@ -1,0 +1,15 @@
+$kind: http-request
+url: "{{base_url}}/api/inventario/movimientos/resumen?sucursalId={{sucursal_id}}&anio=2026&mes=7"
+method: GET
+queryParams:
+  sucursalId: "{{sucursal_id}}"
+  anio: "2026"
+  mes: "7"
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('Status 2xx', function () {
+          pm.expect(pm.response.code).to.be.oneOf([200,201]);
+      });
+    language: text/javascript
+order: 4000

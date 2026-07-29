@@ -1,0 +1,30 @@
+$kind: http-request
+url: "{{base_url}}/api/portal/registro"
+method: POST
+body:
+  type: json
+  content: |-
+    {
+      "nombreCompleto": "Paciente Prueba Postman",
+      "dpi": "9876543210123",
+      "nit": "87654321",
+      "telefono": "12345678",
+      "numeroSeguro": "SEG-00012",
+      "correo": "paciente.pm@example.com",
+      "nombreUsuario": "pacientepm",
+      "password": "ClaveSegura123!"
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('Status 2xx', function () {
+          pm.expect(pm.response.code).to.be.oneOf([200,201]);
+      });
+      if (pm.response.code === 200 || pm.response.code === 201) {
+          var jsonData = pm.response.json();
+          if (jsonData.id !== undefined) {
+              pm.collectionVariables.set('paciente_id', jsonData.id);
+          }
+      }
+    language: text/javascript
+order: 1000

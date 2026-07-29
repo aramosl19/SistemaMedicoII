@@ -1,0 +1,28 @@
+$kind: http-request
+url: "{{base_url}}/api/agenda/medicos/{{medico_id}}/eventos"
+method: POST
+body:
+  type: json
+  content: |-
+    {
+      "titulo": "Capacitacion de manejo de emergencias",
+      "descripcion": "Capacitacion anual obligatoria",
+      "fechaInicio": "{{fecha_hora_futura}}",
+      "fechaFin": "{{fecha_hora_futura}}",
+      "tipoEvento": 1,
+      "todoElDia": false
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('Status 2xx', function () {
+          pm.expect(pm.response.code).to.be.oneOf([200,201]);
+      });
+      if (pm.response.code === 200 || pm.response.code === 201) {
+          var jsonData = pm.response.json();
+          if (jsonData.id !== undefined) {
+              pm.collectionVariables.set('evento_id', jsonData.id);
+          }
+      }
+    language: text/javascript
+order: 2000

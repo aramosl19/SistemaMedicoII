@@ -1,0 +1,24 @@
+$kind: http-request
+name: Registrar avance / finalizar consulta
+url: "{{base_url}}/api/medico/citas/{{cita_id}}/consulta"
+method: POST
+body:
+  type: json
+  content: |-
+    {
+      "motivoVisita": "Dolor de cabeza persistente",
+      "hallazgosClinicos": "Paciente afebril, sin signos neurologicos focales.",
+      "cie10Id": "{{cie10_id}}",
+      "diagnostico": "Cefalea tensional",
+      "planTratamiento": "Analgesico y control en 7 dias si persiste.",
+      "notasAdicionales": "Se recomienda hidratacion y descanso.",
+      "finalizar": true
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('Status 2xx', function () {
+          pm.expect(pm.response.code).to.be.oneOf([200,201]);
+      });
+    language: text/javascript
+order: 3000

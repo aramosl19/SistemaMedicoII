@@ -1,0 +1,18 @@
+$kind: http-request
+description: "RN-CU00-01: si el DPI existe, redirige a agendar cita; si no, a registro (CU-02)."
+url: "{{base_url}}/api/portal/verificar-dpi"
+method: POST
+body:
+  type: json
+  content: |-
+    {
+      "dpi": "{{dpi_paciente_existente}}"
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('Status 2xx', function () {
+          pm.expect(pm.response.code).to.be.oneOf([200,201]);
+      });
+    language: text/javascript
+order: 1000
