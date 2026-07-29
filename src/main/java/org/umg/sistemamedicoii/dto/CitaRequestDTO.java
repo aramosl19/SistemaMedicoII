@@ -9,6 +9,7 @@ import java.time.LocalDateTime;
 
 @Getter @Setter
 public class CitaRequestDTO {
+
     @NotNull(message = "Debe seleccionar un paciente para la cita.")
     private Integer pacienteId;
 
@@ -30,4 +31,8 @@ public class CitaRequestDTO {
     @NotBlank(message = "El motivo es obligatorio.")
     @Size(min = 10, max = 2000, message = "El motivo debe contener entre 10 a 2000 caracteres.")
     private String motivo;
+
+    private Integer citaPadreId;
+
+    private String tipoSeguimiento;
 }

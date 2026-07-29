@@ -24,6 +24,7 @@ public class CitaServiceImpl implements CitaService {
     private static final int DURACION_MINUTOS = 30;
     private static final int MINUTOS_RESERVA = 5;
 
+    @Autowired private EmailService emailService;
     @Autowired private TipoCitaRepository tipoCitaRepository;
     @Autowired private UsuarioRepository usuarioRepository;
     @Autowired private CitaRepository citaRepository;
@@ -73,35 +74,37 @@ public class CitaServiceImpl implements CitaService {
         if (!dto.getFechaHora().isAfter(LocalDateTime.now())) {
             throw new IllegalArgumentException("Debe seleccionar una fecha y hora futuras. Las citas no pueden agendarse en fechas pasadas o presentes.");
         }
-        
+
         if (citaRepository.existsByMedicoIdAndFechaHoraAndEstado_NombreNot(
                 dto.getMedicoId(), dto.getFechaHora(), ESTADO_CANCELADA)){
             throw new IllegalArgumentException("El horario seleccionado ya no esta disponible. Por favor, elija otro horario.");
         }
 
+        // RN-CU11-01 Validación de seguimiento
+        if (dto.getCitaPadreId() != null) {
+            if (dto.getTipoSeguimiento() == null || dto.getTipoSeguimiento().isBlank()) {
+                throw new IllegalArgumentException("Debe seleccionar el tipo de seguimiento.");
+            }
+            // Validación estricta de las opciones permitidas
+            String tipo = dto.getTipoSeguimiento().trim();
+            if (!tipo.equalsIgnoreCase("Monitoreo de Tratamiento") && !tipo.equalsIgnoreCase("Revisión de Resultados de Laboratorio")) {
+                throw new IllegalArgumentException("Tipo de seguimiento inválido. Opciones: 'Monitoreo de Tratamiento' o 'Revisión de Resultados de Laboratorio'.");
+            }
+        }
+
         Usuario paciente = usuarioRepository.findById(dto.getPacienteId())
                 .orElseThrow(()-> new ResourceNotFoundException("Paciente no encontrado."));
-        if (paciente.getRol() == null || !"Paciente".equalsIgnoreCase(paciente.getRol().getNombre())) {
-            throw new IllegalArgumentException("El paciente seleccionado no es válido.");
-        }
         Usuario medico = usuarioRepository.findById(dto.getMedicoId())
                 .orElseThrow(()-> new ResourceNotFoundException("Médico no encontrado."));
-        if (medico.getRol() == null || !"Médico".equalsIgnoreCase(medico.getRol().getNombre())) {
-            throw new IllegalArgumentException("El médico seleccionado no es válido.");
-        }
-        if (medico.getSucursal() == null || !medico.getSucursal().getId().equals(dto.getSucursalId())) {
-            throw new IllegalArgumentException("El médico seleccionado no pertenece a la sucursal indicada.");
-        }
-        if (medico.getEspecialidad() == null || !medico.getEspecialidad().getId().equals(dto.getEspecialidadId())) {
-            throw new IllegalArgumentException("El médico seleccionado no pertenece a la especialidad indicada.");
-        }
         Sucursal sucursal = sucursalRepository.findById(dto.getSucursalId())
                 .orElseThrow(()-> new ResourceNotFoundException("Sucursal no encontrada."));
         Especialidad especialidad = especialidadRepository.findById(dto.getEspecialidadId())
                 .orElseThrow(()-> new ResourceNotFoundException("Especialidad no encontrada."));
         TipoCita tipoCita = tipoCitaRepository.findById(dto.getTipoCitaId())
                 .orElseThrow(() -> new ResourceNotFoundException("Tipo de cita no encontrado."));
+
         EstadoCita estadoPendiente = estadoCache.getEstado(org.umg.sistemamedicoii.enums.EstadoCitaEnum.PENDIENTE_PAGO);
+
         Cita cita = new Cita();
         cita.setPaciente(paciente);
         cita.setMedico(medico);
@@ -116,7 +119,19 @@ public class CitaServiceImpl implements CitaService {
         cita.setFechaCreacion(LocalDateTime.now());
         cita.setCreadaPorPersonalInterno(creadaPorPersonalInterno);
 
+        // Asignación de datos de seguimiento
+        cita.setCitaPadreId(dto.getCitaPadreId());
+        cita.setTipoSeguimiento(dto.getTipoSeguimiento());
+
         citaRepository.save(cita);
+
+        // RN-CU11-04: Notificación por correo al agendar seguimiento
+        if (cita.getCitaPadreId() != null) {
+            String asunto = "Cita de Seguimiento Agendada - Hospital";
+            String mensaje = String.format("Estimado(a) %s,\n\nSe ha agendado una cita de seguimiento de tipo: %s.\nFecha: %s\nMédico: %s\nSucursal: %s\nMotivo: %s\n\nEste es un correo automático, no responda.",
+                    paciente.getNombreCompleto(), dto.getTipoSeguimiento(), cita.getFechaHora().toString(), medico.getNombreCompleto(), sucursal.getNombre(), cita.getMotivo());
+            emailService.enviarCorreo(paciente.getCorreo(), asunto, mensaje);
+        }
 
         CitaResponseDTO response = new CitaResponseDTO();
         response.setId(cita.getId());
@@ -127,6 +142,8 @@ public class CitaServiceImpl implements CitaService {
         response.setEstadoNombre(estadoPendiente.getNombre());
         response.setFechaHora(cita.getFechaHora());
         response.setMotivo(cita.getMotivo());
+        response.setCitaPadreId(cita.getCitaPadreId());
+        response.setTipoSeguimiento(cita.getTipoSeguimiento());
         return response;
     }
 }

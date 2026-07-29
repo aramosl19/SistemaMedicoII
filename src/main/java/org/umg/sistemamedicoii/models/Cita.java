@@ -37,6 +37,12 @@ public class Cita {
     @JoinColumn(name = "tipo_cita_id", nullable = true) // true por ahora para evitar errores con citas de prueba que ya tengas
     private TipoCita tipoCita;
 
+    @Column(name = "cita_padre_id", nullable = true)
+    private Integer citaPadreId;
+
+    @Column(name = "tipo_seguimiento", nullable = true, length = 100)
+    private String tipoSeguimiento;
+    
     @ManyToOne
     @JoinColumn(name = "estado_id", nullable = false)
     private EstadoCita estado;

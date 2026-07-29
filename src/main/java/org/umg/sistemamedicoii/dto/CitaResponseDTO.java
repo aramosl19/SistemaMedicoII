@@ -14,4 +14,6 @@ public class CitaResponseDTO {
     private String estadoNombre;
     private LocalDateTime fechaHora;
     private String motivo;
+    private Integer citaPadreId;
+    private String tipoSeguimiento;
 }

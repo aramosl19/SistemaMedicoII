@@ -14,6 +14,9 @@ public class ConsultaMedicaController {
     private RecetaMedicaService recetaMedicaService;
 
     @Autowired
+    private org.umg.sistemamedicoii.service.CitaService citaService;
+
+    @Autowired
     private ConsultaMedicaService consultaMedicaService;
 
     @GetMapping("/{medicoId}/panel")
@@ -48,5 +51,15 @@ public class ConsultaMedicaController {
             @PathVariable Integer id,
             @RequestBody RecetaRequestDTO dto) {
         return recetaMedicaService.generarReceta(id, dto);
+    }
+
+    @PostMapping("/citas/{id}/seguimiento")
+    public org.umg.sistemamedicoii.dto.CitaResponseDTO agendarSeguimiento(
+            @PathVariable Integer id,
+            @RequestBody org.umg.sistemamedicoii.dto.CitaRequestDTO dto) {
+        // Inyectamos la ID de la cita padre automáticamente desde la URL
+        dto.setCitaPadreId(id);
+        // true = fue creada por personal interno, así el Scheduler NO la cancela a los 10 mins.
+        return citaService.agendarCita(dto, true);
     }
 }
