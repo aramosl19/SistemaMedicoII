@@ -43,4 +43,11 @@ public class RecepcionController {
     public CitaResponseDTO agendarWalkIn(@Valid @RequestBody CitaRequestDTO dto) {
         return citaService.agendarCita(dto, true);
     }
+
+    @PostMapping("/citas/{id}/reasignar")
+    public CitaRecepcionResponseDTO reasignarMedico(
+            @PathVariable Integer id,
+            @RequestBody org.umg.sistemamedicoii.dto.ReasignarMedicoRequestDTO dto) {
+        return recepcionService.reasignarMedico(id, dto);
+    }
 }

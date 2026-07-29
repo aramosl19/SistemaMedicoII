@@ -26,6 +26,7 @@ public class RecepcionServiceImpl implements RecepcionService {
     @Autowired private CitaRepository citaRepository;
     @Autowired private UsuarioRepository usuarioRepository;
     @Autowired private org.umg.sistemamedicoii.config.EstadoCitaCache estadoCache;
+    @Autowired private org.umg.sistemamedicoii.repository.AuditoriaRepository auditoriaRepo;
 
     @Override
     public BusquedaRecepcionResponseDTO buscar(Integer numeroCita, String dpi) {
@@ -99,6 +100,45 @@ public class RecepcionServiceImpl implements RecepcionService {
                 ? "Paciente " + cita.getPaciente().getNombreCompleto() + " registrado con prioridad de EMERGENCIA. Debe pasar directamente a toma de signos vitales."
                 : "La llegada del paciente " + cita.getPaciente().getNombreCompleto() + " ha sido registrada exitosamente. Debe pasar a la sala de espera.");
         return respuesta;
+    }
+
+    @Override
+    public CitaRecepcionResponseDTO reasignarMedico(Integer citaId, org.umg.sistemamedicoii.dto.ReasignarMedicoRequestDTO dto) {
+        Cita cita = citaRepository.findById(citaId)
+                .orElseThrow(() -> new ResourceNotFoundException("Cita no encontrada."));
+
+        String estado = cita.getEstado().getNombre();
+        String estadoConfirmada = org.umg.sistemamedicoii.enums.EstadoCitaEnum.CONFIRMADA.getNombreBd();
+        String estadoPresente = org.umg.sistemamedicoii.enums.EstadoCitaEnum.PACIENTE_PRESENTE.getNombreBd();
+        if (!estado.equals(estadoConfirmada) && !estado.equals(estadoPresente)) {
+            throw new IllegalArgumentException("Solo se pueden reasignar citas Confirmadas o con Paciente Presente.");
+        }
+        Usuario nuevoMedico = usuarioRepository.findById(dto.getNuevoMedicoId())
+                .orElseThrow(() -> new ResourceNotFoundException("Médico no encontrado."));
+        if (nuevoMedico.getSucursal() == null || !nuevoMedico.getSucursal().getId().equals(cita.getSucursal().getId()) ||
+                nuevoMedico.getEspecialidad() == null || !nuevoMedico.getEspecialidad().getId().equals(cita.getEspecialidad().getId())) {
+            throw new IllegalArgumentException("El nuevo médico debe ser de la misma sede y especialidad.");
+        }
+        // Validación anti-doble-booking
+        if (citaRepository.existsByMedicoIdAndFechaHoraAndEstado_NombreNot(
+                nuevoMedico.getId(), cita.getFechaHora(), org.umg.sistemamedicoii.enums.EstadoCitaEnum.CANCELADA.getNombreBd())) {
+            throw new IllegalArgumentException("El nuevo médico no tiene disponibilidad en este horario.");
+        }
+        Integer medicoAnteriorId = cita.getMedico().getId();
+        cita.setMedico(nuevoMedico);
+        citaRepository.save(cita);
+        // Guardamos la justificación administrativa en la tabla de auditoría, NO en el motivo clínico.
+        org.umg.sistemamedicoii.models.Auditoria log = new org.umg.sistemamedicoii.models.Auditoria();
+        log.setAccion("REASIGNACION_MEDICO");
+        log.setEntidadAfectada("CITA");
+        log.setEntidadId(cita.getId());
+        log.setDetalle("Médico anterior: " + medicoAnteriorId + ". Nuevo médico: " + nuevoMedico.getId() + ". Motivo: " + (dto.getMotivoReasignacion() != null ? dto.getMotivoReasignacion() : "Sin especificar"));
+        log.setUsuarioEjecutorId(null);
+        log.setFechaHora(LocalDateTime.now());
+        auditoriaRepo.save(log);
+        CitaRecepcionResponseDTO res = toRecepcionDTO(cita);
+        res.setMensaje("Médico reasignado correctamente.");
+        return res;
     }
 
     private BusquedaRecepcionResponseDTO construirEncontrada(Cita cita) {
