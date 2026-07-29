@@ -4,7 +4,7 @@ package org.umg.sistemamedicoii.models;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
-import org.umg.sistemamedicoii.config.CryptoConverter;
+import org.umg.sistemamedicoii.config.security.CryptoConverter;
 
 import java.time.LocalDateTime;
 

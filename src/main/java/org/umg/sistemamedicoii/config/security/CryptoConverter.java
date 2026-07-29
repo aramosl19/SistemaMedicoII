@@ -1,4 +1,4 @@
-package org.umg.sistemamedicoii.config;
+package org.umg.sistemamedicoii.config.security;
 
 import jakarta.persistence.AttributeConverter;
 import jakarta.persistence.Converter;
