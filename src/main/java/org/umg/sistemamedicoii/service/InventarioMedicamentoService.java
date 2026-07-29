@@ -1,4 +1,9 @@
 package org.umg.sistemamedicoii.service;
 
-public class InventarioMedicamentoService {
+import org.umg.sistemamedicoii.dto.InventarioMedicamentoResponseDTO;
+import java.util.List;
+
+public interface InventarioMedicamentoService {
+    List<InventarioMedicamentoResponseDTO> listarInventarioPorSucursal(Integer sucursalId);
+    List<InventarioMedicamentoResponseDTO> listarTodo();
 }
