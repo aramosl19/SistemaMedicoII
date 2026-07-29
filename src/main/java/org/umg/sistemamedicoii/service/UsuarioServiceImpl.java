@@ -41,6 +41,7 @@ public class UsuarioServiceImpl implements UsuarioService{
     @Autowired private EspecialidadRepository especialidadRepository;
     @Autowired private PasswordEncoder passwordEncoder;
     @Autowired private EmailService emailService;
+    @Autowired private org.umg.sistemamedicoii.config.security.JwtService jwtService;
 
 
     private void validarSucursalObligatoriaEnCreacion(UsuarioRequestDTO dto) {
@@ -295,6 +296,7 @@ public class UsuarioServiceImpl implements UsuarioService{
         response.setNombreCompleto(usuario.getNombreCompleto());
         response.setNombreUsuario(usuario.getNombreUsuario());
         response.setRol(usuario.getRol().getNombre());
+        response.setToken(jwtService.generarToken(usuario.getId(), usuario.getNombreUsuario(), usuario.getRol().getNombre()));
         return response;
     }
 
@@ -324,8 +326,15 @@ public class UsuarioServiceImpl implements UsuarioService{
         log.setEntidadAfectada("USUARIO");
         log.setEntidadId(entidadId);
         log.setDetalle(detalle);
-        log.setUsuarioEjecutorId(null); //Llenar cuando se implemente Spring Security
-        log.setFechaHora(LocalDateTime.now());
+
+        var auth = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+        if (auth != null && auth.getPrincipal() instanceof org.umg.sistemamedicoii.config.security.UsuarioPrincipal principal) {
+            log.setUsuarioEjecutorId(principal.getUsuario().getId());
+        } else {
+            log.setUsuarioEjecutorId(null);
+        }
+
+        log.setFechaHora(java.time.LocalDateTime.now());
         auditoriaRepo.save(log);
     }
 }

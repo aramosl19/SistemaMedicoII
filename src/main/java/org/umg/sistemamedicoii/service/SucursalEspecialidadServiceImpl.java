@@ -93,7 +93,14 @@ public class SucursalEspecialidadServiceImpl implements SucursalEspecialidadServ
         log.setEntidadAfectada("SUCURSAL_ESPECIALIDAD");
         log.setEntidadId(entidadId);
         log.setDetalle(detalle);
-        log.setUsuarioEjecutorId(null); // Listo para conectarse cuando se agregue Spring Security
+
+        var auth = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+        if (auth != null && auth.getPrincipal() instanceof org.umg.sistemamedicoii.config.security.UsuarioPrincipal principal) {
+            log.setUsuarioEjecutorId(principal.getUsuario().getId());
+        } else {
+            log.setUsuarioEjecutorId(null);
+        }
+
         log.setFechaHora(LocalDateTime.now());
         auditoriaRepository.save(log);
     }

@@ -97,8 +97,16 @@ public class SignosVitalesServiceImpl implements SignosVitalesService {
             throw new IllegalArgumentException("Los signos vitales de esta cita ya fueron registrados previamente.");
         }
 
-        Usuario enfermero = usuarioRepository.findById(dto.getEnfermeroId())
-                .orElseThrow(() -> new ResourceNotFoundException("No se encontró el enfermero ingresado."));
+        Integer enfermeroIdActual = null;
+        var auth = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+        if (auth != null && auth.getPrincipal() instanceof org.umg.sistemamedicoii.config.security.UsuarioPrincipal principal) {
+            enfermeroIdActual = principal.getUsuario().getId();
+        } else {
+            throw new org.springframework.security.access.AccessDeniedException("Debe estar autenticado para registrar signos vitales.");
+        }
+
+        Usuario enfermero = usuarioRepository.findById(enfermeroIdActual)
+                .orElseThrow(() -> new ResourceNotFoundException("No se encontró el enfermero autenticado."));
 
         validarRangosCaptura(dto);
 

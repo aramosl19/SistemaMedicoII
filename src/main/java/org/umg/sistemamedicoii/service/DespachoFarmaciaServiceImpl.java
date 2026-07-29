@@ -129,7 +129,14 @@ public class DespachoFarmaciaServiceImpl implements DespachoFarmaciaService {
                 log.setEntidadAfectada("MEDICAMENTO");
                 log.setEntidadId(med.getId());
                 log.setDetalle("Despachado al paciente DPI: " + receta.getCita().getPaciente().getDpi() + ", Cantidad: " + itemReq.getCantidadDespachada());
-                log.setUsuarioEjecutorId(null); // Pendiente Security
+
+                var auth = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+                if (auth != null && auth.getPrincipal() instanceof org.umg.sistemamedicoii.config.security.UsuarioPrincipal principal) {
+                    log.setUsuarioEjecutorId(principal.getUsuario().getId());
+                } else {
+                    log.setUsuarioEjecutorId(null);
+                }
+
                 log.setFechaHora(LocalDateTime.now());
                 auditoriaRepo.save(log);
             }

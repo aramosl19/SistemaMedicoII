@@ -133,7 +133,14 @@ public class RecepcionServiceImpl implements RecepcionService {
         log.setEntidadAfectada("CITA");
         log.setEntidadId(cita.getId());
         log.setDetalle("Médico anterior: " + medicoAnteriorId + ". Nuevo médico: " + nuevoMedico.getId() + ". Motivo: " + (dto.getMotivoReasignacion() != null ? dto.getMotivoReasignacion() : "Sin especificar"));
-        log.setUsuarioEjecutorId(null);
+
+        var auth = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+        if (auth != null && auth.getPrincipal() instanceof org.umg.sistemamedicoii.config.security.UsuarioPrincipal principal) {
+            log.setUsuarioEjecutorId(principal.getUsuario().getId());
+        } else {
+            log.setUsuarioEjecutorId(null);
+        }
+
         log.setFechaHora(LocalDateTime.now());
         auditoriaRepo.save(log);
         CitaRecepcionResponseDTO res = toRecepcionDTO(cita);

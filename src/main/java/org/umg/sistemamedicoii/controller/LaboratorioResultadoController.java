@@ -1,6 +1,7 @@
 package org.umg.sistemamedicoii.controller;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.umg.sistemamedicoii.dto.DetalleOrdenLaboratorioResponseDTO;
 import org.umg.sistemamedicoii.dto.OrdenLaboratorioResponseDTO;
@@ -36,9 +37,7 @@ public class LaboratorioResultadoController {
 
 
     @PostMapping("/examenes/{detalleId}/publicar")
-    // TODO (seguridad pendiente, RN-CU09-02 / RNF-024): restringir este endpoint a rol
-    // "SupervisorLaboratorio" (o "Administrador") una vez esté activo Spring Security.
-    // registrarResultado() se mantiene abierto a rol "Personal de Laboratorio".
+    @PreAuthorize("hasAnyRole('ADMINISTRADOR', 'LABORATORISTA', 'SUPERVISORLABORATORIO')") // <-- RESTRICCIÓN APLICADA: Solo el administrador/supervisor puede publicar
     public DetalleOrdenLaboratorioResponseDTO publicarResultado(@PathVariable Integer detalleId) {
         return laboratorioResultadoService.publicarResultado(detalleId);
     }

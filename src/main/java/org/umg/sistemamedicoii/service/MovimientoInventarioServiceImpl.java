@@ -84,6 +84,12 @@ public class MovimientoInventarioServiceImpl implements MovimientoInventarioServ
         movimiento.setCostoUnitario(dto.getCostoUnitario());
         movimiento.setReferencia(dto.getReferencia());
         movimiento.setMotivo(dto.getMotivo());
+
+        var auth = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+        if (auth != null && auth.getPrincipal() instanceof org.umg.sistemamedicoii.config.security.UsuarioPrincipal principal) {
+            movimiento.setUsuarioId(principal.getUsuario().getId());
+        }
+
         movimiento.setFechaHora(LocalDateTime.now());
 
         MovimientoInventario guardado = movimientoRepository.save(movimiento);
