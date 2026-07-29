@@ -1,4 +1,4 @@
 name: url
 values:
-  - key: url
+  - key: base_url
     value: ''

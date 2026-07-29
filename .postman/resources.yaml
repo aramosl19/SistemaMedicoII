@@ -2,6 +2,12 @@
 workspace:
   id: a0eaf2b8-05ed-4a67-acd6-ad5bf0670eab
 
+# Each entry here maps a local resource to one or more corresponding objects in Postman Cloud
+
+cloudResources:
+  collections:
+    ../postman/collections/SistemaMedicoII - CU-00 a CU-16: 0a3f521b-672c-4abc-998c-420c72386ce3
+
 # All resources in the `postman/` folder are automatically registered in Local View.
 # Point to additional files outside the `postman/` folder to register them individually. Example:
 #localResources:
