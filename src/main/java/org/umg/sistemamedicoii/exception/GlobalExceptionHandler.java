@@ -12,7 +12,7 @@ import java.util.Map;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
-    
+
     private static final Logger logger = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
     @ExceptionHandler(ResourceNotFoundException.class)
@@ -57,10 +57,32 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.PAYMENT_REQUIRED)
                 .body(Map.of("error", ex.getMessage()));
     }
+    
+    @ExceptionHandler(IllegalStateException.class)
+    public ResponseEntity<Map<String, String>> handleIllegalState(IllegalStateException ex) {
+        logger.error("Estado inválido detectado: ", ex);
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(Map.of("error", ex.getMessage()));
+    }
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<Map<String, Object>> handleAllExceptions(Exception ex) {
         logger.error("ERROR INTERNO DETECTADO: ", ex);
-        return ResponseEntity.status(HttpStatus.OK)
-                .body(Map.of("error 500", "Ocurrio un error inesperado en el sistema. Favor de consultar al soporte tecnico."));    }
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(Map.of("error", "Ocurrió un error inesperado en el sistema. Favor de consultar al soporte técnico."));
+    }
+    
+    @ExceptionHandler(VirusDetectedException.class)
+    public ResponseEntity<Map<String, String>> handleVirusDetected(VirusDetectedException ex) {
+        logger.warn("Archivo rechazado por el antivirus: {}", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY)
+                .body(Map.of("error", "El documento no pasó la verificación de seguridad y fue rechazado."));
+    }
+
+    @ExceptionHandler(AntivirusUnavailableException.class)
+    public ResponseEntity<Map<String, String>> handleAntivirusUnavailable(AntivirusUnavailableException ex) {
+        logger.error("Servicio de antivirus no disponible: ", ex);
+        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                .body(Map.of("error", "El servicio de verificación de documentos no está disponible. Intente más tarde."));
+    }
 }
