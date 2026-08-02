@@ -8,6 +8,7 @@ import java.time.LocalDateTime;
 @Getter @Setter
 public class CitaRecepcionResponseDTO {
     private Integer id;
+    private Integer pacienteId;
     private String pacienteNombre;
     private String estadoNombre;
     private String especialidadNombre;

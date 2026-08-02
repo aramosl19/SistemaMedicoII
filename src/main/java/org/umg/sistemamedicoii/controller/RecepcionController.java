@@ -8,6 +8,7 @@ import org.umg.sistemamedicoii.dto.BusquedaRecepcionResponseDTO;
 import org.umg.sistemamedicoii.dto.CitaRecepcionResponseDTO;
 import org.umg.sistemamedicoii.dto.CitaRequestDTO;
 import org.umg.sistemamedicoii.dto.CitaResponseDTO;
+import org.umg.sistemamedicoii.dto.EmergenciaRequestDTO;
 import org.umg.sistemamedicoii.dto.RegistrarLlegadaRequestDTO;
 import org.umg.sistemamedicoii.service.CitaService;
 import org.umg.sistemamedicoii.service.RecepcionService;
@@ -49,5 +50,13 @@ public class RecepcionController {
             @PathVariable Integer id,
             @RequestBody org.umg.sistemamedicoii.dto.ReasignarMedicoRequestDTO dto) {
         return recepcionService.reasignarMedico(id, dto);
+    }
+
+    @PostMapping("/pacientes/{pacienteId}/emergencia")
+    @ResponseStatus(HttpStatus.CREATED)
+    public CitaRecepcionResponseDTO registrarEmergenciaDirecta(
+            @PathVariable Integer pacienteId,
+            @Valid @RequestBody EmergenciaRequestDTO dto) {
+        return recepcionService.registrarEmergenciaDirecta(pacienteId, dto);
     }
 }

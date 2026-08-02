@@ -4,11 +4,18 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.umg.sistemamedicoii.dto.BusquedaRecepcionResponseDTO;
 import org.umg.sistemamedicoii.dto.CitaRecepcionResponseDTO;
+import org.umg.sistemamedicoii.dto.EmergenciaRequestDTO;
 import org.umg.sistemamedicoii.dto.ResultadoBusquedaRecepcionResponseDTO;
 import org.umg.sistemamedicoii.exception.ResourceNotFoundException;
 import org.umg.sistemamedicoii.models.Cita;
+import org.umg.sistemamedicoii.models.Especialidad;
+import org.umg.sistemamedicoii.models.Sucursal;
+import org.umg.sistemamedicoii.models.TipoCita;
 import org.umg.sistemamedicoii.models.Usuario;
 import org.umg.sistemamedicoii.repository.CitaRepository;
+import org.umg.sistemamedicoii.repository.EspecialidadRepository;
+import org.umg.sistemamedicoii.repository.SucursalRepository;
+import org.umg.sistemamedicoii.repository.TipoCitaRepository;
 import org.umg.sistemamedicoii.repository.UsuarioRepository;
 
 import java.time.LocalDate;
@@ -25,6 +32,9 @@ public class RecepcionServiceImpl implements RecepcionService {
 
     @Autowired private CitaRepository citaRepository;
     @Autowired private UsuarioRepository usuarioRepository;
+    @Autowired private SucursalRepository sucursalRepository;
+    @Autowired private EspecialidadRepository especialidadRepository;
+    @Autowired private TipoCitaRepository tipoCitaRepository;
     @Autowired private org.umg.sistemamedicoii.config.EstadoCitaCache estadoCache;
     @Autowired private org.umg.sistemamedicoii.repository.AuditoriaRepository auditoriaRepo;
 
@@ -89,7 +99,6 @@ public class RecepcionServiceImpl implements RecepcionService {
             throw new IllegalArgumentException("No es posible registrar la llegada: la cita se encuentra en estado '" + estadoActual + "'.");
         }
 
-        // Usamos el caché aquí
         cita.setEstado(estadoCache.getEstado(org.umg.sistemamedicoii.enums.EstadoCitaEnum.PACIENTE_PRESENTE));
         cita.setHoraLlegada(LocalDateTime.now());
         cita.setEmergencia(emergencia);
@@ -119,7 +128,6 @@ public class RecepcionServiceImpl implements RecepcionService {
                 nuevoMedico.getEspecialidad() == null || !nuevoMedico.getEspecialidad().getId().equals(cita.getEspecialidad().getId())) {
             throw new IllegalArgumentException("El nuevo médico debe ser de la misma sede y especialidad.");
         }
-        // Validación anti-doble-booking
         if (citaRepository.existsByMedicoIdAndFechaHoraAndEstado_NombreNot(
                 nuevoMedico.getId(), cita.getFechaHora(), org.umg.sistemamedicoii.enums.EstadoCitaEnum.CANCELADA.getNombreBd())) {
             throw new IllegalArgumentException("El nuevo médico no tiene disponibilidad en este horario.");
@@ -127,7 +135,6 @@ public class RecepcionServiceImpl implements RecepcionService {
         Integer medicoAnteriorId = cita.getMedico().getId();
         cita.setMedico(nuevoMedico);
         citaRepository.save(cita);
-        // Guardamos la justificación administrativa en la tabla de auditoría, NO en el motivo clínico.
         org.umg.sistemamedicoii.models.Auditoria log = new org.umg.sistemamedicoii.models.Auditoria();
         log.setAccion("REASIGNACION_MEDICO");
         log.setEntidadAfectada("CITA");
@@ -148,6 +155,53 @@ public class RecepcionServiceImpl implements RecepcionService {
         return res;
     }
 
+    // FIX CU-05 FA01: alta directa de un paciente en emergencia, sin cita previa.
+    // Crea la Cita ya en estado "Paciente Presente" (llegó físicamente), marcada
+    // emergencia=true, sin exigir horario ni pasar por Pendiente de pago/Confirmada.
+    @Override
+    public CitaRecepcionResponseDTO registrarEmergenciaDirecta(Integer pacienteId, EmergenciaRequestDTO dto) {
+        Usuario paciente = usuarioRepository.findById(pacienteId)
+                .orElseThrow(() -> new ResourceNotFoundException("Paciente no encontrado."));
+        Usuario medico = usuarioRepository.findById(dto.getMedicoId())
+                .orElseThrow(() -> new ResourceNotFoundException("Médico no encontrado."));
+        Sucursal sucursal = sucursalRepository.findById(dto.getSucursalId())
+                .orElseThrow(() -> new ResourceNotFoundException("Sucursal no encontrada."));
+        Especialidad especialidad = especialidadRepository.findById(dto.getEspecialidadId())
+                .orElseThrow(() -> new ResourceNotFoundException("Especialidad no encontrada."));
+
+        TipoCita tipoCita = null;
+        if (dto.getTipoCitaId() != null) {
+            tipoCita = tipoCitaRepository.findById(dto.getTipoCitaId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Tipo de cita no encontrado."));
+        }
+
+        LocalDateTime ahora = LocalDateTime.now();
+
+        Cita cita = new Cita();
+        cita.setPaciente(paciente);
+        cita.setMedico(medico);
+        cita.setSucursal(sucursal);
+        cita.setEspecialidad(especialidad);
+        cita.setEstado(estadoCache.getEstado(org.umg.sistemamedicoii.enums.EstadoCitaEnum.PACIENTE_PRESENTE));
+        cita.setFechaHora(ahora);
+        cita.setHoraLlegada(ahora);
+        cita.setMotivo(dto.getMotivo() != null && !dto.getMotivo().isBlank()
+                ? dto.getMotivo()
+                : "Atención de emergencia registrada por recepción, sin cita previa.");
+        cita.setTipoCita(tipoCita);
+        cita.setPrecio(tipoCita != null ? tipoCita.getPrecio() : null);
+        cita.setFechaCreacion(ahora);
+        cita.setCreadaPorPersonalInterno(true);
+        cita.setEmergencia(true);
+
+        citaRepository.save(cita);
+
+        CitaRecepcionResponseDTO respuesta = toRecepcionDTO(cita);
+        respuesta.setMensaje("Paciente " + paciente.getNombreCompleto()
+                + " registrado con prioridad de EMERGENCIA sin cita previa. Debe pasar directamente a toma de signos vitales.");
+        return respuesta;
+    }
+
     private BusquedaRecepcionResponseDTO construirEncontrada(Cita cita) {
         BusquedaRecepcionResponseDTO respuesta = new BusquedaRecepcionResponseDTO();
         respuesta.setResultado(ResultadoBusquedaRecepcionResponseDTO.CITA_ENCONTRADA);
@@ -158,6 +212,7 @@ public class RecepcionServiceImpl implements RecepcionService {
     private CitaRecepcionResponseDTO toRecepcionDTO(Cita cita) {
         CitaRecepcionResponseDTO dto = new CitaRecepcionResponseDTO();
         dto.setId(cita.getId());
+        dto.setPacienteId(cita.getPaciente().getId());
         dto.setPacienteNombre(cita.getPaciente().getNombreCompleto());
         dto.setEstadoNombre(cita.getEstado().getNombre());
         dto.setEspecialidadNombre(cita.getEspecialidad().getNombre());
