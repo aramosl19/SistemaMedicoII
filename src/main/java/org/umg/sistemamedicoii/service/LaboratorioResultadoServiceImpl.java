@@ -21,11 +21,20 @@ public class LaboratorioResultadoServiceImpl implements LaboratorioResultadoServ
 
     @Autowired private OrdenLaboratorioRepository ordenLaboratorioRepository;
     @Autowired private DetalleOrdenLaboratorioRepository detalleOrdenLaboratorioRepository;
+    @Autowired private EmailService emailService;
 
     @Override
     public List<OrdenLaboratorioResponseDTO> listarOrdenes(String estado) {
+        return listarOrdenes(estado, null);
+    }
+
+    @Override
+    public List<OrdenLaboratorioResponseDTO> listarOrdenes(String estado, Integer medicoId) {
         EstadoOrdenLaboratorioEnum filtro = parsearEstado(estado);
-        return ordenLaboratorioRepository.findByEstadoOrderByFechaCreacionAsc(filtro).stream()
+        List<OrdenLaboratorio> ordenes = (medicoId != null)
+                ? ordenLaboratorioRepository.findByEstadoAndMedico_IdOrderByFechaCreacionAsc(filtro, medicoId)
+                : ordenLaboratorioRepository.findByEstadoOrderByFechaCreacionAsc(filtro);
+        return ordenes.stream()
                 .map(this::toOrdenResponseDTO)
                 .collect(Collectors.toList());
     }
@@ -33,6 +42,17 @@ public class LaboratorioResultadoServiceImpl implements LaboratorioResultadoServ
     @Override
     public OrdenLaboratorioResponseDTO obtenerDetalle(Integer ordenId) {
         OrdenLaboratorio orden = buscarOrden(ordenId);
+        return toOrdenResponseDTO(orden);
+    }
+
+    @Override
+    public OrdenLaboratorioResponseDTO obtenerDetalle(Integer ordenId, Integer medicoId) {
+        OrdenLaboratorio orden = buscarOrden(ordenId);
+        // FIX QA (gap #2): un médico no debe poder consultar el detalle de la orden de otro médico
+        if (medicoId != null && (orden.getMedico() == null || !medicoId.equals(orden.getMedico().getId()))) {
+            throw new org.springframework.security.access.AccessDeniedException(
+                    "No tiene permisos para consultar esta orden de laboratorio.");
+        }
         return toOrdenResponseDTO(orden);
     }
 
@@ -90,7 +110,32 @@ public class LaboratorioResultadoServiceImpl implements LaboratorioResultadoServ
             ordenLaboratorioRepository.save(orden);
         }
 
+        // FIX QA (RNF-007): notificar al médico tratante que hay un resultado de laboratorio disponible.
+        notificarResultadoAlMedico(orden, detalle);
+
         return toDetalleResponseDTO(detalle, "Resultado publicado exitosamente.");
+    }
+
+    private void notificarResultadoAlMedico(OrdenLaboratorio orden, DetalleOrdenLaboratorio detalle) {
+        if (orden.getMedico() == null || orden.getMedico().getCorreo() == null || orden.getMedico().getCorreo().isBlank()) {
+            return;
+        }
+        String asunto = "Resultado de Laboratorio Disponible - Orden #" + orden.getId();
+        StringBuilder mensaje = new StringBuilder();
+        mensaje.append("Estimado(a) Dr(a). ").append(orden.getMedico().getNombreCompleto()).append(",\n\n");
+        mensaje.append("Se ha publicado un nuevo resultado de laboratorio para su paciente ")
+                .append(orden.getCita().getPaciente().getNombreCompleto()).append(".\n\n");
+        mensaje.append("Examen: ").append(detalle.getExamen().getNombre()).append("\n");
+        mensaje.append("Resultado: ").append(detalle.getValorResultado())
+                .append(detalle.getUnidad() != null ? " " + detalle.getUnidad() : "").append("\n");
+        if (detalle.isFueraDeRango()) {
+            mensaje.append("ALERTA: Este resultado está fuera del rango de referencia normal. Requiere revisión.\n");
+        }
+        mensaje.append("\nPuede consultar el detalle completo de la orden #").append(orden.getId())
+                .append(" desde el sistema.\n\n");
+        mensaje.append("Atentamente,\nSistema Informático Hospitalario");
+
+        emailService.enviarCorreo(orden.getMedico().getCorreo(), asunto, mensaje.toString());
     }
 
     private EstadoOrdenLaboratorioEnum parsearEstado(String estado) {
