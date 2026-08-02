@@ -1,30 +1,18 @@
-// dto/DespachoFarmaciaRequestDTO.java  (nuevo)
 package org.umg.sistemamedicoii.dto;
 
-import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Pattern;
 import lombok.Getter;
 import lombok.Setter;
 
-import java.math.BigDecimal;
+import java.util.List;
 
 @Getter @Setter
-public class DespachoFarmaciaRequestDTO implements DatosCobroRequestDTO {
-
+public class DespachoFarmaciaRequestDTO {
 
     @NotNull(message = "Debe indicar la receta a despachar.")
     private Integer recetaId;
 
-    @NotBlank(message = "Debe seleccionar un método de pago.")
-    private String metodoPago;
-
-    private BigDecimal montoRecibido;
-
-    @Pattern(regexp = "\\d{4}", message = "Ingrese los últimos 4 dígitos de la tarjeta.")
-    private String ultimosCuatroDigitos;
-
     @NotNull(message = "Debe enviar los items a despachar.")
-    private java.util.List<ItemDespachoRequestDTO> items;
-    
+    private List<ItemDespachoRequestDTO> items;
+
 }

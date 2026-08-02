@@ -7,6 +7,7 @@ import java.math.BigDecimal;
 @Getter @Setter
 public class DetalleRecetaResponseDTO {
     private Integer id;
+    private Integer medicamentoId;
     private String medicamentoNombre;
     private String dosis;
     private String frecuencia;

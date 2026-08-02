@@ -97,6 +97,7 @@ public class RecetaMedicaServiceImpl implements RecetaMedicaService {
         dto.setMedicamentos(receta.getDetalles().stream().map(d -> {
             DetalleRecetaResponseDTO det = new DetalleRecetaResponseDTO();
             det.setId(d.getId());
+            det.setMedicamentoId(d.getMedicamento().getId());
             det.setMedicamentoNombre(d.getMedicamento().getNombre());
             det.setDosis(d.getDosis());
             det.setFrecuencia(d.getFrecuencia());

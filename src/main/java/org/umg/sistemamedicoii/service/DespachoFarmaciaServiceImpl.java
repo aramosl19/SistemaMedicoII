@@ -3,7 +3,6 @@ package org.umg.sistemamedicoii.service;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.umg.sistemamedicoii.dto.*;
-import org.umg.sistemamedicoii.enums.TipoConceptoCobro;
 import org.umg.sistemamedicoii.exception.ResourceNotFoundException;
 import org.umg.sistemamedicoii.models.DetalleReceta;
 import org.umg.sistemamedicoii.models.Medicamento;
@@ -12,6 +11,7 @@ import org.umg.sistemamedicoii.repository.MedicamentoRepository;
 import org.umg.sistemamedicoii.repository.RecetaMedicaRepository;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -25,14 +25,17 @@ public class DespachoFarmaciaServiceImpl implements DespachoFarmaciaService {
 
     @Autowired private org.umg.sistemamedicoii.repository.InventarioMedicamentoRepository inventarioRepo;
     @Autowired private org.umg.sistemamedicoii.repository.AuditoriaRepository auditoriaRepo;
+    @Autowired private org.umg.sistemamedicoii.repository.MovimientoInventarioRepository movimientoInventarioRepo;
     @Autowired private RecetaMedicaRepository recetaMedicaRepository;
     @Autowired private MedicamentoRepository medicamentoRepository;
-    @Autowired private List<ProcesadorPagoStrategy> estrategiasPago;
+
+    private static final int TIPO_MOVIMIENTO_DESPACHO = 6;
 
     @Override
-    public List<RecetaVigenteResponseDTO> buscarRecetasVigentes(Integer recetaId, String dpi) {
-        if (recetaId == null && (dpi == null || dpi.isBlank())) {
-            throw new IllegalArgumentException("Debe ingresar un ID de receta o DPI para buscar.");
+    public List<RecetaVigenteResponseDTO> buscarRecetasVigentes(Integer recetaId, String dpi, Integer consultaId) {
+        // FIX CU-11: se agrega consultaId como tercer criterio válido de búsqueda
+        if (recetaId == null && (dpi == null || dpi.isBlank()) && consultaId == null) {
+            throw new IllegalArgumentException("Debe ingresar un ID de receta, ID de consulta o DPI para buscar.");
         }
 
         List<RecetaMedica> recetas = new ArrayList<>();
@@ -40,6 +43,8 @@ public class DespachoFarmaciaServiceImpl implements DespachoFarmaciaService {
             recetaMedicaRepository.findById(recetaId)
                     .filter(RecetaMedica::isActivo)
                     .ifPresent(recetas::add);
+        } else if (consultaId != null) {
+            recetas = recetaMedicaRepository.findByCita_IdAndActivoTrue(consultaId);
         } else {
             recetas = recetaMedicaRepository.findByCita_Paciente_DpiAndActivoTrueOrderByFechaEmisionDesc(dpi);
         }
@@ -59,7 +64,6 @@ public class DespachoFarmaciaServiceImpl implements DespachoFarmaciaService {
             throw new IllegalArgumentException("La receta es inválida o está vencida (máximo 7 días).");
         }
 
-        BigDecimal montoTotal = BigDecimal.ZERO;
         List<String> alertasStock = new ArrayList<>();
         StringBuilder notasSustitucion = new StringBuilder(receta.getNotas() != null ? receta.getNotas() : "");
 
@@ -95,18 +99,14 @@ public class DespachoFarmaciaServiceImpl implements DespachoFarmaciaService {
             if (inv.getStockActual() < itemReq.getCantidadDespachada()) {
                 throw new IllegalArgumentException("Stock insuficiente de " + medicamentoDespachar.getNombre());
             }
-
-            montoTotal = montoTotal.add(medicamentoDespachar.getPrecio().multiply(BigDecimal.valueOf(itemReq.getCantidadDespachada())));
         }
 
-        // 2. Cobro (Patrón Strategy intacto)
-        ProcesadorPagoStrategy estrategia = estrategiasPago.stream()
-                .filter(e -> e.soportaMetodo(dto.getMetodoPago()))
-                .findFirst()
-                .orElseThrow(() -> new IllegalArgumentException("Método de pago no válido."));
+        // Solución CU-11: El Cobro queda totalmente fuera de esta capa.
+        String numeroTransaccion = UUID.randomUUID().toString(); // Referencia del despacho
 
-        String numeroTransaccion = UUID.randomUUID().toString();
-        BigDecimal[] montos = estrategia.procesarPago(dto, montoTotal, receta.getId(), receta.getCita().getPaciente().getNombreCompleto(), numeroTransaccion, TipoConceptoCobro.FARMACIA);
+        // FIX CU-11: acumuladores para el mensaje de éxito con cantidad y monto (spec)
+        int totalDespachado = 0;
+        BigDecimal totalMonto = BigDecimal.ZERO;
 
         // 3. Descontar Stock (por sucursal) y Auditoría real de controlados (RN-CU10-03 y RNF-017)
         for (ItemDespachoRequestDTO itemReq : dto.getItems()) {
@@ -116,8 +116,35 @@ public class DespachoFarmaciaServiceImpl implements DespachoFarmaciaService {
 
             org.umg.sistemamedicoii.models.InventarioMedicamento inv = inventarioRepo
                     .findByMedicamentoIdAndSucursalId(med.getId(), sucursalId).get();
-            inv.setStockActual(inv.getStockActual() - itemReq.getCantidadDespachada());
+            int stockAnterior = inv.getStockActual();
+            inv.setStockActual(stockAnterior - itemReq.getCantidadDespachada());
             inventarioRepo.save(inv);
+
+            // RN-CU13-01/CU-15: el tipo "Despacho (6)" es automático y lo genera este módulo;
+            // sin este registro, las ventas hechas en farmacia interna no quedaban reflejadas
+            // en la bitácora de movimientos ni en su resumen mensual.
+            org.umg.sistemamedicoii.models.MovimientoInventario movimiento = new org.umg.sistemamedicoii.models.MovimientoInventario();
+            movimiento.setTipoMovimiento(TIPO_MOVIMIENTO_DESPACHO);
+            movimiento.setMedicamento(med);
+            movimiento.setSucursal(receta.getCita().getSucursal());
+            movimiento.setCantidad(itemReq.getCantidadDespachada());
+            movimiento.setStockAnterior(stockAnterior);
+            movimiento.setStockNuevo(inv.getStockActual());
+            movimiento.setCostoUnitario(med.getPrecio());
+            movimiento.setReferencia("Receta #" + receta.getId());
+            movimiento.setActivo(true);
+            movimiento.setFechaHora(LocalDateTime.now());
+            var authMov = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+            if (authMov != null && authMov.getPrincipal() instanceof org.umg.sistemamedicoii.config.security.UsuarioPrincipal principalMov) {
+                movimiento.setUsuarioId(principalMov.getUsuario().getId());
+            }
+            movimientoInventarioRepo.save(movimiento);
+
+            // FIX CU-11: acumular cantidad y monto de este item
+            totalDespachado += itemReq.getCantidadDespachada();
+            if (med.getPrecio() != null) {
+                totalMonto = totalMonto.add(med.getPrecio().multiply(BigDecimal.valueOf(itemReq.getCantidadDespachada())));
+            }
 
             if (med.getMinimumStock() != null && inv.getStockActual() <= med.getMinimumStock()) {
                 alertasStock.add("ALERTA: El medicamento " + med.getNombre() + " alcanzó stock mínimo.");
@@ -148,12 +175,10 @@ public class DespachoFarmaciaServiceImpl implements DespachoFarmaciaService {
 
         DespachoFarmaciaResponseDTO respuesta = new DespachoFarmaciaResponseDTO();
         respuesta.setNumeroTransaccion(numeroTransaccion);
-        respuesta.setMonto(montoTotal);
-        respuesta.setMetodoPago(dto.getMetodoPago());
-        respuesta.setMontoRecibido(montos[0]);
-        respuesta.setCambio(montos[1]);
         respuesta.setAlertasStock(alertasStock);
-        respuesta.setMensaje("Despacho registrado exitosamente. Total: Q" + montoTotal);
+        // FIX CU-11: mensaje alineado al spec, con cantidad y monto total despachado
+        respuesta.setMensaje("Despacho registrado exitosamente. " + totalDespachado
+                + " medicamento(s) despachado(s). Total: Q" + totalMonto.setScale(2, RoundingMode.HALF_UP) + ".");
 
         List<DetalleRecetaResponseDTO> detallesRespuesta = new ArrayList<>();
         for (ItemDespachoRequestDTO itemReq : dto.getItems()) {
@@ -174,7 +199,7 @@ public class DespachoFarmaciaServiceImpl implements DespachoFarmaciaService {
     }
 
     @Override
-    public void rechazarReceta(Integer recetaId) {
+    public String rechazarReceta(Integer recetaId) {
         RecetaMedica receta = recetaMedicaRepository.findById(recetaId)
                 .orElseThrow(() -> new ResourceNotFoundException("No se encontró la receta."));
 
@@ -182,13 +207,46 @@ public class DespachoFarmaciaServiceImpl implements DespachoFarmaciaService {
             throw new IllegalArgumentException("La receta ya fue procesada o anulada.");
         }
 
-        // Cerramos la receta y registramos la nota exacta que pide el documento
+        // FIX CU-11 FA03: el mensaje ahora se devuelve al controller en vez de
+        // quedar solo en las notas de auditoría (antes el usuario veía un texto genérico fijo)
+        String mensaje = "Se ha registrado que el paciente " + receta.getCita().getPaciente().getNombreCompleto() +
+                " no adquirió los medicamentos recetados en farmacia interna. Receta: " + receta.getId();
+
         receta.setActivo(false);
-        receta.setNotas((receta.getNotas() != null ? receta.getNotas() + "\n" : "") +
-                "Se ha registrado que el paciente " + receta.getCita().getPaciente().getNombreCompleto() +
-                " no adquirió los medicamentos recetados en farmacia interna. Receta: " + receta.getId());
+        receta.setNotas((receta.getNotas() != null ? receta.getNotas() + "\n" : "") + mensaje);
 
         recetaMedicaRepository.save(receta);
+        return mensaje;
+    }
+
+    @Override
+    public RecetaMedicaResponseDTO obtenerDetalle(Integer recetaId) {
+        RecetaMedica receta = recetaMedicaRepository.findById(recetaId)
+                .orElseThrow(() -> new ResourceNotFoundException("No se encontró la receta ingresada."));
+
+        RecetaMedicaResponseDTO dto = new RecetaMedicaResponseDTO();
+        dto.setId(receta.getId());
+        dto.setCitaId(receta.getCita().getId());
+        dto.setPacienteNombre(receta.getCita().getPaciente().getNombreCompleto());
+        dto.setMedicoNombre(receta.getMedico().getNombreCompleto());
+        dto.setFechaEmision(receta.getFechaEmision());
+        dto.setNotas(receta.getNotas());
+        dto.setActivo(receta.isActivo());
+        dto.setMedicamentos(receta.getDetalles().stream().map(d -> {
+            DetalleRecetaResponseDTO det = new DetalleRecetaResponseDTO();
+            det.setId(d.getId());
+            det.setMedicamentoId(d.getMedicamento().getId());
+            det.setMedicamentoNombre(d.getMedicamento().getNombre());
+            det.setDosis(d.getDosis());
+            det.setFrecuencia(d.getFrecuencia());
+            det.setDuracion(d.getDuracion());
+            det.setIndicaciones(d.getIndicaciones());
+            det.setCantidad(d.getCantidad());
+            det.setPrecioUnitario(d.getMedicamento().getPrecio());
+            det.setSubtotal(d.getMedicamento().getPrecio().multiply(BigDecimal.valueOf(d.getCantidad())));
+            return det;
+        }).collect(Collectors.toList()));
+        return dto;
     }
 
     private boolean esVigente(RecetaMedica receta) {
