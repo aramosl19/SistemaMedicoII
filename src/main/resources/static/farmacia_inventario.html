@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bitácora de Inventario - Hospital El Milagro</title>
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div class="aurora aurora-a"></div>
+<div class="aurora aurora-b"></div>
+<div class="paper-grain"></div>
+
+<div class="app-container">
+    <div class="backdrop" id="backdrop" onclick="toggleMobileSidebar()"></div>
+    <button class="sidebar-toggle-mobile" onclick="toggleMobileSidebar()" aria-label="Abrir menú">
+        <i class="fa-solid fa-bars"></i>
+    </button>
+
+    <nav class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <h3>Hospital El Milagro</h3>
+            <button class="sidebar-collapse-btn" onclick="toggleSidebarCollapse()" aria-label="Colapsar menú">
+                <i class="fa-solid fa-angles-left" id="collapse-icon"></i>
+            </button>
+        </div>
+        <div class="user-badge">
+            <span id="user-name"></span>
+            <span id="user-role"></span>
+        </div>
+        <div class="nav-menu" id="sidebar-menu"></div>
+    </nav>
+
+    <main class="main-content">
+        <h2>Bitácora de Inventario de Farmacia</h2>
+        <div id="msg" class="alert"></div>
+
+        <div class="d-flex" style="gap: 1.5rem; align-items: flex-start;">
+            <div class="card flex-1" style="min-width: 400px;">
+                <h3>Registrar movimiento manual</h3>
+                <form id="f-inv" class="mt-4">
+                    <div class="d-flex">
+                        <div class="form-group flex-1"><label>Sucursal (sede)</label><select id="s" class="form-control" required onchange="verificarStock()"></select></div>
+                        <div class="form-group flex-1"><label>Medicamento</label><select id="m" class="form-control" required onchange="verificarStock()"></select></div>
+                    </div>
+
+                    <div id="panel-stock" class="alert alert-warning d-none" style="padding: 0.75rem; font-size: 0.85rem;"></div>
+
+                    <div class="d-flex">
+                        <div class="form-group flex-1"><label>Tipo de operación</label>
+                            <select id="t" class="form-control" required onchange="ajustarFormulario()">
+                                <option value="">Seleccione una operación</option>
+                                <option value="0">Ingreso por compra</option>
+                                <option value="1">Devolución a proveedor</option>
+                                <option value="2">Venta directa (mostrador)</option>
+                                <option value="3">Reclamo / mermas</option>
+                                <option value="4">Ajuste positivo (+)</option>
+                                <option value="5">Ajuste negativo (-)</option>
+                            </select>
+                        </div>
+                        <div class="form-group flex-1"><label>Cantidad</label><input type="number" id="c" class="form-control" required min="1" oninput="verificarStock()"></div>
+                    </div>
+
+                    <div class="d-flex">
+                        <div class="form-group flex-1 d-none" id="div-costo"><label>Costo unitario (Q)</label><input type="number" id="co" class="form-control" step="0.01" min="0.01"></div>
+                        <div class="form-group flex-1 d-none" id="div-ref"><label id="lbl-ref">Documento referencia</label><input type="text" id="ref" class="form-control"></div>
+                    </div>
+
+                    <div class="form-group d-none" id="div-motivo">
+                        <label id="lbl-mot">Justificación / motivo</label>
+                        <input type="text" id="mo" class="form-control" minlength="10" maxlength="500">
+                    </div>
+
+                    <button type="submit" class="btn btn-primary mt-4" style="width: 100%;">Afectar kardex</button>
+                </form>
+            </div>
+
+            <div class="card" style="flex: 2; overflow-x: auto;">
+                <div class="d-flex" style="justify-content: space-between; align-items: center; border-bottom: 1px solid var(--line); padding-bottom: 1rem; margin-bottom: 1rem;">
+                    <h3>Historial de operaciones</h3>
+                    <div>
+                        <button onclick="load()" class="btn"><i class="fa-solid fa-rotate"></i> Refrescar</button>
+                        <button onclick="generarReporte()" class="btn btn-primary ml-2"><i class="fa-solid fa-chart-bar"></i> Reporte Mensual</button>
+                    </div>
+                </div>
+
+                <!-- Solución CU-15: Filtros de la tabla -->
+                <div class="d-flex mb-4">
+                    <div class="form-group flex-1"><input type="text" id="f-sucursal" class="form-control" placeholder="Buscar Sede..." onkeyup="renderTable()"></div>
+                    <div class="form-group flex-1"><input type="text" id="f-medicamento" class="form-control" placeholder="Buscar Item..." onkeyup="renderTable()"></div>
+                    <div class="form-group flex-1"><input type="text" id="f-tipo" class="form-control" placeholder="Buscar Operación..." onkeyup="renderTable()"></div>
+                </div>
+                <!-- Solución CU-15 (gap #3 del QA): filtros faltantes: Referencia, Usuario y rango de fechas -->
+                <div class="d-flex mb-4">
+                    <div class="form-group flex-1"><input type="text" id="f-referencia" class="form-control" placeholder="Buscar Referencia..." onkeyup="renderTable()"></div>
+                    <div class="form-group flex-1"><input type="text" id="f-usuario" class="form-control" placeholder="Buscar Usuario..." onkeyup="renderTable()"></div>
+                    <div class="form-group flex-1"><label style="font-size:0.75rem;">Desde</label><input type="date" id="f-fecha-desde" class="form-control" onchange="renderTable()"></div>
+                    <div class="form-group flex-1"><label style="font-size:0.75rem;">Hasta</label><input type="date" id="f-fecha-hasta" class="form-control" onchange="renderTable()"></div>
+                </div>
+
+                <table class="table">
+                    <thead><tr><th>Fecha</th><th>Operación</th><th>Sede</th><th>Item</th><th>Cant.</th><th>Stock Anterior</th><th>Stock final</th><th>Costo</th><th>Documento</th><th>Usuario</th><th>Acciones</th></tr></thead>
+                    <tbody id="tb"></tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <!-- Solución QA: modal para el reporte mensual (endpoint /api/inventario/movimientos/resumen ya existía en el backend pero no tenía UI). -->
+    <div class="modal-overlay d-none" id="modal-reporte">
+        <div class="modal-content" style="max-width: 700px;">
+            <div class="d-flex" style="justify-content: space-between; align-items: center;">
+                <h3 id="rep-titulo">Reporte Mensual (Kardex)</h3>
+                <button class="btn" onclick="cerrarReporte()"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <table class="table mt-4">
+                <thead><tr><th>Medicamento</th><th>Entradas</th><th>Monto Entradas</th><th>Salidas</th><th>Monto Salidas</th><th>Stock final</th></tr></thead>
+                <tbody id="rep-body"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Solución CU-15 (gap #2 del QA): modal de detalle para el botón "Ver" de cada fila -->
+    <div class="modal-overlay d-none" id="modal-detalle">
+        <div class="modal-content" style="max-width: 500px;">
+            <div class="d-flex" style="justify-content: space-between; align-items: center;">
+                <h3>Detalle del movimiento</h3>
+                <button class="btn" onclick="cerrarDetalle()"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div id="detalle-body" class="mt-4"></div>
+        </div>
+    </div>
+</div>
+<script src="js/app.js"></script>
+<script>
+    App.requireAuth();
+    document.getElementById('user-name').textContent = App.getName() || 'Usuario del Sistema';
+    document.getElementById('user-role').textContent = App.getRole() || '';
+
+    let inventarioGlobal = [];
+    let historialKardex = [];
+
+    async function init() {
+        try {
+            const [sucursales, medicamentos] = await Promise.all([App.apiFetch('/api/sucursales'), App.apiFetch('/api/medicamentos')]);
+            const fill = (id, data) => document.getElementById(id).innerHTML = `<option value="">Seleccione una opción</option>` + data.filter(d=>d.activo).map(d=>`<option value="${d.id}">${d.nombre}</option>`).join('');
+            fill('s', sucursales); fill('m', medicamentos);
+
+            // Precargar sede del usuario para facilidad
+            const me = await App.apiFetch('/api/usuarios/me');
+            if (me.sucursalId) {
+                document.getElementById('s').value = me.sucursalId;
+            }
+
+            load();
+        } catch(e) { App.showAlert('msg', e.message, true); }
+    }
+
+    async function load() {
+        try {
+            inventarioGlobal = await App.apiFetch('/api/inventario');
+            historialKardex = await App.apiFetch('/api/inventario/movimientos');
+            renderTable();
+        } catch(e) {}
+    }
+
+    // Solución QA: el backend ya tenía el endpoint de resumen mensual (Kardex) pero
+    // ningún archivo del frontend lo consumía; el personal de farmacia no tenía forma
+    // de ver el resumen que ya existía en el sistema.
+    async function generarReporte() {
+        const sede = document.getElementById('s').value;
+        if (!sede) return App.showAlert('msg', 'Seleccione una sucursal en el formulario izquierdo para generar el reporte.', true);
+
+        const fecha = new Date();
+        try {
+            const data = await App.apiFetch(`/api/inventario/movimientos/resumen?sucursalId=${sede}&anio=${fecha.getFullYear()}&mes=${fecha.getMonth() + 1}`);
+            const sedeNombre = document.getElementById('s').options[document.getElementById('s').selectedIndex].text;
+            document.getElementById('rep-titulo').textContent = `Kardex Mensual - ${sedeNombre} (${fecha.getMonth() + 1}/${fecha.getFullYear()})`;
+            document.getElementById('rep-body').innerHTML = data.length === 0
+                ? '<tr><td colspan="6" class="text-muted">Sin movimientos este mes.</td></tr>'
+                : data.map(d => `<tr>
+        <td>${d.medicamentoNombre}</td>
+        <td class="text-success">+${d.totalEntradas}</td>
+        <td class="text-success">Q${Number(d.montoEntradas).toFixed(2)}</td>
+        <td class="text-error">-${d.totalSalidas}</td>
+        <td class="text-error">Q${Number(d.montoSalidas).toFixed(2)}</td>
+        <td class="font-bold">${d.stockFinal}</td>
+      </tr>`).join('');
+            document.getElementById('modal-reporte').classList.remove('d-none');
+        } catch(e) { App.showAlert('msg', e.message, true); }
+    }
+
+    function cerrarReporte() { document.getElementById('modal-reporte').classList.add('d-none'); }
+
+    // Solución CU-15: Filtrado de tabla
+    // (gap #3 del QA: se agregan los filtros de Referencia, Usuario y rango de fechas que faltaban)
+    function renderTable() {
+        const tSuc = document.getElementById('f-sucursal').value.toLowerCase();
+        const tMed = document.getElementById('f-medicamento').value.toLowerCase();
+        const tTipo = document.getElementById('f-tipo').value.toLowerCase();
+        const tRef = document.getElementById('f-referencia').value.toLowerCase();
+        const tUsr = document.getElementById('f-usuario').value.toLowerCase();
+        const fDesde = document.getElementById('f-fecha-desde').value;
+        const fHasta = document.getElementById('f-fecha-hasta').value;
+
+        const filtrados = historialKardex.filter(i => {
+            const fechaSolo = i.fechaHora.substring(0, 10);
+            return i.sucursalNombre.toLowerCase().includes(tSuc) &&
+                i.medicamentoNombre.toLowerCase().includes(tMed) &&
+                i.tipoMovimientoNombre.toLowerCase().includes(tTipo) &&
+                (i.referencia || '').toLowerCase().includes(tRef) &&
+                (i.usuarioNombre || '').toLowerCase().includes(tUsr) &&
+                (!fDesde || fechaSolo >= fDesde) &&
+                (!fHasta || fechaSolo <= fHasta);
+        });
+
+        document.getElementById('tb').innerHTML = filtrados.length ? filtrados.map(i=> {
+            const esEntrada = i.tipoMovimientoNombre.includes('Compra') || i.tipoMovimientoNombre.includes('(+)') || i.tipoMovimientoNombre.includes('Devoluci');
+            return `<tr>
+                <td>${i.fechaHora.substring(0,16).replace('T',' ')}</td>
+                <td><span class="font-bold" title="${i.motivo || 'Sin justificación'}">${i.tipoMovimientoNombre}</span></td>
+                <td>${i.sucursalNombre}</td>
+                <td>${i.medicamentoNombre}</td>
+                <td class="${esEntrada ? 'text-success' : 'text-error'} font-bold">${esEntrada ? '+' : '-'}${i.cantidad}</td>
+                <td>${i.stockAnterior}</td>
+                <td class="font-bold">${i.stockNuevo}</td>
+                <td>${i.costoUnitario ? 'Q'+i.costoUnitario : '-'}</td>
+                <td>${i.referencia || '-'}</td>
+                <td>${i.usuarioNombre || '-'}</td>
+                <td>
+                    <button class="btn" style="padding: 0.3rem 0.6rem; font-size: 0.8rem;" onclick="verDetalle(${i.id})">Ver</button>
+                    <button class="btn ${i.activo ? 'btn-danger' : ''}" style="padding: 0.3rem 0.6rem; font-size: 0.8rem;" onclick="toggleEstadoMovimiento(${i.id})">${i.activo ? 'Desactivar' : 'Activar'}</button>
+                </td>
+            </tr>`;
+        }).join('') : `<tr><td colspan="11" class="text-muted text-center p-4">No hay movimientos que coincidan con la búsqueda.</td></tr>`;
+    }
+
+    // Solución CU-15 (gap #2 del QA): detalle del movimiento (botón "Ver")
+    function verDetalle(id) {
+        const i = historialKardex.find(x => x.id === id);
+        if (!i) return;
+        document.getElementById('detalle-body').innerHTML = `
+            <p><strong>Fecha:</strong> ${i.fechaHora.substring(0,16).replace('T',' ')}</p>
+            <p><strong>Tipo de operación:</strong> ${i.tipoMovimientoNombre}</p>
+            <p><strong>Sede:</strong> ${i.sucursalNombre}</p>
+            <p><strong>Medicamento:</strong> ${i.medicamentoNombre}</p>
+            <p><strong>Cantidad:</strong> ${i.cantidad}</p>
+            <p><strong>Stock anterior:</strong> ${i.stockAnterior} &nbsp; <strong>Stock nuevo:</strong> ${i.stockNuevo}</p>
+            <p><strong>Costo unitario:</strong> ${i.costoUnitario ? 'Q'+i.costoUnitario : '-'}</p>
+            <p><strong>Referencia:</strong> ${i.referencia || '-'}</p>
+            <p><strong>Motivo/Justificación:</strong> ${i.motivo || '-'}</p>
+            <p><strong>Usuario:</strong> ${i.usuarioNombre || '-'}</p>
+            <p><strong>Estado:</strong> ${i.activo ? 'Activo' : 'Inactivo'}</p>`;
+        document.getElementById('modal-detalle').classList.remove('d-none');
+    }
+    function cerrarDetalle() { document.getElementById('modal-detalle').classList.add('d-none'); }
+
+    // Solución CU-15 (gap #2 del QA): botón Desactivar/Activar
+    async function toggleEstadoMovimiento(id) {
+        try {
+            await App.apiFetch(`/api/inventario/movimientos/${id}/estado`, 'PUT');
+            App.showAlert('msg', 'El estado del movimiento fue actualizado correctamente.');
+            load();
+        } catch(e) { App.showAlert('msg', e.message, true); }
+    }
+
+    function ajustarFormulario() {
+        const t = document.getElementById('t').value;
+        const dCosto = document.getElementById('div-costo'), cCosto = document.getElementById('co');
+        const dRef = document.getElementById('div-ref'), cRef = document.getElementById('ref'), lRef = document.getElementById('lbl-ref');
+        const dMot = document.getElementById('div-motivo'), cMot = document.getElementById('mo'), lMot = document.getElementById('lbl-mot');
+
+        dCosto.classList.add('d-none'); cCosto.required = false;
+        dRef.classList.add('d-none'); dMot.classList.add('d-none'); cMot.required = false;
+
+        if (t === "0") {
+            dCosto.classList.remove('d-none'); cCosto.required = true;
+            dRef.classList.remove('d-none'); lRef.textContent = "No. de factura";
+            dMot.classList.remove('d-none'); lMot.textContent = "Notas adicionales (opcional)";
+        } else if (t === "1") {
+            dRef.classList.remove('d-none'); lRef.textContent = "No. documento devolución";
+            dMot.classList.remove('d-none'); lMot.textContent = "Motivo de devolución"; cMot.required = true;
+        } else if (t === "2") {
+            dRef.classList.remove('d-none'); lRef.textContent = "No. recibo venta";
+        } else if (t === "3") {
+            dRef.classList.remove('d-none'); lRef.textContent = "ID reclamo";
+            dMot.classList.remove('d-none'); lMot.textContent = "Detalle del reclamo"; cMot.required = true;
+        } else if (t === "4" || t === "5") {
+            dMot.classList.remove('d-none'); lMot.textContent = "Justificación del ajuste"; cMot.required = true;
+        }
+    }
+
+    function verificarStock() {
+        const s = document.getElementById('s').value, m = document.getElementById('m').value;
+        const panel = document.getElementById('panel-stock');
+        const t = document.getElementById('t').value;
+        const cant = parseInt(document.getElementById('c').value) || 0;
+
+        if(s && m) {
+            const inv = inventarioGlobal.find(i => i.sucursalNombre === document.getElementById('s').options[document.getElementById('s').selectedIndex].text && i.medicamentoNombre === document.getElementById('m').options[document.getElementById('m').selectedIndex].text);
+
+            let actual = inv ? inv.stockActual : 0;
+            let minimo = inv && inv.stockMinimo != null ? inv.stockMinimo : 'No definido';
+            let operacion = "Seleccione operación";
+            let proyectado = actual;
+
+            if (t === "0" || t === "1" || t === "4") {
+                operacion = "Entrada (+)";
+                proyectado = actual + cant;
+            } else if (t === "2" || t === "3" || t === "5") {
+                operacion = "Salida (-)";
+                proyectado = actual - cant;
+            }
+
+            panel.classList.remove('d-none');
+            let html = `<strong>Stock actual:</strong> ${actual} ud. | <strong>Stock mínimo:</strong> ${minimo}<br>
+                               <strong>Proyección (después de operación):</strong> <span class="${proyectado < 0 ? 'text-error font-bold' : ''}">${proyectado} ud.</span>`;
+
+            // Solución CU-15 (gap #4 del QA, FA05): mensaje textual de stock bajo cuando el
+            // proyectado cae por debajo del mínimo pero sigue siendo positivo
+            const nombreMed = document.getElementById('m').options[document.getElementById('m').selectedIndex]?.text;
+            if (typeof minimo === 'number' && proyectado >= 0 && proyectado < minimo) {
+                html += `<br><span class="text-error font-bold">${nombreMed}: Stock bajo — disponible: ${proyectado} (mínimo: ${minimo})</span>`;
+            }
+            panel.innerHTML = html;
+        } else {
+            panel.classList.add('d-none');
+        }
+    }
+
+    document.getElementById('f-inv').addEventListener('submit', async(e)=>{
+        e.preventDefault();
+
+        // Mantener seleccion de sucursal
+        const lastSucursal = document.getElementById('s').value;
+
+        try {
+            const res = await App.apiFetch('/api/inventario/movimientos', 'POST', {
+                medicamentoId: parseInt(document.getElementById('m').value),
+                sucursalId: parseInt(document.getElementById('s').value),
+                tipoMovimiento: parseInt(document.getElementById('t').value),
+                cantidad: parseInt(document.getElementById('c').value),
+                costoUnitario: document.getElementById('co').value ? parseFloat(document.getElementById('co').value) : null,
+                referencia: document.getElementById('ref').value || null,
+                motivo: document.getElementById('mo').value || null
+            });
+            // Solución CU-15: Mensaje más detallado
+            // (gap #5 del QA: faltaba el segmento "Stock actualizado: [nuevo stock]."; el dato
+            // ya venía en la respuesta del backend, solo faltaba concatenarlo)
+            const tipoNom = document.getElementById('t').options[document.getElementById('t').selectedIndex].text;
+            const medNom = document.getElementById('m').options[document.getElementById('m').selectedIndex].text;
+            const cant = document.getElementById('c').value;
+
+            App.showAlert('msg', `Movimiento registrado exitosamente. Medicamento: ${medNom}. Tipo: ${tipoNom}. Cantidad: ${cant}. Stock actualizado: ${res.stockNuevo}.`);
+
+            document.getElementById('f-inv').reset();
+            document.getElementById('s').value = lastSucursal; // Retenemos sucursal para rapidez
+
+            ajustarFormulario();
+            document.getElementById('panel-stock').classList.add('d-none');
+            load();
+        } catch(err) { App.showAlert('msg', err.message, true); }
+    });
+
+    function toggleMobileSidebar() {
+        document.getElementById('sidebar').classList.toggle('mobile-open');
+        document.getElementById('backdrop').classList.toggle('show');
+    }
+    function toggleSidebarCollapse() {
+        document.getElementById('sidebar').classList.toggle('collapsed');
+        document.getElementById('collapse-icon').classList.toggle('fa-angles-left');
+        document.getElementById('collapse-icon').classList.toggle('fa-angles-right');
+    }
+
+    init();
+</script>
+</body>
+</html>
