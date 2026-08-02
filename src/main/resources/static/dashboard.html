@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Hospital El Milagro</title>
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<div class="aurora aurora-a"></div>
+<div class="aurora aurora-b"></div>
+<div class="paper-grain"></div>
+<div class="backdrop" id="backdrop" onclick="toggleMobileSidebar()"></div>
+
+<button class="sidebar-toggle-mobile" onclick="toggleMobileSidebar()" aria-label="Abrir menú">
+    <i class="fa-solid fa-bars"></i>
+</button>
+
+<div class="app-container">
+    <nav class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <h3>Hospital El Milagro</h3>
+            <button class="sidebar-collapse-btn" onclick="toggleSidebarCollapse()" aria-label="Colapsar menú">
+                <i class="fa-solid fa-angles-left" id="collapse-icon"></i>
+            </button>
+        </div>
+        <div class="user-badge">
+            <span id="user-name"></span>
+            <span id="user-role"></span>
+        </div>
+        <div class="nav-menu" id="sidebar-menu"></div>
+    </nav>
+    <main class="main-content">
+        <div style="margin-bottom: 2rem;">
+            <h2>Portal Institucional</h2>
+            <p class="text-muted" id="welcome-msg">Cargando su entorno de trabajo...</p>
+        </div>
+
+        <div id="dashboard-widgets" class="d-flex" style="gap: 1.5rem;">
+            <!-- El contenido se inyectará dinámicamente según el rol -->
+        </div>
+    </main>
+</div>
+
+<script src="js/app.js"></script>
+<script>
+    App.requireAuth();
+
+    document.getElementById('user-name').textContent = App.getName() || 'Usuario del Sistema';
+    const rawRole = App.getRole() || '';
+    document.getElementById('user-role').textContent = rawRole;
+
+    const role = rawRole.toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    const widgetsContainer = document.getElementById('dashboard-widgets');
+    const welcomeMsg = document.getElementById('welcome-msg');
+
+    const widgetTpl = (titulo, desc, btnText, btnLink, colorClass = 'var(--secondary)') => `
+        <div class="card flex-1" style="min-width: 300px; border-top: 4px solid ${colorClass};">
+            <h3 style="font-size: 1.1rem; font-weight: 600; margin-bottom: 0.5rem;">${titulo}</h3>
+            <p class="text-muted mb-4" style="height: 45px;">${desc}</p>
+            <a href="${btnLink}" class="btn btn-primary" style="width: 100%;">${btnText}</a>
+        </div>
+    `;
+
+    let html = '';
+
+    if (role === 'ADMINISTRADOR') {
+        welcomeMsg.textContent = "Resumen del panel de control y mantenimiento del sistema.";
+        html += widgetTpl("Gestión de Usuarios", "Administre cuentas, roles y accesos del personal y pacientes.", "Ir a Usuarios", "admin_usuarios.html");
+        html += widgetTpl("Catálogos Maestros", "Configure especialidades, sedes, medicamentos y tarifas.", "Ir a Catálogos", "admin_catalogos.html", "var(--accent)");
+    }
+    else if (role === 'PACIENTE') {
+        welcomeMsg.textContent = "Gestione sus citas médicas y consulte su historial.";
+        html += widgetTpl("Agendar Nueva Cita", "Programe su próxima visita con nuestros especialistas.", "Iniciar Reservación", "paciente_agendar.html", "var(--accent)");
+        html += widgetTpl("Mis Citas y Pagos", "Consulte sus citas agendadas y realice pagos en línea de forma segura.", "Ver Mis Citas", "paciente_citas.html");
+    }
+    else if (role === 'RECEPCIONISTA') {
+        welcomeMsg.textContent = "Módulo de recepción y control de ingresos de la clínica.";
+        html += widgetTpl("Recepción de Pacientes", "Verifique llegadas, reasigne médicos y gestione pacientes.", "Abrir Módulo de Recepción", "recepcion.html");
+        html += widgetTpl("Registro Rápido", "Inscriba nuevos pacientes en el sistema institucional.", "Registrar Paciente", "registro.html", "var(--accent)");
+    }
+    else if (role === 'CAJERO') {
+        welcomeMsg.textContent = "Control centralizado de cobros y facturación.";
+        html += widgetTpl("Caja Central", "Procese pagos de consultas médicas y órdenes de laboratorio.", "Abrir Caja", "caja.html", "var(--accent)");
+    }
+    else if (role === 'ENFERMERO') {
+        welcomeMsg.textContent = "Área de triage y evaluación clínica inicial.";
+        html += widgetTpl("Signos Vitales", "Tome y registre los signos vitales de los pacientes en espera.", "Abrir Área de Triage", "enfermeria.html");
+    }
+    else if (role === 'MEDICO') {
+        welcomeMsg.textContent = "Gestión de consultas y expedientes clínicos.";
+        html += widgetTpl("Panel de Consultas", "Atienda a sus pacientes, genere recetas y órdenes de laboratorio.", "Ir a Consultas", "medico_panel.html");
+        html += widgetTpl("Mi Agenda Personal", "Bloquee horarios y administre sus tareas médicas.", "Ver Agenda", "medico_agenda.html", "var(--accent)");
+    }
+    else if (role === 'LABORATORISTA' || role === 'SUPERVISORLABORATORIO') {
+        welcomeMsg.textContent = "Área de procesamiento y resultados de análisis.";
+        html += widgetTpl("Órdenes de Laboratorio", "Registre y publique resultados de las órdenes generadas por los médicos.", "Ver Órdenes", "laboratorio.html", "var(--accent)");
+    }
+    else if (role === 'FARMACEUTICO') {
+        welcomeMsg.textContent = "Control de inventario y despacho de recetas.";
+        html += widgetTpl("Despacho Institucional", "Verifique recetas vigentes y despache medicamentos al paciente.", "Ir a Despacho", "farmacia_despacho.html");
+        html += widgetTpl("Bitácora de Kardex", "Registre ingresos, mermas y visualice el stock en tiempo real.", "Ir a Inventario", "farmacia_inventario.html", "var(--warning)");
+    }
+    else {
+        welcomeMsg.textContent = "Su rol actual no tiene módulos asignados en este portal.";
+    }
+
+    widgetsContainer.innerHTML = html;
+
+    function toggleMobileSidebar() {
+        document.getElementById('sidebar').classList.toggle('mobile-open');
+        document.getElementById('backdrop').classList.toggle('show');
+    }
+
+    function toggleSidebarCollapse() {
+        document.getElementById('sidebar').classList.toggle('collapsed');
+        const icon = document.getElementById('collapse-icon');
+        icon.classList.toggle('fa-angles-left');
+        icon.classList.toggle('fa-angles-right');
+    }
+</script>
+</body>
+</html>

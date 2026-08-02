@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Iniciar Sesión - Hospital El Milagro</title>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['IBM Plex Sans', 'sans-serif'],
+                        serif: ['Fraunces', 'serif'],
+                        mono: ['IBM Plex Mono', 'monospace'],
+                    },
+                    colors: {
+                        paper: '#1B1611',
+                        ink: '#F1E6D2',
+                        coffee: '#D7A17A',
+                        coffeeDeep: '#C48A5E',
+                        brass: '#C99A46',
+                    },
+                }
+            }
+        }
+    </script>
+
+    <style>
+        :root {
+            --paper: #1B1611;
+            --paper-deep: #241C15;
+            --well-bg: #332920;
+            --ink: #F1E6D2;
+            --ink-soft: #9C8E7A;
+            --ink-faint: #7C7160;
+            --coffee: #D7A17A;
+            --coffee-deep: #C48A5E;
+            --brass: #C99A46;
+            --line: #362B1F;
+            --danger: #E08972;
+            --danger-bg: #2E1D18;
+            --success: #C9A15C;
+            --success-bg: #2A2417;
+        }
+
+        body {
+            background-color: var(--paper);
+            color: var(--ink);
+            font-family: 'IBM Plex Sans', sans-serif;
+            overflow-x: hidden;
+        }
+
+        .aurora {
+            position: fixed;
+            border-radius: 50%;
+            filter: blur(110px);
+            mix-blend-mode: screen;
+            opacity: 0.16;
+            pointer-events: none;
+            z-index: 0;
+            animation: auroraDrift 24s ease-in-out infinite;
+        }
+        .aurora-a { top: -12%; left: -10%; width: 26rem; height: 26rem; background: #7A4A2E; }
+        .aurora-b { top: 2%; right: -12%; width: 28rem; height: 28rem; background: #6B3B33; animation-delay: -8s; }
+        .aurora-c { bottom: -18%; left: 22%; width: 30rem; height: 30rem; background: #6E5320; animation-delay: -16s; }
+
+        @keyframes auroraDrift {
+            0%, 100% { transform: translate(0, 0) scale(1); }
+            33% { transform: translate(26px, -32px) scale(1.08); }
+            66% { transform: translate(-22px, 22px) scale(0.94); }
+        }
+
+        .paper-grain {
+            position: fixed;
+            inset: 0;
+            z-index: 0;
+            pointer-events: none;
+            opacity: 0.5;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.035'/%3E%3C/svg%3E");
+        }
+
+        .delay-100 { animation-delay: 100ms; }
+        .delay-200 { animation-delay: 200ms; }
+        .delay-300 { animation-delay: 300ms; }
+        .delay-400 { animation-delay: 400ms; }
+
+        @keyframes fadeInUp {
+            0% { opacity: 0; transform: translateY(16px); }
+            100% { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in-up {
+            animation: fadeInUp 0.7s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+
+        .badge-mark { border-radius: 14px 0 14px 0; }
+
+        .ticket-card {
+            background: var(--paper-deep);
+            border: 1px solid var(--line);
+            border-radius: 26px 0 26px 0;
+            position: relative;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+        }
+
+        .field-group { position: relative; }
+        .field-input {
+            width: 100%;
+            padding: 1.15rem 2rem 0.6rem 0.25rem;
+            background: transparent;
+            border: none;
+            border-bottom: 2px solid var(--line);
+            outline: none;
+            transition: border-color 0.25s ease;
+            color: var(--ink);
+        }
+        .field-input:focus { border-bottom-color: var(--coffee); }
+        .field-input:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        .field-label {
+            position: absolute;
+            left: 0.25rem;
+            top: 1.15rem;
+            color: #7C7160;
+            transition: all 0.18s ease-out;
+            pointer-events: none;
+            font-size: 0.95rem;
+        }
+        .field-input:focus ~ .field-label,
+        .field-input:not(:placeholder-shown) ~ .field-label {
+            top: -0.1rem;
+            font-size: 0.7rem;
+            font-weight: 600;
+            letter-spacing: 0.04em;
+            color: var(--coffee);
+        }
+
+        .field-icon {
+            position: absolute;
+            right: 0.25rem;
+            bottom: 0.65rem;
+            color: var(--ink-faint);
+        }
+
+        .alert {
+            font-size: 0.875rem;
+            border-radius: 10px 0 10px 0;
+            padding: 0.75rem 1rem;
+            margin-bottom: 1.25rem;
+            border: 1px solid transparent;
+        }
+        .alert:empty { display: none; padding: 0; margin: 0; border: none; }
+        .alert.alert-error, .alert.error {
+            background: var(--danger-bg);
+            border-color: rgba(224, 137, 114, 0.3);
+            color: var(--danger);
+        }
+        .alert.alert-success, .alert.success {
+            background: var(--success-bg);
+            border-color: rgba(201, 161, 92, 0.3);
+            color: var(--success);
+        }
+
+        .btn-primary {
+            background: var(--coffee);
+            color: #1B1611;
+            border-radius: 12px 0 12px 0;
+            transition: background 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        .btn-primary:hover:not(:disabled) {
+            background: var(--coffee-deep);
+            transform: translateY(-1px);
+            box-shadow: 0 10px 20px -10px rgba(0, 0, 0, 0.6);
+        }
+        .btn-primary:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .status-dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 999px;
+            background: var(--brass);
+            position: relative;
+            flex-shrink: 0;
+        }
+        .status-dot::after {
+            content: '';
+            position: absolute;
+            inset: -4px;
+            border-radius: 999px;
+            border: 1px solid var(--brass);
+            opacity: 0.5;
+            animation: statusRing 2.4s ease-out infinite;
+        }
+        @keyframes statusRing {
+            0% { transform: scale(0.6); opacity: 0.5; }
+            100% { transform: scale(2.1); opacity: 0; }
+        }
+
+        .ekg-path {
+            stroke-dasharray: 1;
+            stroke-dashoffset: 1;
+            animation: drawEkg 1.6s 0.5s cubic-bezier(0.65, 0, 0.35, 1) forwards;
+        }
+        @keyframes drawEkg {
+            to { stroke-dashoffset: 0; }
+        }
+
+        a:focus-visible, button:focus-visible, input:focus-visible {
+            outline: 2px solid var(--coffee);
+            outline-offset: 3px;
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .animate-fade-in-up, .ekg-path, .status-dot::after, .aurora {
+                animation: none !important;
+                opacity: 1 !important;
+                transform: none !important;
+            }
+            .aurora { opacity: 0.14 !important; }
+        }
+    </style>
+</head>
+
+<body class="min-h-screen relative">
+
+<div class="aurora aurora-a"></div>
+<div class="aurora aurora-b"></div>
+<div class="aurora aurora-c"></div>
+<div class="paper-grain"></div>
+
+<div class="relative z-10 min-h-screen flex items-center justify-center px-6 py-12">
+    <div class="w-full max-w-md">
+
+        <div id="login-card" class="ticket-card p-8 md:p-10 opacity-0 animate-fade-in-up">
+
+            <!-- Encabezado con marca -->
+            <div class="text-center mb-8 opacity-0 animate-fade-in-up delay-100">
+                <div class="inline-flex items-center justify-center w-16 h-16 badge-mark bg-[#332920] border border-coffee/20 text-coffee mb-5 relative">
+                    <span class="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-brass"></span>
+                    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="w-8 h-8">
+                        <path class="ekg-path" pathLength="1" d="M2 12h4l1.6-4.2L10.4 17 13 8.5 14.6 12H22" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+                    </svg>
+                </div>
+                <h2 class="font-serif text-3xl font-semibold text-ink tracking-tight">Hospital El Milagro</h2>
+                <p class="text-sm text-[#9C8E7A] mt-2">Tu salud es nuestra meta</p>
+            </div>
+
+            <div id="msg-login" class="alert"></div>
+
+            <form id="form-login" onsubmit="procesarLogin(event)" class="space-y-7">
+
+                <!-- Input Usuario -->
+                <div class="field-group opacity-0 animate-fade-in-up delay-200">
+                    <input type="text" id="username" class="field-input" placeholder=" " required autocomplete="username">
+                    <label for="username" class="field-label">Nombre de Usuario</label>
+                    <div class="field-icon pointer-events-none">
+                        <i class="fa-regular fa-user"></i>
+                    </div>
+                </div>
+
+
+                <!-- Input Contraseña -->
+                <div class="field-group opacity-0 animate-fade-in-up delay-300">
+                    <input type="password" id="password" class="field-input" placeholder=" " required autocomplete="current-password">
+                    <label for="password" class="field-label">Contraseña Segura</label>
+                    <div class="field-icon cursor-pointer hover:text-coffee transition-colors" onclick="togglePassword()">
+                        <i class="fa-regular fa-eye-slash" id="eye-icon"></i>
+                    </div>
+                </div>
+
+                <div class="pt-2 opacity-0 animate-fade-in-up delay-400">
+                    <button id="btn-submit" type="submit" class="btn-primary w-full font-medium py-3.5 px-4 relative overflow-hidden group flex justify-center items-center gap-2">
+                        <span class="absolute top-0 left-0 w-full h-full bg-gradient-to-r from-transparent via-white to-transparent opacity-0 group-hover:opacity-20 -translate-x-full group-hover:translate-x-full transition-all duration-700 ease-in-out z-0"></span>
+                        <span class="relative z-10">Ingresar al Sistema</span>
+                        <i class="fa-solid fa-arrow-right relative z-10 group-hover:translate-x-1 transition-transform"></i>
+                    </button>
+                </div>
+            </form>
+
+            <div class="mt-8 text-center opacity-0 animate-fade-in-up delay-400" style="border-top: 1px solid var(--line); padding-top: 1.25rem;">
+                <a href="index.html" class="text-sm text-[#9C8E7A] hover:text-coffee transition-colors font-medium">
+                    <i class="fa-solid fa-arrow-left mr-1"></i> Volver a la página principal
+                </a>
+            </div>
+        </div>
+        
+    </div>
+</div>
+
+<script src="js/app.js"></script>
+<script>
+    // FIX: si ya hay una sesión activa (token guardado), no debe verse el login.
+    // La sesión solo se cierra al presionar "Cerrar sesión" o cuando expira.
+    if (App.getToken()) {
+        window.location.href = 'dashboard.html';
+    } else {
+        // Solución a Hallazgos Transversales: Aviso de Sesión Expirada
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.has('expired')) {
+            App.showAlert('msg-login', 'Su sesión ha expirado por inactividad. Por favor, inicie sesión nuevamente.', true);
+            window.history.replaceState({}, document.title, window.location.pathname);
+        }
+    }
+
+    function togglePassword() {
+        const passwordInput = document.getElementById('password');
+        const eyeIcon = document.getElementById('eye-icon');
+        if (passwordInput.type === 'password') {
+            passwordInput.type = 'text';
+            eyeIcon.classList.remove('fa-eye-slash');
+            eyeIcon.classList.add('fa-eye', 'text-coffee');
+        } else {
+            passwordInput.type = 'password';
+            eyeIcon.classList.remove('fa-eye', 'text-coffee');
+            eyeIcon.classList.add('fa-eye-slash');
+        }
+    }
+
+    async function procesarLogin(e) {
+        e.preventDefault();
+        App.hideAlert('msg-login');
+        const userField = document.getElementById('username');
+        const passField = document.getElementById('password');
+        const btn = document.getElementById('btn-submit');
+
+        try {
+            const data = await App.apiFetch('/api/portal/login', 'POST', {
+                nombreUsuario: userField.value,
+                password: passField.value
+            });
+
+            localStorage.setItem('token', data.token);
+            localStorage.setItem('rol', data.rol);
+            localStorage.setItem('nombre', data.nombreCompleto);
+            localStorage.setItem('uid', data.id);
+            window.location.href = 'dashboard.html';
+
+        } catch (err) {
+            App.showAlert('msg-login', err.message, true);
+
+            // RN-CU00-03 Lógica de bloqueo
+            if (err.message.includes('15 minutos')) {
+                userField.disabled = true;
+                passField.disabled = true;
+                btn.disabled = true;
+
+                let tiempo = 15 * 60;
+                const intr = setInterval(() => {
+                    tiempo--;
+                    let m = parseInt(tiempo / 60, 10), s = parseInt(tiempo % 60, 10);
+                    btn.textContent = `Bloqueado (${m < 10 ? '0' + m : m}:${s < 10 ? '0' + s : s})`;
+                    if (tiempo <= 0) {
+                        clearInterval(intr);
+                        userField.disabled = false; passField.disabled = false; btn.disabled = false;
+                        btn.textContent = "Ingresar al Sistema";
+                        App.hideAlert('msg-login');
+                    }
+                }, 1000);
+            }
+        }
+    }
+</script>
+</body>
+</html>

@@ -3,266 +3,471 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>HIS - Sistema Hospitalario</title>
+    <title>Portal Pacientes - Hospital El Milagro</title>
 
-    <!-- Tailwind CSS y Configuración de Paleta de Colores -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
     <script>
         tailwind.config = {
             theme: {
                 extend: {
-                    colors: {
-                        corp: {
-                            bg: '#F8FAFC',      // 60% - Fondo gris muy claro
-                            panel: '#FFFFFF',   // 60% - Fondo blanco puro
-                            text: '#0F172A',    // 30% - Estructura y Texto (Azul pizarra)
-                            accent: '#2563EB'   // 10% - Acento Azul vibrante
-                        }
-                    },
                     fontFamily: {
-                        sans: ['Inter', 'sans-serif'],
-                    }
+                        sans: ['IBM Plex Sans', 'sans-serif'],
+                        serif: ['Fraunces', 'serif'],
+                        mono: ['IBM Plex Mono', 'monospace'],
+                    },
+                    colors: {
+                        paper: '#1B1611',
+                        ink: '#F1E6D2',
+                        coffee: '#D7A17A',
+                        coffeeDeep: '#C48A5E',
+                        brass: '#C99A46',
+                    },
                 }
             }
         }
     </script>
 
-    <!-- React & ReactDOM -->
-    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-
-    <!-- Google Fonts: Inter -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-
     <style>
-        body { font-family: 'Inter', sans-serif; }
-        .bg-medical {
-            background-image: url('https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?q=80&w=2000&auto=format&fit=crop');
-            background-size: cover;
-            background-position: center;
+        :root {
+            --paper: #1B1611;
+            --paper-deep: #241C15;
+            --well-bg: #332920;
+            --ink: #F1E6D2;
+            --ink-soft: #9C8E7A;
+            --ink-faint: #7C7160;
+            --coffee: #D7A17A;
+            --coffee-deep: #C48A5E;
+            --brass: #C99A46;
+            --line: #362B1F;
+            --danger: #E08972;
+            --danger-bg: #2E1D18;
+            --success: #C9A15C;
+            --success-bg: #2A2417;
         }
-        .fade-in { animation: fadeIn 0.4s ease-in-out; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+        body {
+            background-color: var(--paper);
+            color: var(--ink);
+            font-family: 'IBM Plex Sans', sans-serif;
+            overflow-x: hidden;
+        }
+
+        .aurora {
+            position: fixed;
+            border-radius: 50%;
+            filter: blur(110px);
+            mix-blend-mode: screen;
+            opacity: 0.16;
+            pointer-events: none;
+            z-index: 0;
+            animation: auroraDrift 24s ease-in-out infinite;
+        }
+        .aurora-a { top: -12%; left: -10%; width: 26rem; height: 26rem; background: #7A4A2E; }
+        .aurora-b { top: 2%; right: -12%; width: 28rem; height: 28rem; background: #6B3B33; animation-delay: -8s; }
+        .aurora-c { bottom: -18%; left: 22%; width: 30rem; height: 30rem; background: #6E5320; animation-delay: -16s; }
+
+        @keyframes auroraDrift {
+            0%, 100% { transform: translate(0, 0) scale(1); }
+            33% { transform: translate(26px, -32px) scale(1.08); }
+            66% { transform: translate(-22px, 22px) scale(0.94); }
+        }
+
+        .paper-grain {
+            position: fixed;
+            inset: 0;
+            z-index: 0;
+            pointer-events: none;
+            opacity: 0.5;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.035'/%3E%3C/svg%3E");
+        }
+
+        .delay-100 { animation-delay: 100ms; }
+        .delay-200 { animation-delay: 200ms; }
+        .delay-300 { animation-delay: 300ms; }
+        .delay-400 { animation-delay: 400ms; }
+
+        @keyframes fadeInUp {
+            0% { opacity: 0; transform: translateY(16px); }
+            100% { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in-up {
+            animation: fadeInUp 0.7s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+
+        .badge-mark {
+            border-radius: 14px 0 14px 0;
+        }
+
+        .ticket-card {
+            background: var(--paper-deep);
+            border: 1px solid var(--line);
+            border-radius: 26px 0 26px 0;
+            position: relative;
+            transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+        }
+        .ticket-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 16px 32px -18px rgba(0, 0, 0, 0.6);
+            border-color: #4A3B29;
+        }
+
+        .ticket-row::before {
+            content: '';
+            position: absolute;
+            left: 92px;
+            top: 14px;
+            bottom: 14px;
+            width: 0;
+            border-left: 2px dashed var(--line);
+            transition: border-color 0.25s ease;
+        }
+        .ticket-row:hover::before {
+            border-color: var(--brass);
+        }
+
+        .icon-well {
+            border-radius: 12px 0 12px 0;
+        }
+
+        .field-group { position: relative; }
+        .field-input {
+            width: 100%;
+            padding: 1.15rem 0.25rem 0.6rem 0.25rem;
+            background: transparent;
+            border: none;
+            border-bottom: 2px solid var(--line);
+            outline: none;
+            transition: border-color 0.25s ease;
+            color: var(--ink);
+        }
+        .field-input:focus { border-bottom-color: var(--coffee); }
+        .field-input:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        .field-label {
+            position: absolute;
+            left: 0.25rem;
+            top: 1.15rem;
+            color: #7C7160;
+            transition: all 0.18s ease-out;
+            pointer-events: none;
+            font-size: 0.95rem;
+        }
+        .field-input:focus ~ .field-label,
+        .field-input:not(:placeholder-shown) ~ .field-label {
+            top: -0.1rem;
+            font-size: 0.7rem;
+            font-weight: 600;
+            letter-spacing: 0.04em;
+            color: var(--coffee);
+        }
+
+        .alert {
+            font-size: 0.875rem;
+            border-radius: 10px 0 10px 0;
+            padding: 0.75rem 1rem;
+            margin-bottom: 1.25rem;
+            border: 1px solid transparent;
+        }
+        .alert:empty { display: none; padding: 0; margin: 0; border: none; }
+        .alert.alert-error, .alert.error {
+            background: var(--danger-bg);
+            border-color: rgba(224, 137, 114, 0.3);
+            color: var(--danger);
+        }
+        .alert.alert-success, .alert.success {
+            background: var(--success-bg);
+            border-color: rgba(201, 161, 92, 0.3);
+            color: var(--success);
+        }
+
+        .d-none { display: none !important; }
+
+        .modal-overlay {
+            background: rgba(0, 0, 0, 0.55);
+            backdrop-filter: blur(3px);
+            -webkit-backdrop-filter: blur(3px);
+        }
+
+        .btn-primary {
+            background: var(--coffee);
+            color: #1B1611;
+            border-radius: 12px 0 12px 0;
+            transition: background 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        .btn-primary:hover:not(:disabled) {
+            background: var(--coffee-deep);
+            transform: translateY(-1px);
+            box-shadow: 0 10px 20px -10px rgba(0, 0, 0, 0.6);
+        }
+
+        .status-dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 999px;
+            background: var(--brass);
+            position: relative;
+            flex-shrink: 0;
+        }
+        .status-dot::after {
+            content: '';
+            position: absolute;
+            inset: -4px;
+            border-radius: 999px;
+            border: 1px solid var(--brass);
+            opacity: 0.5;
+            animation: statusRing 2.4s ease-out infinite;
+        }
+        @keyframes statusRing {
+            0% { transform: scale(0.6); opacity: 0.5; }
+            100% { transform: scale(2.1); opacity: 0; }
+        }
+
+        .ekg-path {
+            stroke-dasharray: 1;
+            stroke-dashoffset: 1;
+            animation: drawEkg 1.6s 0.5s cubic-bezier(0.65, 0, 0.35, 1) forwards;
+        }
+        @keyframes drawEkg {
+            to { stroke-dashoffset: 0; }
+        }
+
+        a:focus-visible, button:focus-visible, input:focus-visible {
+            outline: 2px solid var(--coffee);
+            outline-offset: 3px;
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .animate-fade-in-up, .ekg-path, .status-dot::after, .aurora {
+                animation: none !important;
+                opacity: 1 !important;
+                transform: none !important;
+            }
+            .aurora { opacity: 0.14 !important; }
+        }
     </style>
 </head>
-<body class="bg-corp-bg text-corp-text antialiased overflow-hidden">
-<div id="root"></div>
 
-<script type="text/babel">
-    const { useState } = React;
+<body class="min-h-screen relative">
 
-    // --- COMPONENTE DASHBOARD (Lo que ves DESPUÉS de loguearte) ---
-    function Dashboard({ usuario, onLogout }) {
-        return (
-            <div className="min-h-screen bg-corp-bg flex fade-in">
-                {/* Sidebar Estructura Oscura (30%) */}
-                <aside className="w-64 bg-corp-text text-white flex flex-col shadow-xl z-20">
-                    <div className="h-16 flex items-center px-6 border-b border-gray-800">
-                        <svg className="w-7 h-7 text-corp-accent mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path></svg>
-                        <span className="text-xl font-bold tracking-wide">HIS<span className="text-corp-accent font-light">System</span></span>
-                    </div>
+<div class="aurora aurora-a"></div>
+<div class="aurora aurora-b"></div>
+<div class="aurora aurora-c"></div>
+<div class="paper-grain"></div>
 
-                    <div className="flex-1 py-6 px-4 space-y-2">
-                        <div className="bg-corp-accent text-white px-4 py-3 rounded-lg flex items-center shadow-md shadow-corp-accent/30 transition-all">
-                            <svg className="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg>
-                            <span className="font-medium text-sm">Inicio</span>
-                        </div>
-                        <div className="hover:bg-gray-800 text-gray-300 px-4 py-3 rounded-lg flex items-center cursor-pointer transition-colors">
-                            <svg className="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
-                            <span className="font-medium text-sm">{usuario.rol === 'Paciente' ? 'Mis Citas' : 'Agenda Médica'}</span>
-                        </div>
-                    </div>
+<!-- Contenido principal -->
+<div class="relative z-10 min-h-screen flex flex-col items-center justify-center px-6 py-16">
+    <div class="w-full max-w-5xl grid grid-cols-1 md:grid-cols-2 gap-16 items-center">
 
-                    <div className="p-4 border-t border-gray-800">
-                        <button onClick={onLogout} className="w-full flex items-center justify-center space-x-2 hover:bg-gray-800 text-gray-400 hover:text-white py-2.5 rounded-lg transition-colors text-sm font-medium">
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
-                            <span>Cerrar Sesión</span>
-                        </button>
-                    </div>
-                </aside>
+        <!-- Columna izquierda: identidad -->
+        <div class="text-center md:text-left opacity-0 animate-fade-in-up">
 
-                {/* Main Content (60% Fondo Claro) */}
-                <main className="flex-1 flex flex-col h-screen overflow-hidden">
-                    <header className="h-16 bg-corp-panel border-b border-gray-200 flex items-center justify-between px-8 z-10">
-                        <h2 className="text-lg font-semibold text-corp-text">Panel Principal</h2>
-                        <div className="flex items-center space-x-3">
-                            <span className="text-xs font-semibold tracking-wide text-corp-accent bg-blue-50 px-3 py-1 rounded-full uppercase border border-blue-100">{usuario.rol}</span>
-                            <div className="h-9 w-9 rounded-full bg-corp-text flex items-center justify-center text-white font-bold shadow-sm">
-                                {usuario.nombreCompleto.charAt(0).toUpperCase()}
-                            </div>
-                        </div>
-                    </header>
-
-                    <div className="p-8 flex-1 overflow-y-auto">
-                        <div className="mb-8">
-                            <h1 className="text-3xl font-bold text-corp-text tracking-tight">¡Hola, {usuario.nombreCompleto.split(' ')[0]}!</h1>
-                            <p className="text-gray-500 mt-1.5 text-sm">El sistema está conectado y en línea.</p>
-                        </div>
-
-                        {/* Tarjetas de Información */}
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                            <div className="bg-corp-panel p-6 rounded-xl border border-gray-200 shadow-sm flex items-center space-x-4 transition hover:shadow-md">
-                                <div className="p-3 bg-blue-50 text-corp-accent rounded-lg">
-                                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
-                                </div>
-                                <div>
-                                    <p className="text-gray-500 text-xs font-semibold uppercase tracking-wider">Citas Hoy</p>
-                                    <p className="text-2xl font-bold text-corp-text">0</p>
-                                </div>
-                            </div>
-                            <div className="bg-corp-panel p-6 rounded-xl border border-gray-200 shadow-sm flex items-center space-x-4 transition hover:shadow-md">
-                                <div className="p-3 bg-blue-50 text-corp-accent rounded-lg">
-                                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                                </div>
-                                <div>
-                                    <p className="text-gray-500 text-xs font-semibold uppercase tracking-wider">Estado de Red</p>
-                                    <p className="text-xl font-bold text-corp-text">Óptimo</p>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="mt-8 bg-corp-panel border border-gray-200 shadow-sm rounded-xl p-8 text-center h-64 flex flex-col justify-center items-center">
-                            <svg className="w-12 h-12 text-gray-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
-                            <p className="text-corp-text font-medium">No hay actividad reciente.</p>
-                            <p className="text-gray-400 text-sm mt-1">Conexión con PostgreSQL establecida correctamente.</p>
-                        </div>
-                    </div>
-                </main>
+            <div class="inline-flex items-center justify-center w-16 h-16 badge-mark bg-[#332920] border border-coffee/20 text-coffee mb-7 relative">
+                <span class="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-brass"></span>
+                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="w-8 h-8">
+                    <path class="ekg-path" pathLength="1" d="M2 12h4l1.6-4.2L10.4 17 13 8.5 14.6 12H22" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+                </svg>
             </div>
-        );
-    }
 
-    // --- COMPONENTE LOGIN (Diseño Corporativo Profesional) ---
-    function Login({ onLoginSuccess }) {
-        const [nombreUsuario, setNombreUsuario] = useState('');
-        const [password, setPassword] = useState('');
-        const [error, setError] = useState(null);
-        const [cargando, setCargando] = useState(false);
+            <h1 class="font-serif text-4xl md:text-5xl font-semibold text-ink tracking-tight mb-4 leading-tight">
+                Hospital<br>El Milagro
+            </h1>
 
-        const handleLogin = async (e) => {
-            e.preventDefault();
-            setCargando(true);
-            setError(null);
+            <p class="text-base md:text-lg text-[#9C8E7A] font-normal max-w-sm mx-auto md:mx-0 mb-6">
+                Su salud y bienestar en manos expertas. Acceda a nuestros servicios en línea.
+            </p>
+            
+        </div>
 
-            try {
-                const response = await fetch('http://localhost:8080/api/portal/login', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ nombreUsuario, password })
-                });
+        <!-- Columna derecha: acciones -->
+        <div class="flex flex-col gap-5 w-full">
 
-                const data = await response.json();
-
-                if (response.ok) {
-                    onLoginSuccess(data);
-                } else {
-                    // Muestra el mensaje exacto configurado en el backend (ej. 5 intentos)
-                    setError(data.error || 'Credenciales inválidas.');
-                }
-            } catch (err) {
-                setError('Error de conexión. Verifique que el servidor HIS esté en ejecución.');
-            } finally {
-                setCargando(false);
-            }
-        };
-
-        return (
-            <div className="w-full min-h-screen flex bg-corp-bg fade-in">
-
-                {/* Lado Izquierdo - Imagen y Estructura */}
-                <div className="hidden lg:flex lg:w-1/2 bg-medical relative items-center justify-center">
-                    {/* Overlay Azul Pizarra */}
-                    <div className="absolute inset-0 bg-corp-text/90 backdrop-blur-sm"></div>
-
-                    <div className="relative z-10 p-12 text-white max-w-xl">
-                        <h1 className="text-4xl font-bold tracking-tight mb-4 leading-tight">
-                            Portal Del Hospital El Milagro
-                        </h1>
-                        <p className="text-base text-gray-300 leading-relaxed">
-                            Plataforma unificada para la gestión de pacientes, citas médicas, inventarios de farmacia y servicios de laboratorio.
-                        </p>
-                    </div>
+            <a href="login.html" class="group w-full ticket-card ticket-row p-6 pl-[6.5rem] relative flex items-center opacity-0 animate-fade-in-up delay-100">
+                <div class="w-11 h-11 icon-well bg-[#332920] border border-coffee/20 flex items-center justify-center absolute left-6 top-1/2 -translate-y-1/2">
+                    <i class="fa-solid fa-user-doctor text-lg text-coffee"></i>
                 </div>
+                <div class="flex-1 text-left">
+                    <h3 class="font-serif text-lg font-medium text-ink mb-1">¿Ya tiene cuenta?</h3>
+                    <p class="text-[#9C8E7A] text-sm">Ingrese con sus credenciales institucionales o de paciente.</p>
+                </div>
+                <i class="fa-solid fa-chevron-right text-[#6E6252] group-hover:text-coffee group-hover:translate-x-1 transition-all ml-3"></i>
+            </a>
 
-                {/* Lado Derecho - Formulario Minimalista */}
-                <div className="w-full lg:w-1/2 flex items-center justify-center bg-corp-panel p-8 shadow-2xl z-10">
-                    <div className="w-full max-w-md">
+            <button onclick="abrirModalDpi()" class="group w-full ticket-card ticket-row p-6 pl-[6.5rem] relative flex items-center text-left opacity-0 animate-fade-in-up delay-200">
+                <div class="w-11 h-11 icon-well bg-[#332920] border border-brass/20 flex items-center justify-center absolute left-6 top-1/2 -translate-y-1/2">
+                    <i class="fa-solid fa-user-plus text-lg text-brass"></i>
+                </div>
+                <div class="flex-1">
+                    <h3 class="font-serif text-lg font-medium text-ink mb-1">¿Paciente nuevo?</h3>
+                    <p class="text-[#9C8E7A] text-sm">Regístrese para agendar citas sin hacer filas.</p>
+                </div>
+                <i class="fa-solid fa-chevron-right text-[#6E6252] group-hover:text-brass group-hover:translate-x-1 transition-all ml-3"></i>
+            </button>
 
-                        <div className="mb-10">
-                            <h2 className="text-2xl font-bold text-corp-text tracking-tight mb-1">Acceso al Sistema</h2>
-                            <p className="text-sm text-gray-500">Ingrese sus credenciales autorizadas para continuar.</p>
-                        </div>
+        </div>
+    </div>
 
-                        <form onSubmit={handleLogin} className="space-y-5">
-                            <div>
-                                <label className="block text-sm font-semibold text-corp-text mb-1.5">Usuario</label>
-                                <input
-                                    type="text"
-                                    required
-                                    value={nombreUsuario}
-                                    onChange={(e) => setNombreUsuario(e.target.value)}
-                                    className="w-full px-4 py-3 bg-corp-bg border border-gray-200 rounded-lg text-sm text-corp-text placeholder-gray-400 focus:outline-none focus:border-corp-accent focus:ring-1 focus:ring-corp-accent transition-colors"
-                                    placeholder="Ingrese su usuario"
-                                />
-                            </div>
+    <!-- Informational Section CU-00 -->
+    <!-- Informational Section CU-00 -->
+    <div class="w-full max-w-5xl mx-auto mt-20 ticket-card opacity-0 animate-fade-in-up delay-300 overflow-hidden">
+        <div class="px-8 md:px-10 pt-10 pb-8 text-center border-b border-dashed border-line">
+            <span class="font-mono text-[0.7rem] tracking-[0.2em] uppercase text-brass">Hospital El Milagro</span>
+            <h3 class="font-serif text-2xl md:text-3xl font-medium text-ink mt-2">Nuestros servicios y atención</h3>
+            <p class="text-[#9C8E7A] text-sm mt-2 max-w-md mx-auto">Todo lo que necesita saber antes de agendar su próxima cita.</p>
+        </div>
 
-                            <div>
-                                <label className="block text-sm font-semibold text-corp-text mb-1.5">Contraseña</label>
-                                <input
-                                    type="password"
-                                    required
-                                    value={password}
-                                    onChange={(e) => setPassword(e.target.value)}
-                                    className="w-full px-4 py-3 bg-corp-bg border border-gray-200 rounded-lg text-sm text-corp-text placeholder-gray-400 focus:outline-none focus:border-corp-accent focus:ring-1 focus:ring-corp-accent transition-colors"
-                                    placeholder="••••••••••••"
-                                />
-                            </div>
+        <div class="grid grid-cols-1 md:grid-cols-3 divide-y md:divide-y-0 md:divide-x divide-dashed divide-[var(--line)]">
 
-                            {error && (
-                                <div className="p-3 bg-red-50 border-l-4 border-red-500 text-red-700 text-sm font-medium fade-in">
-                                    {error}
-                                </div>
-                            )}
+            <div class="p-8 flex flex-col items-center md:items-start text-center md:text-left">
+                <div class="w-11 h-11 icon-well bg-[#332920] border border-coffee/20 flex items-center justify-center mb-4">
+                    <i class="fa-solid fa-stethoscope text-lg text-coffee"></i>
+                </div>
+                <h4 class="font-serif text-base font-medium text-ink mb-2">Especialidades médicas</h4>
+                <p class="text-[#9C8E7A] text-sm leading-relaxed">Medicina General, Pediatría, Ginecología, Cardiología, Traumatología y más.</p>
+            </div>
 
-                            <button
-                                type="submit"
-                                disabled={cargando}
-                                className="w-full flex justify-center items-center py-3 px-4 border border-transparent rounded-lg text-sm font-bold text-white bg-corp-accent hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-corp-accent disabled:opacity-70 transition-colors mt-2"
-                            >
-                                {cargando ? (
-                                    <svg className="animate-spin h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
-                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                    </svg>
-                                ) : 'Iniciar Sesión'}
-                            </button>
-                        </form>
+            <div class="p-8 flex flex-col items-center md:items-start text-center md:text-left">
+                <div class="w-11 h-11 icon-well bg-[#332920] border border-brass/20 flex items-center justify-center mb-4">
+                    <i class="fa-solid fa-flask text-lg text-brass"></i>
+                </div>
+                <h4 class="font-serif text-base font-medium text-ink mb-2">Laboratorio y farmacia</h4>
+                <p class="text-[#9C8E7A] text-sm leading-relaxed">Análisis clínicos completos y farmacia interna con amplio stock de medicamentos.</p>
+            </div>
 
-                        {/* Enlace a Registro (CU-02) */}
-                        <div className="mt-8 pt-6 border-t border-gray-100 text-center">
-                            <p className="text-sm text-gray-500">¿No tiene una cuenta de paciente?</p>
-                            <a href="#" className="text-sm font-semibold text-corp-accent hover:underline mt-1 inline-block">Registrarse en el portal</a>
-                        </div>
+            <div class="p-8 flex flex-col items-center md:items-start text-center md:text-left">
+                <div class="w-11 h-11 icon-well bg-[#332920] border border-success/20 flex items-center justify-center mb-4 relative">
+                    <i class="fa-solid fa-clock text-lg text-success"></i>
+                    <span class="status-dot absolute -top-1 -right-1"></span>
+                </div>
+                <h4 class="font-serif text-base font-medium text-ink mb-2">Ubicación y horarios</h4>
+                <p class="text-[#9C8E7A] text-sm leading-relaxed">Sede Central y Sede Norte. Emergencias 24/7. Consulta externa L–V 8am–5pm.</p>
+            </div>
 
-                    </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal DPI -->
+<div class="fixed inset-0 z-50 flex items-center justify-center modal-overlay d-none p-4" id="modal-dpi">
+    <div class="ticket-card p-8 md:p-10 w-full max-w-md relative shadow-2xl">
+
+        <button type="button" onclick="cerrarModalDpi()" class="absolute top-6 right-6 text-[#7C7160] hover:text-ink transition-colors">
+            <i class="fa-solid fa-xmark text-xl"></i>
+        </button>
+
+        <div class="text-center mb-6">
+            <div class="inline-flex items-center justify-center w-12 h-12 icon-well bg-[#332920] text-coffee mb-4">
+                <i class="fa-solid fa-id-card text-lg"></i>
+            </div>
+            <h3 class="font-serif text-2xl font-semibold text-ink tracking-tight">Verificar registro</h3>
+            <p class="text-[#9C8E7A] text-sm mt-2">Ingrese su número de DPI para verificar si está registrado en el sistema.</p>
+        </div>
+
+        <div id="msg-dpi" class="alert"></div>
+
+        <form onsubmit="verificarRegistro(event)" class="space-y-6">
+            <div class="field-group">
+                <input type="text" id="dpi" class="field-input font-mono text-center tracking-[0.2em] text-lg" maxlength="13" placeholder=" " oninput="contarDigitos(this)" required>
+                <label for="dpi" class="field-label">Número de DPI (13 dígitos)</label>
+                <div class="text-right text-xs text-[#7C7160] mt-2 font-mono">
+                    Dígitos: <span id="contador" class="text-coffee font-semibold">0</span>/13
                 </div>
             </div>
-        );
+
+            <div class="pt-2">
+                <button type="submit" id="btn-verificar" class="btn-primary w-full font-medium py-3.5 px-4 flex justify-center items-center gap-2">
+                    <span class="relative z-10">Verificar DPI</span>
+                    <i class="fa-solid fa-magnifying-glass relative z-10 group-hover:rotate-12 transition-transform"></i>
+                </button>
+
+                <button type="button" onclick="cerrarModalDpi()" class="w-full mt-3 py-3 text-sm text-[#9C8E7A] hover:text-ink transition-colors font-medium">
+                    Cancelar
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script src="js/app.js"></script>
+<script>
+    localStorage.clear();
+
+    function abrirModalDpi() {
+        const modal = document.getElementById('modal-dpi');
+        modal.classList.remove('d-none');
+        document.getElementById('dpi').value = '';
+        document.getElementById('contador').textContent = '0';
+        App.hideAlert('msg-dpi');
+        setTimeout(() => document.getElementById('dpi').focus(), 100);
     }
 
-    function App() {
-        const [usuarioLogueado, setUsuarioLogueado] = useState(null);
+    function cerrarModalDpi() {
+        document.getElementById('modal-dpi').classList.add('d-none');
+    }
 
-        if (usuarioLogueado) {
-            return <Dashboard usuario={usuarioLogueado} onLogout={() => setUsuarioLogueado(null)} />;
+    function contarDigitos(input) {
+        input.value = input.value.replace(/\D/g, '');
+        const count = input.value.length;
+        const contadorEl = document.getElementById('contador');
+        contadorEl.textContent = count;
+        if (count === 13) {
+            contadorEl.classList.remove('text-coffee');
+            contadorEl.classList.add('text-brass');
+        } else {
+            contadorEl.classList.add('text-coffee');
+            contadorEl.classList.remove('text-brass');
+        }
+    }
+
+    async function verificarRegistro(e) {
+        e.preventDefault();
+        const dpi = document.getElementById('dpi').value;
+        const btn = document.getElementById('btn-verificar');
+        const icon = btn.querySelector('.fa-magnifying-glass');
+        const spanText = btn.querySelector('span.relative.z-10');
+
+        App.hideAlert('msg-dpi');
+
+        // Solución CU-00: Mensaje de error dinámico indicando cuántos dígitos se ingresaron
+        if (dpi.length !== 13) {
+            return App.showAlert('msg-dpi', `El DPI debe contener exactamente 13 dígitos. Usted ingresó ${dpi.length} dígitos.`, true);
         }
 
-        return <Login onLoginSuccess={(datosUsuario) => setUsuarioLogueado(datosUsuario)} />;
+        btn.disabled = true;
+        btn.classList.add('opacity-75', 'cursor-not-allowed');
+        spanText.textContent = "Verificando...";
+        if (icon) icon.className = "fa-solid fa-circle-notch fa-spin relative z-10";
+
+        try {
+            const data = await App.apiFetch('/api/portal/verificar-dpi', 'POST', { dpi });
+
+            if (data.registrado) {
+                if (data.rol !== 'Paciente') {
+                    App.showAlert('msg-dpi', 'Este DPI pertenece a un usuario del sistema interno. Por favor, contacte a recepción.', true);
+                    resetearBoton(btn, spanText, icon);
+                } else {
+                    App.showAlert('msg-dpi', `Bienvenido(a) nuevamente, ${data.nombreCompleto}. Redirigiendo a inicio de sesión...`);
+                    setTimeout(() => window.location.href = 'login.html', 2000);
+                }
+            } else {
+                App.showAlert('msg-dpi', 'No se encontró un registro asociado a este DPI. Será redirigido al formulario de registro.');
+                setTimeout(() => window.location.href = 'registro.html?dpi=' + dpi, 2000);
+            }
+        } catch (err) {
+            App.showAlert('msg-dpi', err.message, true);
+            resetearBoton(btn, spanText, icon);
+        }
     }
 
-    const root = ReactDOM.createRoot(document.getElementById('root'));
-    root.render(<App />);
+    function resetearBoton(btn, spanText, icon) {
+        btn.disabled = false;
+        btn.classList.remove('opacity-75', 'cursor-not-allowed');
+        spanText.textContent = "Verificar DPI";
+        if (icon) icon.className = "fa-solid fa-magnifying-glass relative z-10 group-hover:rotate-12 transition-transform";
+    }
 </script>
 </body>
 </html>
