@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Recepción de Pacientes - Hospital El Milagro</title>
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div class="aurora aurora-a"></div>
+<div class="aurora aurora-b"></div>
+<div class="paper-grain"></div>
+
+<div class="app-container">
+    <div class="backdrop" id="backdrop" onclick="toggleMobileSidebar()"></div>
+    <button class="sidebar-toggle-mobile" onclick="toggleMobileSidebar()" aria-label="Abrir menú">
+        <i class="fa-solid fa-bars"></i>
+    </button>
+
+    <nav class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <h3>Hospital El Milagro</h3>
+            <button class="sidebar-collapse-btn" onclick="toggleSidebarCollapse()" aria-label="Colapsar menú">
+                <i class="fa-solid fa-angles-left" id="collapse-icon"></i>
+            </button>
+        </div>
+        <div class="user-badge">
+            <span id="user-name"></span>
+            <span id="user-role"></span>
+        </div>
+        <div class="nav-menu" id="sidebar-menu"></div>
+    </nav>
+
+    <main class="main-content">
+        <h2>Verificación y Recepción de Pacientes</h2>
+        <div id="msg" class="alert"></div>
+
+        <div class="card" id="area-busqueda">
+            <p class="text-muted">Busque la cita del paciente para registrar su llegada a la clínica.</p>
+
+            <!-- FIX CU-05 FA02: botones de alternancia en vez de dos campos simultáneos -->
+            <div class="d-flex mt-4" style="gap: 0.5rem;">
+                <button type="button" class="btn btn-primary" id="btn-modo-dpi" onclick="cambiarModoBusqueda('dpi')">Por DPI</button>
+                <button type="button" class="btn" id="btn-modo-num" onclick="cambiarModoBusqueda('num')">Por No. Cita</button>
+            </div>
+
+            <div class="d-flex mt-4" style="align-items: flex-end;">
+                <div class="form-group flex-1 d-none" id="grupo-num">
+                    <label>No. de cita</label>
+                    <input type="number" id="num" class="form-control" placeholder="ID de la cita">
+                </div>
+                <div class="form-group flex-1" id="grupo-dpi">
+                    <label>DPI del paciente</label>
+                    <input type="text" id="dpi" class="form-control" maxlength="13" placeholder="13 dígitos">
+                </div>
+                <div class="form-group">
+                    <button onclick="buscar()" class="btn btn-primary">Verificar llegada</button>
+                </div>
+            </div>
+
+            <div id="acciones-extra" class="mt-4 dashed-box d-none" style="text-align: center;">
+                <p id="txt-extra" class="mb-4 font-bold text-muted"></p>
+                <button id="btn-reg-pac" class="btn btn-success d-none" onclick="window.location.href='registro.html'">Registrar nuevo paciente</button>
+                <button id="btn-walkin" class="btn btn-primary d-none" onclick="irAWalkIn()">Agendar cita rápida (walk-in)</button>
+                <!-- FIX CU-05 FA06 -->
+                <button id="btn-nueva-cita" class="btn btn-primary d-none" onclick="irANuevaCita()">Nueva Cita</button>
+                <!-- FIX CU-05 FA01: emergencia sin cita previa -->
+                <button id="btn-emergencia-directa" class="btn btn-danger d-none" onclick="abrirModalEmergencia()">
+                    <i class="fa-solid fa-truck-medical"></i> Registrar como Emergencia (sin cita)
+                </button>
+            </div>
+        </div>
+
+        <div class="card d-none" id="detalle">
+            <div class="d-flex" style="justify-content: space-between; align-items: center;">
+                <h3 class="text-primary" style="margin:0;">Detalle y estado de la cita</h3>
+                <span id="badge-emergencia" class="badge-danger d-none" style="padding: 0.35rem 0.75rem; border-radius: 8px; font-weight: 700;">
+                    <i class="fa-solid fa-triangle-exclamation"></i> EMERGENCIA
+                </span>
+            </div>
+            <table class="table mt-4">
+                <tr><th>Paciente</th><td id="d-pac" class="font-bold"></td><th>Estado actual</th><td id="d-est" class="font-bold text-primary"></td></tr>
+                <tr><th>Especialidad</th><td id="d-esp"></td><th>Hora cita</th><td id="d-fec"></td></tr>
+                <tr><th>Sede</th><td id="d-suc"></td><th>Motivo</th><td id="d-mot"></td></tr>
+                <tr><th>Prioridad (si aplica)</th><td colspan="3" id="d-prioridad" class="font-bold"></td></tr>
+            </table>
+
+            <div class="well-danger mt-4">
+                <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; color: var(--danger); font-weight: 600;">
+                    <input type="checkbox" id="d-em" style="width: 18px; height: 18px;" onchange="actualizarPrioridadVisual()">
+                    Paciente presenta cuadro de emergencia médica (prioridad en triage)
+                </label>
+            </div>
+
+            <div class="d-flex mt-4">
+                <button id="btn-llegada" class="btn btn-success" onclick="registrarLlegada()">Registrar llegada a clínica</button>
+                <button id="btn-reasignar" class="btn" onclick="abrirReasignacion()">Reasignar médico</button>
+                <button class="btn" onclick="limpiar()">Cerrar expediente</button>
+                <button id="btn-signos-urgente" class="btn btn-danger d-none" onclick="window.location.href='enfermeria.html'">
+                    <i class="fa-solid fa-heart-pulse"></i> Signos Vitales (Urgente)
+                </button>
+            </div>
+        </div>
+
+        <div class="modal-overlay d-none" id="modal-reasignar">
+            <div class="modal-content">
+                <h3>Reasignación administrativa de médico</h3>
+                <p class="text-muted">Mostrando solo médicos disponibles de la misma sede y especialidad.</p>
+                <form id="form-reasignar" class="mt-4" onsubmit="reasignar(event)">
+                    <div class="form-group"><label>Nuevo médico disponible</label><select id="r-medico" class="form-control" required></select></div>
+                    <div class="form-group"><label>Motivo de la reasignación (auditoría)</label><input type="text" id="r-motivo" class="form-control" required minlength="5"></div>
+                    <div class="d-flex mt-4" style="justify-content: flex-end;">
+                        <button type="button" onclick="document.getElementById('modal-reasignar').classList.add('d-none')" class="btn">Cancelar</button>
+                        <button type="submit" class="btn btn-primary">Confirmar reasignación</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- FIX CU-05 FA01: modal de ingreso directo por emergencia -->
+        <div class="modal-overlay d-none" id="modal-emergencia">
+            <div class="modal-content">
+                <h3><i class="fa-solid fa-triangle-exclamation" style="color: var(--danger);"></i> Registrar Emergencia sin Cita Previa</h3>
+                <p class="text-muted">El paciente será admitido de inmediato con prioridad de EMERGENCIA, sin agendar horario.</p>
+                <form id="form-emergencia" class="mt-4" onsubmit="confirmarEmergencia(event)">
+                    <div class="form-group">
+                        <label>Sede</label>
+                        <select id="em-suc" class="form-control" required onchange="cargarEspecialidadesEmergencia()"></select>
+                    </div>
+                    <div class="form-group">
+                        <label>Especialidad</label>
+                        <select id="em-esp" class="form-control" required onchange="cargarMedicosEmergencia()"></select>
+                    </div>
+                    <div class="form-group">
+                        <label>Médico que atenderá</label>
+                        <select id="em-med" class="form-control" required></select>
+                    </div>
+                    <div class="form-group">
+                        <label>Motivo (opcional)</label>
+                        <input type="text" id="em-motivo" class="form-control" maxlength="2000" placeholder="Ej. Dolor torácico agudo">
+                    </div>
+                    <div class="d-flex mt-4" style="justify-content: flex-end;">
+                        <button type="button" class="btn" onclick="document.getElementById('modal-emergencia').classList.add('d-none')">Cancelar</button>
+                        <button type="submit" class="btn btn-danger">Confirmar ingreso de emergencia</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </main>
+</div>
+<script src="js/app.js"></script>
+<script>
+    App.requireAuth();
+    document.getElementById('user-name').textContent = App.getName() || 'Usuario del Sistema';
+    document.getElementById('user-role').textContent = App.getRole() || '';
+
+    let currentId = null;
+    let currentSede = '';
+    let currentEsp = '';
+    let currentPacienteId = null;
+    let modoBusqueda = 'dpi';
+    let catEspSucEmergencia = [];
+
+    function cambiarModoBusqueda(modo) {
+        modoBusqueda = modo;
+        document.getElementById('grupo-dpi').classList.toggle('d-none', modo !== 'dpi');
+        document.getElementById('grupo-num').classList.toggle('d-none', modo !== 'num');
+        document.getElementById('btn-modo-dpi').className = modo === 'dpi' ? 'btn btn-primary' : 'btn';
+        document.getElementById('btn-modo-num').className = modo === 'num' ? 'btn btn-primary' : 'btn';
+        if (modo === 'dpi') document.getElementById('num').value = '';
+        else document.getElementById('dpi').value = '';
+    }
+
+    function actualizarPrioridadVisual() {
+        const esEmergencia = document.getElementById('d-em').checked;
+        document.getElementById('badge-emergencia').classList.toggle('d-none', !esEmergencia);
+        document.getElementById('d-prioridad').textContent = esEmergencia ? 'EMERGENCIA — prioridad en triage' : 'Normal';
+        document.getElementById('d-prioridad').style.color = esEmergencia ? 'var(--danger)' : '';
+    }
+
+    async function buscar() {
+        const num = document.getElementById('num').value, dpi = document.getElementById('dpi').value;
+        const extra = document.getElementById('acciones-extra'), txtExtra = document.getElementById('txt-extra');
+        const btnReg = document.getElementById('btn-reg-pac'), btnWalk = document.getElementById('btn-walkin');
+        const btnNuevaCita = document.getElementById('btn-nueva-cita');
+        const btnEmergencia = document.getElementById('btn-emergencia-directa');
+
+        extra.classList.add('d-none'); btnReg.classList.add('d-none'); btnWalk.classList.add('d-none');
+        btnNuevaCita.classList.add('d-none'); btnEmergencia.classList.add('d-none');
+        document.getElementById('detalle').classList.add('d-none');
+        document.getElementById('btn-signos-urgente').classList.add('d-none');
+        currentPacienteId = null;
+        App.hideAlert('msg');
+
+        if(!num && !dpi) return App.showAlert('msg', 'Ingrese No. de cita o DPI del paciente.', true);
+
+        try {
+            const data = await App.apiFetch(`/api/recepcion/citas/buscar?${num?`numeroCita=${num}`:`dpi=${dpi}`}`);
+
+            if(data.resultado === 'CITA_ENCONTRADA') {
+                const c = data.cita; currentId = c.id;
+
+                currentSede = c.sucursalNombre;
+                currentEsp = c.especialidadNombre;
+                currentPacienteId = c.pacienteId;
+
+                document.getElementById('d-pac').innerText = c.pacienteNombre;
+
+                // Solución CU-05: Se utiliza el badge correspondiente según el estado
+                const mapColorBadge = { 'Pagada': 'badge-success', 'Confirmada': 'badge-success', 'Pendiente de pago': 'badge-warning', 'Cancelada': 'badge-danger', 'Paciente Presente': 'badge-primary', 'Signos Vitales': 'badge-primary', 'En Espera': 'badge-primary', 'Consulta Médica': 'badge-primary', 'Evaluado': 'badge-primary', 'Atención Finalizada': 'badge-success', 'No Asistió': 'badge-danger' };
+                document.getElementById('d-est').innerHTML = `<span class="badge ${mapColorBadge[c.estadoNombre] || ''}">${c.estadoNombre}</span>`;
+
+                document.getElementById('d-esp').innerText = c.especialidadNombre;
+                document.getElementById('d-fec').innerText = c.fechaHora.replace('T',' ');
+                document.getElementById('d-suc').innerText = c.sucursalNombre;
+                document.getElementById('d-mot').innerText = c.motivo;
+                document.getElementById('d-em').checked = c.emergencia;
+                actualizarPrioridadVisual();
+
+                if (c.estadoNombre === 'Cancelada') {
+                    App.showAlert('msg', 'La cita fue cancelada. El paciente debe agendar una nueva cita.', true);
+                    extra.classList.remove('d-none');
+                    btnNuevaCita.classList.remove('d-none');
+                } else if (c.estadoNombre === 'Pendiente de pago') {
+                    App.showAlert('msg', 'La cita tiene estado "Pendiente de pago". Debe realizar el pago en caja.', true);
+                }
+
+                document.getElementById('btn-llegada').disabled = (c.estadoNombre !== 'Confirmada');
+                document.getElementById('btn-reasignar').disabled = (c.estadoNombre !== 'Confirmada' && c.estadoNombre !== 'Paciente Presente');
+
+                document.getElementById('btn-signos-urgente').classList.toggle('d-none',
+                    !(c.emergencia && c.estadoNombre === 'Paciente Presente'));
+
+                document.getElementById('detalle').classList.remove('d-none');
+
+            } else if (data.resultado === 'PACIENTE_NO_REGISTRADO') {
+                txtExtra.textContent = "No se encontró ningún paciente con ese DPI en el sistema.";
+                extra.classList.remove('d-none'); btnReg.classList.remove('d-none');
+            } else if (data.resultado === 'SIN_CITAS_ACTIVAS') {
+                txtExtra.textContent = `El paciente ${data.pacienteNombre} está registrado pero no tiene citas activas para hoy.`;
+                currentPacienteId = data.pacienteId;
+                extra.classList.remove('d-none'); btnWalk.classList.remove('d-none');
+                // FIX CU-05 FA01: ofrecer también el ingreso directo por emergencia
+                btnEmergencia.classList.remove('d-none');
+            }
+        } catch(e) { App.showAlert('msg', e.message, true); }
+    }
+
+    function irAWalkIn() {
+        if (!currentPacienteId) return App.showAlert('msg', 'No se pudo identificar al paciente para el walk-in.', true);
+        window.location.href = `paciente_agendar.html?pacienteId=${currentPacienteId}`;
+    }
+
+    function irANuevaCita() {
+        if (!currentPacienteId) return App.showAlert('msg', 'No se pudo identificar al paciente para agendar la nueva cita.', true);
+        window.location.href = `paciente_agendar.html?pacienteId=${currentPacienteId}`;
+    }
+
+    // FIX CU-05 FA01
+    async function abrirModalEmergencia() {
+        if (!currentPacienteId) return App.showAlert('msg', 'No se pudo identificar al paciente para el ingreso de emergencia.', true);
+        try {
+            const [suc, asignaciones] = await Promise.all([
+                App.apiFetch('/api/sucursales'),
+                App.apiFetch('/api/sucursal-especialidad')
+            ]);
+            const sucursalesActivas = suc.filter(s => s.activo);
+            catEspSucEmergencia = asignaciones.filter(a => a.activo);
+
+            document.getElementById('em-suc').innerHTML = '<option value="">Seleccione una sede</option>' +
+                sucursalesActivas.map(s => `<option value="${s.id}">${s.nombre}</option>`).join('');
+            document.getElementById('em-esp').innerHTML = '<option value="">Seleccione primero la sede</option>';
+            document.getElementById('em-med').innerHTML = '<option value="">Seleccione primero la especialidad</option>';
+
+            const form = document.getElementById('form-emergencia');
+            form.reset();
+            App.clearInvalidFields(form);
+            document.getElementById('modal-emergencia').classList.remove('d-none');
+        } catch (e) { App.showAlert('msg', e.message, true); }
+    }
+
+    function cargarEspecialidadesEmergencia() {
+        const sucId = parseInt(document.getElementById('em-suc').value);
+        const disponibles = catEspSucEmergencia.filter(a => a.sucursalId === sucId);
+        document.getElementById('em-esp').innerHTML = '<option value="">Seleccione una especialidad</option>' +
+            disponibles.map(d => `<option value="${d.especialidadId}">${d.especialidadNombre}</option>`).join('');
+        document.getElementById('em-med').innerHTML = '<option value="">Seleccione primero la especialidad</option>';
+    }
+
+    async function cargarMedicosEmergencia() {
+        const sucId = document.getElementById('em-suc').value;
+        const espId = document.getElementById('em-esp').value;
+        if (!sucId || !espId) return;
+        document.getElementById('em-med').innerHTML = '<option value="">Buscando médicos...</option>';
+        try {
+            const data = await App.apiFetch(`/api/citas/medicos-disponibles?sucursalId=${sucId}&especialidadId=${espId}`);
+            document.getElementById('em-med').innerHTML = data.length
+                ? '<option value="">Seleccione un médico</option>' + data.map(m => `<option value="${m.id}">${m.nombreCompleto}</option>`).join('')
+                : '<option value="">Sin médicos disponibles para esta especialidad/sede</option>';
+        } catch (e) { App.showAlert('msg', e.message, true); }
+    }
+
+    async function confirmarEmergencia(e) {
+        e.preventDefault();
+        const form = e.target;
+        App.clearInvalidFields(form);
+        if (!form.checkValidity()) {
+            App.markInvalidFields(form);
+            return;
+        }
+        try {
+            const data = await App.apiFetch(`/api/recepcion/pacientes/${currentPacienteId}/emergencia`, 'POST', {
+                sucursalId: parseInt(document.getElementById('em-suc').value),
+                especialidadId: parseInt(document.getElementById('em-esp').value),
+                medicoId: parseInt(document.getElementById('em-med').value),
+                motivo: document.getElementById('em-motivo').value || null
+            });
+            document.getElementById('modal-emergencia').classList.add('d-none');
+            App.showAlert('msg', data.mensaje);
+            window.location.href = 'enfermeria.html';
+        } catch (err) { App.showAlert('msg', err.message, true); }
+    }
+
+    async function registrarLlegada() {
+        try {
+            const esEmergencia = document.getElementById('d-em').checked;
+            const data = await App.apiFetch(`/api/recepcion/citas/${currentId}/llegada`, 'POST', { emergencia: esEmergencia });
+            App.showAlert('msg', data.mensaje);
+            document.getElementById('btn-llegada').disabled = true;
+            document.getElementById('btn-reasignar').disabled = false;
+
+            // Actualizar a estado en Badge
+            const mapColorBadge = { 'Pagada': 'badge-success', 'Confirmada': 'badge-success', 'Pendiente de pago': 'badge-warning', 'Cancelada': 'badge-danger', 'Paciente Presente': 'badge-primary', 'Signos Vitales': 'badge-primary', 'En Espera': 'badge-primary', 'Consulta Médica': 'badge-primary', 'Evaluado': 'badge-primary', 'Atención Finalizada': 'badge-success', 'No Asistió': 'badge-danger' };
+            document.getElementById('d-est').innerHTML = `<span class="badge ${mapColorBadge[data.estadoNombre] || ''}">${data.estadoNombre}</span>`;
+
+            document.getElementById('btn-signos-urgente').classList.toggle('d-none', !esEmergencia);
+        } catch(e) { App.showAlert('msg', e.message, true); }
+    }
+
+    async function abrirReasignacion() {
+        try {
+            const medicos = await App.apiFetch('/api/usuarios').then(res =>
+                res.filter(u => u.rolNombre === 'Médico' && u.activo && u.sucursalNombre === currentSede && u.especialidadNombre === currentEsp)
+            );
+
+            if (medicos.length === 0) {
+                return App.showAlert('msg', 'No existen otros médicos disponibles registrados con esta especialidad en esta sede.', true);
+            }
+
+            document.getElementById('r-medico').innerHTML = '<option value="">Seleccione un médico alterno</option>' + medicos.map(m=>`<option value="${m.id}">${m.nombreCompleto}</option>`).join('');
+            document.getElementById('form-reasignar').reset();
+            document.getElementById('modal-reasignar').classList.remove('d-none');
+        } catch(e) { App.showAlert('msg', "Error al cargar médicos: " + e.message, true); }
+    }
+
+    async function reasignar(e) {
+        e.preventDefault();
+        try {
+            const res = await App.apiFetch(`/api/recepcion/citas/${currentId}/reasignar`, 'POST', {
+                nuevoMedicoId: parseInt(document.getElementById('r-medico').value),
+                motivoReasignacion: document.getElementById('r-motivo').value
+            });
+            App.showAlert('msg', res.mensaje);
+            document.getElementById('modal-reasignar').classList.add('d-none');
+        } catch(err) { App.showAlert('msg', err.message, true); }
+    }
+
+    function limpiar() {
+        document.getElementById('num').value = ''; document.getElementById('dpi').value = '';
+        document.getElementById('detalle').classList.add('d-none'); App.hideAlert('msg');
+    }
+
+    function toggleMobileSidebar() {
+        document.getElementById('sidebar').classList.toggle('mobile-open');
+        document.getElementById('backdrop').classList.toggle('show');
+    }
+    function toggleSidebarCollapse() {
+        document.getElementById('sidebar').classList.toggle('collapsed');
+        document.getElementById('collapse-icon').classList.toggle('fa-angles-left');
+        document.getElementById('collapse-icon').classList.toggle('fa-angles-right');
+    }
+
+    cambiarModoBusqueda('dpi');
+</script>
+</body>
+</html>
