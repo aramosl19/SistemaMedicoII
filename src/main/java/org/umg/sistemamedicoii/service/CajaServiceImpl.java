@@ -27,6 +27,9 @@ public class CajaServiceImpl implements CajaService {
     @Value("${app.hospital.nombre}")
     private String nombreHospital;
 
+    private static final java.time.format.DateTimeFormatter FORMATO_FECHA_HORA =
+            java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
+
     @Autowired private CitaRepository citaRepository;
     @Autowired private UsuarioRepository usuarioRepository;
     @Autowired private PagoTarjetaRepository pagoTarjetaRepository;
@@ -53,6 +56,15 @@ public class CajaServiceImpl implements CajaService {
                     citas.addAll(citaRepository.findByPaciente_IdAndEstado_NombreOrderByFechaHoraAsc(paciente.getId(), estadoPendiente)));
         }
 
+        return citas.stream().map(this::toCobroDTO).toList();
+    }
+
+    // Solución QA (BOLA): un paciente solo puede consultar sus propias citas pendientes de pago,
+    // resolviendo el paciente desde el token (SecurityContext), nunca desde un DPI recibido del cliente.
+    @Override
+    public List<CitaCobroResponseDTO> buscarCitasPendientesPropias(Integer pacienteId) {
+        String estadoPendiente = EstadoCitaEnum.PENDIENTE_PAGO.getNombreBd();
+        List<Cita> citas = citaRepository.findByPaciente_IdAndEstado_NombreOrderByFechaHoraAsc(pacienteId, estadoPendiente);
         return citas.stream().map(this::toCobroDTO).toList();
     }
 
@@ -85,10 +97,37 @@ public class CajaServiceImpl implements CajaService {
         cita.setReservadaHasta(null);
         citaRepository.save(cita);
 
+        // RN-CU06-03: el comprobante debe incluir número de transacción, nombre del
+        // paciente, monto, forma de pago, fecha/hora de la transacción y el detalle de la cita.
+        String mensajeComprobante = String.format(
+                "Estimado(a) %s, su pago en caja fue registrado exitosamente.%n%n" +
+                        "Número de transacción: %s%n" +
+                        "Número de cita: %d%n" +
+                        "Monto pagado: Q%s%n" +
+                        "Forma de pago: %s%n" +
+                        "Fecha y hora de la transacción: %s%n%n" +
+                        "Detalle de la cita:%n" +
+                        "Médico: %s%n" +
+                        "Especialidad: %s%n" +
+                        "Sucursal: %s%n" +
+                        "Fecha y hora de la cita: %s%n%n" +
+                        "Su cita ha sido confirmada.",
+                cita.getPaciente().getNombreCompleto(),
+                numeroTransaccion,
+                cita.getId(),
+                cita.getPrecio(),
+                dto.getMetodoPago().toUpperCase(),
+                java.time.LocalDateTime.now().format(FORMATO_FECHA_HORA),
+                cita.getMedico().getNombreCompleto(),
+                cita.getEspecialidad().getNombre(),
+                cita.getSucursal().getNombre(),
+                cita.getFechaHora().format(FORMATO_FECHA_HORA)
+        );
+
         emailService.enviarCorreo(
                 cita.getPaciente().getCorreo(),
                 "Comprobante de Pago - Consulta Médica - " + nombreHospital,
-                "Estimado(a) " + cita.getPaciente().getNombreCompleto() + ", su pago en caja fue registrado exitosamente. Número de transacción: " + numeroTransaccion + ". Su cita ha sido confirmada."
+                mensajeComprobante
         );
 
         CobroCajaResponseDTO response = new CobroCajaResponseDTO();

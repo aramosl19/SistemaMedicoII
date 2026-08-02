@@ -2,7 +2,9 @@ package org.umg.sistemamedicoii.controller;
 
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+import org.umg.sistemamedicoii.config.security.UsuarioPrincipal;
 import org.umg.sistemamedicoii.dto.CitaCobroResponseDTO;
 import org.umg.sistemamedicoii.dto.CobroCajaRequestDTO;
 import org.umg.sistemamedicoii.dto.CobroCajaResponseDTO;
@@ -20,7 +22,16 @@ public class CajaController {
     @GetMapping("/citas/buscar")
     public List<CitaCobroResponseDTO> buscarPendientes(
             @RequestParam(required = false) Integer numeroCita,
-            @RequestParam(required = false) String dpi) {
+            @RequestParam(required = false) String dpi,
+            @AuthenticationPrincipal UsuarioPrincipal principal) {
+
+        boolean esPaciente = principal != null && principal.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals("ROLE_PACIENTE"));
+
+        if (esPaciente) {
+            return cajaService.buscarCitasPendientesPropias(principal.getUsuario().getId());
+        }
+
         return cajaService.buscarCitasPendientes(numeroCita, dpi);
     }
 

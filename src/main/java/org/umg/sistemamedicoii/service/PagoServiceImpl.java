@@ -20,6 +20,7 @@ import org.umg.sistemamedicoii.repository.PagoTarjetaRepository;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.YearMonth;
+import java.time.format.DateTimeFormatter;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -31,6 +32,7 @@ public class PagoServiceImpl implements PagoService {
 
     private static final String TARJETA_FONDOS_INSUFICIENTES = "4000000000000200";
     private static final String TARJETA_ERROR_COMUNICACION = "4000000000000309";
+    private static final DateTimeFormatter FORMATO_FECHA_HORA = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
 
     @Autowired private CitaRepository citaRepository;
     @Autowired private PagoTarjetaRepository pagoTarjetaRepository;
@@ -93,10 +95,33 @@ public class PagoServiceImpl implements PagoService {
         pago.setFechaPago(LocalDateTime.now());
         pagoTarjetaRepository.save(pago);
 
+        // RN-CU04-05: el comprobante debe incluir número de transacción, monto,
+        // fecha/hora de la transacción y el detalle de la cita.
+        String mensajeComprobante = String.format(
+                "Su pago fue procesado exitosamente.%n%n" +
+                        "Número de transacción: %s%n" +
+                        "Número de cita: %d%n" +
+                        "Monto pagado: Q%s%n" +
+                        "Fecha y hora de la transacción: %s%n%n" +
+                        "Detalle de la cita:%n" +
+                        "Médico: %s%n" +
+                        "Especialidad: %s%n" +
+                        "Sucursal: %s%n" +
+                        "Fecha y hora de la cita: %s",
+                pago.getNumeroTransaccion(),
+                cita.getId(),
+                pago.getMonto(),
+                pago.getFechaPago().format(FORMATO_FECHA_HORA),
+                cita.getMedico().getNombreCompleto(),
+                cita.getEspecialidad().getNombre(),
+                cita.getSucursal().getNombre(),
+                cita.getFechaHora().format(FORMATO_FECHA_HORA)
+        );
+
         emailService.enviarCorreo(
                 cita.getPaciente().getCorreo(),
-                "Comprobante de pago - Cita médica - " + nombreHospital,
-                "Su pago fue procesado exitosamente. Número de transacción: " + pago.getNumeroTransaccion()
+                "Comprobante de Pago - Cita Médica - " + nombreHospital,
+                mensajeComprobante
         );
 
         PagoResponseDTO response = new PagoResponseDTO();

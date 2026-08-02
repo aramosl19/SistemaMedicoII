@@ -53,7 +53,9 @@ public class CobroLaboratorioServiceImpl implements CobroLaboratorioService {
         respuesta.setMetodoPago(dto.getMetodoPago());
         respuesta.setMontoRecibido(montos[0]);
         respuesta.setCambio(montos[1]);
-        respuesta.setMensaje("Cobro de laboratorio registrado exitosamente. La orden queda habilitada para la toma de muestras.");
+
+        // Solución CU-10: Mensaje exacto de éxito incluyendo el paciente
+        respuesta.setMensaje("¡Pago de laboratorio registrado exitosamente! Paciente: " + nombreTitular + ". La orden ha sido actualizada a estado 'En proceso'.");
         return respuesta;
     }
 
