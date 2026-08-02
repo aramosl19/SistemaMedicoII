@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panel de Consultas - Médico - Hospital El Milagro</title>
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div class="aurora aurora-a"></div>
+<div class="aurora aurora-b"></div>
+<div class="paper-grain"></div>
+
+<div class="app-container">
+    <div class="backdrop" id="backdrop" onclick="toggleMobileSidebar()"></div>
+    <button class="sidebar-toggle-mobile" onclick="toggleMobileSidebar()" aria-label="Abrir menú">
+        <i class="fa-solid fa-bars"></i>
+    </button>
+
+    <nav class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <h3>Hospital El Milagro</h3>
+            <button class="sidebar-collapse-btn" onclick="toggleSidebarCollapse()" aria-label="Colapsar menú">
+                <i class="fa-solid fa-angles-left" id="collapse-icon"></i>
+            </button>
+        </div>
+        <div class="user-badge">
+            <span id="user-name"></span>
+            <span id="user-role"></span>
+        </div>
+        <div class="nav-menu" id="sidebar-menu"></div>
+    </nav>
+
+    <main class="main-content">
+        <h2>Panel de Consultas Médicas</h2>
+        <div id="msg" class="alert"></div>
+
+        <div class="d-flex" id="panel-vistas">
+            <div class="card flex-1">
+                <h3 class="text-muted">En espera (triage completado)</h3>
+                <ul id="l-espera" class="list-plain mt-4"></ul>
+            </div>
+            <div class="card flex-1">
+                <h3 class="text-primary">Consulta activa</h3>
+                <ul id="l-consulta" class="list-plain mt-4"></ul>
+            </div>
+            <div class="card flex-1">
+                <h3 class="text-success">Evaluados (pendiente de cierre)</h3>
+                <ul id="l-eval" class="list-plain mt-4"></ul>
+            </div>
+        </div>
+
+        <div class="card d-none" id="area-consulta">
+            <h3>Expediente clínico — Consulta #<span id="c-id"></span></h3>
+            <form id="form-consulta" class="mt-4">
+                <input type="hidden" id="citaActual">
+                <div class="form-group"><label>Motivo de visita</label><textarea id="mot" class="form-control" required rows="2"></textarea></div>
+                <div class="form-group"><label>Hallazgos clínicos</label><textarea id="hal" class="form-control" required rows="3"></textarea></div>
+
+                <div class="d-flex">
+                    <div class="form-group flex-1">
+                        <label>Diagnóstico (obligatorio para finalizar)</label>
+                        <textarea id="diag" class="form-control" rows="2" minlength="10" maxlength="5000"></textarea>
+                    </div>
+                    <div class="form-group flex-1">
+                        <label>Código CIE-10 (opcional)</label>
+                        <input type="text" id="cie10-input" list="cie10-list" class="form-control" placeholder="Buscar código o descripción">
+                        <datalist id="cie10-list"></datalist>
+                    </div>
+                </div>
+
+                <div class="form-group"><label>Plan de tratamiento</label><textarea id="trat" class="form-control" required rows="2"></textarea></div>
+
+                <div class="well mt-4">
+                    <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; font-weight: 600;">
+                        <input type="checkbox" id="fin" style="width: 18px; height: 18px;" onchange="validarCierre()">
+                        Marcar como evaluación finalizada (habilita recetas y órdenes)
+                    </label>
+                </div>
+                <div class="d-flex mt-4">
+                    <button type="submit" class="btn btn-primary">Guardar historial clínico</button>
+                    <button type="button" onclick="cerrarFormulario('area-consulta')" class="btn">Ocultar</button>
+                </div>
+            </form>
+        </div>
+
+        <div class="modal-overlay d-none" id="modal-acciones">
+            <div class="modal-content" style="max-width: 700px;">
+                <h3 id="modal-titulo">Acción médica</h3>
+                <input type="hidden" id="accion-cita-id">
+
+                <div id="form-receta" class="d-none">
+                    <form id="add-med-form" onsubmit="agregarMedicamentoAReceta(event)">
+                        <div class="d-flex">
+                            <div class="form-group flex-1"><label>Medicamento</label><select id="r-med" class="form-control" required></select></div>
+                            <div class="form-group flex-1"><label>Dosis</label><input type="text" id="r-dosis" class="form-control" required></div>
+                            <div class="form-group flex-1"><label>Frecuencia</label><input type="text" id="r-frec" class="form-control" required></div>
+                        </div>
+                        <div class="d-flex mt-4">
+                            <div class="form-group flex-1"><label>Duración</label><input type="text" id="r-dur" class="form-control" required></div>
+                            <div class="form-group flex-1"><label>Cantidad a despachar</label><input type="number" id="r-cant" class="form-control" min="1" required></div>
+                        </div>
+                        <div class="form-group mt-4"><label>Indicaciones especiales (opcional)</label><input type="text" id="r-ind" class="form-control"></div>
+                        <button type="submit" class="btn btn-primary mt-4" style="width: 100%;">Añadir medicamento a la receta</button>
+                    </form>
+
+                    <table class="table mt-4" id="tb-receta-container" style="display:none;">
+                        <thead><tr><th>Medicamento</th><th>Dosis/Frec.</th><th>Cant.</th><th>Quitar</th></tr></thead>
+                        <tbody id="tb-receta-items"></tbody>
+                    </table>
+
+                    <div class="d-flex mt-4" style="justify-content: flex-end; border-top: 1px solid var(--line); padding-top:1rem;">
+                        <button type="button" onclick="cerrarFormulario('modal-acciones')" class="btn">Cancelar</button>
+                        <button type="button" onclick="enviarRecetaFinal()" class="btn btn-success">Generar receta médica</button>
+                    </div>
+                </div>
+
+                <form id="form-lab" class="d-none">
+                    <div class="form-group"><label>Exámenes requeridos (selección múltiple)</label>
+                        <select id="l-examenes" class="form-control" multiple size="5" style="height: auto;"></select>
+                    </div>
+                    <div class="form-group"><label>Notas para laboratorio</label><input type="text" id="l-notas" class="form-control"></div>
+                    <div class="form-group">
+                        <label style="display:flex; align-items:center; gap:0.5rem; cursor:pointer; text-transform:none; letter-spacing:normal; font-size:0.9rem; color:var(--ink);"><input type="checkbox" id="l-externa"> Orden para laboratorio externo</label>
+                    </div>
+                    <div class="d-flex mt-4" style="justify-content: flex-end;">
+                        <button type="button" onclick="cerrarFormulario('modal-acciones')" class="btn">Cancelar</button>
+                        <button type="submit" class="btn btn-primary">Generar orden de laboratorio</button>
+                    </div>
+                </form>
+
+                <form id="form-seg" class="d-none">
+                    <div class="d-flex">
+                        <div class="form-group flex-1">
+                            <label>Tipo de Seguimiento</label>
+                            <select id="s-tipo" class="form-control" required>
+                                <option value="">Seleccione una opción</option>
+                                <option value="Monitoreo de Tratamiento">Monitoreo de Tratamiento</option>
+                                <option value="Revisión de Resultados de Laboratorio">Revisión de Resultados de Laboratorio</option>
+                            </select>
+                        </div>
+                        <!-- Solución CU-12 (gap del QA): RN-CU11-03 exige motivo del seguimiento Y prioridad; solo existía el motivo -->
+                        <div class="form-group flex-1">
+                            <label>Prioridad</label>
+                            <select id="s-prioridad" class="form-control" required>
+                                <option value="">Seleccione una opción</option>
+                                <option value="Alta">Alta</option>
+                                <option value="Media">Media</option>
+                                <option value="Baja">Baja</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="d-flex mt-4">
+                        <div class="form-group flex-1"><label>Fecha</label><input type="date" id="s-fecha" class="form-control" required onchange="buscarHorariosSeguimiento()"></div>
+                        <div class="form-group flex-1"><label>Hora Disponible</label><select id="s-hora" class="form-control" required><option value="">Seleccione fecha primero</option></select></div>
+                    </div>
+                    <div class="form-group mt-4"><label>Motivo clínico de seguimiento</label><input type="text" id="s-motivo" class="form-control" required minlength="10" maxlength="2000"></div>
+                    <div class="d-flex mt-4" style="justify-content: flex-end;">
+                        <button type="button" onclick="cerrarFormulario('modal-acciones')" class="btn">Cancelar</button>
+                        <button type="submit" class="btn btn-primary">Agendar Cita</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </main>
+</div>
+<script src="js/app.js"></script>
+<script>
+    App.requireAuth();
+    document.getElementById('user-name').textContent = App.getName() || 'Usuario del Sistema';
+    document.getElementById('user-role').textContent = App.getRole() || '';
+
+    let catCie10 = [], catMedicamentos = [], catExamenes = [];
+    let recetaItemsTemporales = [];
+
+    async function init() {
+        try {
+            catCie10 = await App.apiFetch('/api/cie10').catch(()=>[]);
+            catMedicamentos = await App.apiFetch('/api/medicamentos');
+            catExamenes = await App.apiFetch('/api/examenes-laboratorio');
+
+            const dl = document.getElementById('cie10-list');
+            dl.innerHTML = catCie10.map(c => `<option value="${c.codigo}">${c.nombre}</option>`).join('');
+
+            document.getElementById('r-med').innerHTML = '<option value="">Seleccione un medicamento</option>' + catMedicamentos.filter(m=>m.activo).map(m=>`<option value="${m.id}">${m.nombre}</option>`).join('');
+            document.getElementById('l-examenes').innerHTML = catExamenes.filter(e=>e.activo).map(e=>`<option value="${e.id}">${e.nombre}</option>`).join('');
+
+            loadPanel();
+            setInterval(loadPanel, 30000);
+        } catch(e) {}
+    }
+
+    async function loadPanel() {
+        try {
+            const data = await App.apiFetch('/api/medico/' + App.getUid() + '/panel');
+
+            const btnEspera = (c) => `<li class="item-card">
+                <div class="font-bold">${c.pacienteNombre} ${c.emergencia?'<span class="badge badge-danger">URGENCIA</span>':''}</div>
+                <div class="text-muted" style="font-size: 0.85rem;">Hora: ${c.fechaHora.substring(11,16)}</div>
+                <div class="d-flex mt-4">
+                    <button class="btn btn-primary" style="padding: 0.4rem 0.8rem; font-size:0.85rem;" onclick="llamar(${c.id})">Iniciar consulta</button>
+                    <button class="btn btn-danger" style="padding: 0.4rem 0.8rem; font-size:0.85rem;" onclick="ausente(${c.id})">No asistió</button>
+                </div>
+            </li>`;
+
+            const btnActiva = (c) => `<li class="item-card accent-coffee">
+                <div class="font-bold">${c.pacienteNombre}</div>
+                <button class="btn btn-primary mt-4" style="width:100%;" onclick="abrirExpediente(${c.id})">Continuar evaluación</button>
+            </li>`;
+
+            const btnEval = (c) => `<li class="item-card accent-brass">
+                <div class="font-bold">${c.pacienteNombre}</div>
+                <div class="d-flex mt-4" style="flex-direction: column; gap: 0.5rem;">
+                    <button class="btn" style="width:100%; justify-content: flex-start;" onclick="abrirModal('receta', ${c.id})"><i class="fa-solid fa-pills" style="width:20px;"></i> Generar receta</button>
+                    <button class="btn" style="width:100%; justify-content: flex-start;" onclick="abrirModal('lab', ${c.id})"><i class="fa-solid fa-flask" style="width:20px;"></i> Orden de laboratorio</button>
+                    <button class="btn" style="width:100%; justify-content: flex-start;" onclick="abrirModal('seg', ${c.id})"><i class="fa-regular fa-calendar-check" style="width:20px;"></i> Agendar seguimiento</button>
+                    <button class="btn btn-success mt-4" style="width:100%;" onclick="cerrarTurno(${c.id})">Finalizar atención</button>
+                </div>
+            </li>`;
+
+            document.getElementById('l-espera').innerHTML = data.enEsperaDeConsulta.map(btnEspera).join('') || '<p class="text-muted">Sin pacientes en espera.</p>';
+            document.getElementById('l-consulta').innerHTML = data.enConsultaMedica.map(btnActiva).join('') || '<p class="text-muted">Sin consulta activa.</p>';
+            document.getElementById('l-eval').innerHTML = data.evaluadosPendienteCierre.map(btnEval).join('') || '<p class="text-muted">Sin pacientes pendientes de cierre.</p>';
+        } catch(e) { App.showAlert('msg', e.message, true); }
+    }
+
+    // FIX CU-08: se muestra data.mensaje (antes se descartaba) y se agrega el
+    // anuncio por voz, igual que ya existía en enfermeria.html para signos vitales
+    async function llamar(id) {
+        try {
+            const data = await App.apiFetch(`/api/medico/citas/${id}/iniciar-consulta`, 'POST');
+            App.showAlert('msg', data.mensaje);
+            if ('speechSynthesis' in window) {
+                const utterance = new SpeechSynthesisUtterance(data.mensaje);
+                utterance.lang = 'es-ES';
+                window.speechSynthesis.speak(utterance);
+            }
+            loadPanel();
+        } catch(e) { App.showAlert('msg', e.message, true); }
+    }
+    // FIX CU-08: se muestra data.mensaje (antes se descartaba, el médico no veía la confirmación)
+    async function ausente(id) {
+        if (await App.confirm("¿Marcar paciente como no asistió? La cita se cerrará.", { titulo: '¿Marcar como no asistió?', textoBoton: 'Marcar' })) {
+            try {
+                const data = await App.apiFetch(`/api/medico/citas/${id}/no-asistio`, 'POST');
+                App.showAlert('msg', data.mensaje);
+                loadPanel();
+            } catch(e) { App.showAlert('msg', e.message, true); }
+        }
+    }
+    // FIX CU-08: se muestra data.mensaje (antes se descartaba, el médico no veía la confirmación)
+    async function cerrarTurno(id) {
+        try {
+            const data = await App.apiFetch(`/api/medico/citas/${id}/finalizar-atencion`, 'POST');
+            App.showAlert('msg', data.mensaje);
+            loadPanel();
+        } catch(e) { App.showAlert('msg', e.message, true); }
+    }
+
+    function abrirExpediente(id) {
+        document.getElementById('area-consulta').classList.remove('d-none');
+        document.getElementById('c-id').innerText = id;
+        document.getElementById('citaActual').value = id;
+    }
+
+    function cerrarFormulario(id) {
+        document.getElementById(id).classList.add('d-none');
+    }
+
+    function validarCierre() {
+        const fin = document.getElementById('fin').checked;
+        document.getElementById('diag').required = fin;
+    }
+
+    document.getElementById('form-consulta').addEventListener('submit', async(e)=>{
+        e.preventDefault();
+        const cie = document.getElementById('cie10-input').value;
+        const objCie = catCie10.find(c => c.codigo === cie);
+
+        // Solución QA: si el médico escribió texto (código o descripción) y presionó Enter
+        // sin seleccionar una opción del datalist, no coincide con ningún código exacto.
+        // Antes esto guardaba la consulta con cie10Id: null de forma silenciosa.
+        if (cie && !objCie) {
+            return App.showAlert('msg', 'El código CIE-10 ingresado no es válido. Seleccione uno de la lista.', true);
+        }
+
+        try {
+            await App.apiFetch(`/api/medico/citas/${document.getElementById('citaActual').value}/consulta`, 'POST', {
+                motivoVisita: document.getElementById('mot').value, hallazgosClinicos: document.getElementById('hal').value,
+                diagnostico: document.getElementById('diag').value, planTratamiento: document.getElementById('trat').value,
+                cie10Id: objCie ? objCie.id : null,
+                finalizar: document.getElementById('fin').checked
+            });
+            App.showAlert('msg', 'Expediente clínico actualizado exitosamente.');
+            cerrarFormulario('area-consulta');
+            loadPanel();
+        } catch(err) { App.showAlert('msg', err.message, true); }
+    });
+
+    function abrirModal(tipo, citaId) {
+        document.getElementById('accion-cita-id').value = citaId;
+        document.getElementById('form-receta').classList.add('d-none');
+        document.getElementById('form-lab').classList.add('d-none');
+        document.getElementById('form-seg').classList.add('d-none');
+
+        if (tipo === 'receta') {
+            document.getElementById('modal-titulo').innerText = "Generar receta médica";
+            document.getElementById('form-receta').classList.remove('d-none');
+            document.getElementById('add-med-form').reset();
+
+            // Purga real del array temporal y de los combos
+            recetaItemsTemporales = [];
+            document.getElementById('r-med').value = "";
+            actualizarTablaReceta();
+
+        } else if (tipo === 'lab') {
+            document.getElementById('modal-titulo').innerText = "Generar orden de laboratorio";
+            document.getElementById('form-lab').classList.remove('d-none');
+            document.getElementById('form-lab').reset();
+        } else if (tipo === 'seg') {
+            document.getElementById('modal-titulo').innerText = "Agendar cita de seguimiento";
+            document.getElementById('form-seg').classList.remove('d-none');
+            document.getElementById('form-seg').reset();
+            document.getElementById('s-fecha').min = new Date().toISOString().split("T")[0];
+        }
+        document.getElementById('modal-acciones').classList.remove('d-none');
+    }
+
+    function agregarMedicamentoAReceta(e) {
+        e.preventDefault();
+        const sel = document.getElementById('r-med');
+        const nomMed = sel.options[sel.selectedIndex].text;
+
+        recetaItemsTemporales.push({
+            medicamentoId: parseInt(sel.value),
+            nombreVista: nomMed,
+            dosis: document.getElementById('r-dosis').value,
+            frecuencia: document.getElementById('r-frec').value,
+            duracion: document.getElementById('r-dur').value,
+            cantidad: parseInt(document.getElementById('r-cant').value),
+            indicaciones: document.getElementById('r-ind').value || null
+        });
+
+        document.getElementById('add-med-form').reset();
+        actualizarTablaReceta();
+    }
+
+    function removerMedicamento(index) {
+        recetaItemsTemporales.splice(index, 1);
+        actualizarTablaReceta();
+    }
+
+    function actualizarTablaReceta() {
+        const tb = document.getElementById('tb-receta-items');
+        const cont = document.getElementById('tb-receta-container');
+        if(recetaItemsTemporales.length === 0) {
+            cont.style.display = 'none';
+        } else {
+            cont.style.display = 'table';
+            tb.innerHTML = recetaItemsTemporales.map((r, i) => `
+                <tr>
+                    <td>${r.nombreVista}</td>
+                    <td>${r.dosis} c/${r.frecuencia} por ${r.duracion}</td>
+                    <td>${r.cantidad}</td>
+                    <td><button type="button" class="btn btn-danger" style="padding: 0.2rem 0.5rem;" onclick="removerMedicamento(${i})"><i class="fa-solid fa-xmark"></i></button></td>
+                </tr>
+            `).join('');
+        }
+    }
+
+    async function enviarRecetaFinal() {
+        if(recetaItemsTemporales.length === 0) return alert("Debe añadir al menos un medicamento.");
+
+        const payload = { medicamentos: recetaItemsTemporales, notas: "" };
+        try {
+            const res = await App.apiFetch(`/api/medico/citas/${document.getElementById('accion-cita-id').value}/receta`, 'POST', payload);
+            App.showAlert('msg', res.mensaje);
+            cerrarFormulario('modal-acciones');
+        } catch(err) { App.showAlert('msg', err.message, true); }
+    }
+
+    document.getElementById('form-lab').addEventListener('submit', async(e) => {
+        e.preventDefault();
+        const sel = document.getElementById('l-examenes');
+        const ids = Array.from(sel.selectedOptions).map(opt => parseInt(opt.value));
+        const payload = {
+            examenesIds: ids,
+            notas: document.getElementById('l-notas').value,
+            esExterna: document.getElementById('l-externa').checked
+        };
+        try {
+            const res = await App.apiFetch(`/api/medico/citas/${document.getElementById('accion-cita-id').value}/orden-laboratorio`, 'POST', payload);
+            App.showAlert('msg', res.mensaje);
+            cerrarFormulario('modal-acciones');
+        } catch(err) { App.showAlert('msg', err.message, true); }
+    });
+
+    async function buscarHorariosSeguimiento() {
+        const f = document.getElementById('s-fecha').value;
+        const hr = document.getElementById('s-hora');
+        if(f) {
+            hr.innerHTML = `<option value="">Cargando...</option>`;
+            try {
+                const data = await App.apiFetch(`/api/citas/horarios-disponibles?medicoId=${App.getUid()}&fecha=${f}`);
+                hr.innerHTML = data.length ? `<option value="">Seleccione un horario</option>` + data.map(h=>`<option value="${h}">${h.split('T')[1].substring(0,5)}</option>`).join('') : `<option value="">Sin horarios en esta fecha</option>`;
+            } catch(e) {
+                hr.innerHTML = `<option value="">Error al cargar</option>`;
+            }
+        }
+    }
+
+    document.getElementById('form-seg').addEventListener('submit', async(e) => {
+        e.preventDefault();
+        const payload = {
+            fechaHora: document.getElementById('s-hora').value,
+            tipoSeguimiento: document.getElementById('s-tipo').value,
+            prioridadSeguimiento: document.getElementById('s-prioridad').value,
+            motivo: document.getElementById('s-motivo').value
+        };
+        try {
+            const res = await App.apiFetch(`/api/medico/citas/${document.getElementById('accion-cita-id').value}/seguimiento`, 'POST', payload);
+            // FIX CU-08: CitaResponseDTO no trae campo "mensaje"; se construye el texto
+            // con fechaHora real (antes se mostraba un texto genérico fijo sin la fecha)
+            const f = new Date(res.fechaHora);
+            const fechaTxt = f.toLocaleDateString('es-GT', { day: 'numeric', month: 'long', year: 'numeric' });
+            const horaTxt = f.toLocaleTimeString('es-GT', { hour: '2-digit', minute: '2-digit' });
+            App.showAlert('msg', `Cita de seguimiento agendada para el ${fechaTxt} a las ${horaTxt}. El paciente recibirá un recordatorio.`);
+            cerrarFormulario('modal-acciones');
+        } catch(err) { App.showAlert('msg', err.message, true); }
+    });
+
+    function toggleMobileSidebar() {
+        document.getElementById('sidebar').classList.toggle('mobile-open');
+        document.getElementById('backdrop').classList.toggle('show');
+    }
+    function toggleSidebarCollapse() {
+        document.getElementById('sidebar').classList.toggle('collapsed');
+        document.getElementById('collapse-icon').classList.toggle('fa-angles-left');
+        document.getElementById('collapse-icon').classList.toggle('fa-angles-right');
+    }
+
+    init();
+</script>
+</body>
+</html>

@@ -1,0 +1,691 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mi Agenda Médica - Hospital El Milagro</title>
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="css/style.css">
+    <style>
+        .cal-grid {
+            display: grid;
+            grid-template-columns: 60px repeat(7, 1fr);
+            border-top: 1px solid var(--line);
+            border-left: 1px solid var(--line);
+            overflow-x: auto;
+            background: var(--paper-deep);
+        }
+        .cal-cell {
+            border-right: 1px solid var(--line);
+            border-bottom: 1px solid var(--line);
+            min-height: 50px;
+            position: relative;
+            padding: 2px;
+        }
+        .cal-header {
+            background: var(--well-bg);
+            font-weight: 600;
+            text-align: center;
+            padding: 10px 5px;
+            font-size: 0.85rem;
+        }
+        .cal-time {
+            text-align: right;
+            padding-right: 8px;
+            font-size: 0.75rem;
+            color: var(--ink-faint);
+            display: flex;
+            align-items: flex-start;
+            justify-content: flex-end;
+            padding-top: 2px;
+        }
+        .cal-event {
+            position: absolute;
+            left: 2px; right: 2px;
+            border-radius: 4px;
+            padding: 4px;
+            font-size: 0.7rem;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            cursor: pointer;
+            z-index: 10;
+            transition: transform 0.1s;
+        }
+        .cal-event:hover {
+            transform: scale(1.02);
+            z-index: 20;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+        }
+        .cal-event.cita { background: rgba(215,161,122,0.85); color: #1B1611; border-left: 3px solid #6B3B33; }
+        .cal-event.bloqueo { background: rgba(139,92,246,0.85); color: #fff; border-left: 3px solid #4c1d95; }
+
+        .today-col { background-color: rgba(255,255,255,0.02); }
+    </style>
+</head>
+<body>
+<div class="aurora aurora-a"></div>
+<div class="aurora aurora-b"></div>
+<div class="paper-grain"></div>
+
+<div class="app-container">
+    <div class="backdrop" id="backdrop" onclick="toggleMobileSidebar()"></div>
+    <button class="sidebar-toggle-mobile" onclick="toggleMobileSidebar()" aria-label="Abrir menú">
+        <i class="fa-solid fa-bars"></i>
+    </button>
+
+    <nav class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <h3>Hospital El Milagro</h3>
+            <button class="sidebar-collapse-btn" onclick="toggleSidebarCollapse()" aria-label="Colapsar menú">
+                <i class="fa-solid fa-angles-left" id="collapse-icon"></i>
+            </button>
+        </div>
+        <div class="user-badge">
+            <span id="user-name"></span>
+            <span id="user-role"></span>
+        </div>
+        <div class="nav-menu" id="sidebar-menu"></div>
+    </nav>
+
+    <main class="main-content">
+        <h2>Gestor de Agenda y Tareas Clínicas</h2>
+        <div id="msg" class="alert"></div>
+
+        <!-- FIX QA (punto 4 verificación con Edy): el Administrador debe tener acceso
+             total, pero esta pantalla estaba construida para que el médico gestione
+             SU PROPIA agenda (usaba App.getUid()). Sin este selector, un administrador
+             entraba y no tenía forma de elegir para qué médico crear/ver la agenda. -->
+        <div class="card d-none" id="area-selector-medico" style="margin-bottom: 1.5rem;">
+            <div class="form-group" style="max-width: 420px;">
+                <label>Ver agenda del médico</label>
+                <select id="selector-medico" class="form-control" onchange="cambiarMedicoActivo()"></select>
+            </div>
+        </div>
+
+        <div class="d-flex" style="gap: 1.5rem; align-items: flex-start;">
+
+            <!-- Columna Calendario -->
+            <div class="card" style="flex: 1;">
+                <div class="d-flex" style="justify-content: space-between; align-items: center; border-bottom: 1px solid var(--line); padding-bottom: 1rem; margin-bottom: 1rem; flex-wrap: wrap; gap: 0.5rem;">
+                    <div style="display: flex; gap: 0.5rem; align-items: center;">
+                        <button class="btn" onclick="navegarAnterior()"><i class="fa-solid fa-chevron-left"></i></button>
+                        <h3 id="lbl-semana" style="min-width: 220px; text-align: center;">Del X al Y de Mes</h3>
+                        <button class="btn" onclick="navegarSiguiente()"><i class="fa-solid fa-chevron-right"></i></button>
+                        <button class="btn ml-2" onclick="irAHoy()">Hoy</button>
+                    </div>
+                    <!-- Solución CU-16 (gap #1 del QA, FA05): botones Mes / Semana / Día -->
+                    <div style="display:flex; gap:0.25rem;">
+                        <button class="btn" id="btn-vista-mes" onclick="cambiarVista('mes')">Mes</button>
+                        <button class="btn" id="btn-vista-semana" onclick="cambiarVista('semana')">Semana</button>
+                        <button class="btn" id="btn-vista-dia" onclick="cambiarVista('dia')">Día</button>
+                    </div>
+                    <div style="display:flex; gap:0.5rem;">
+                        <!-- Solución CU-16 (gap #5 del QA): botón toggle del panel de tareas, con conteo -->
+                        <button class="btn" onclick="toggleTaskPanel()" id="btn-toggle-tareas">Tareas (<span id="contador-tareas">0</span>) <i class="fa-solid fa-chevron-right" id="icon-toggle-tareas"></i></button>
+                        <button class="btn btn-primary" onclick="abrirEventoModal()" style="padding: 0.3rem 0.6rem; font-size: 0.85rem;">+ Bloquear Agenda</button>
+                    </div>
+                </div>
+
+                <!-- Solución CU-16: Calendario Visual (Mes / Semana / Día) -->
+                <div id="calendar-container" style="position: relative; min-height: 500px;">
+                    <!-- Se inyecta por JS -->
+                </div>
+            </div>
+
+            <!-- Columna Tareas: ahora a la derecha del calendario y colapsable (Solución CU-16, gap #5 del QA) -->
+            <div class="card" style="width: 320px; flex-shrink: 0;" id="panel-tareas">
+                <div class="d-flex" style="justify-content: space-between; align-items: center; border-bottom: 1px solid var(--line); padding-bottom: 1rem; margin-bottom: 1rem;">
+                    <h3>Gestión de tareas</h3>
+                    <button class="btn btn-success" onclick="abrirTareaModal()" style="padding: 0.3rem 0.6rem; font-size: 0.85rem;">+ Nueva</button>
+                </div>
+
+                <div class="form-group">
+                    <select id="filtro-tareas" class="form-control" onchange="renderTasks()">
+                        <option value="ALL">Todas las tareas</option>
+                        <option value="PENDING" selected>Solo pendientes</option>
+                        <option value="DONE">Completadas</option>
+                    </select>
+                </div>
+
+                <div id="l-ta" style="display: flex; flex-direction: column; gap: 0.5rem; max-height: 60vh; overflow-y: auto; margin-top: 1rem;"></div>
+            </div>
+        </div>
+
+        <!-- Modales idénticos al anterior... -->
+        <div class="modal-overlay d-none" id="modal-tarea">
+            <div class="modal-content" style="max-width: 500px;">
+                <h3 id="t-modal-titulo">Nueva tarea</h3>
+                <form id="f-ta" class="mt-4" onsubmit="guardarTarea(event)">
+                    <input type="hidden" id="t-id">
+                    <div class="form-group"><label>Título</label><input type="text" id="t-tit" class="form-control" required minlength="5"></div>
+                    <div class="form-group"><label>Descripción (opcional)</label><textarea id="t-desc" class="form-control" rows="2" maxlength="1000"></textarea></div>
+                    <div class="d-flex">
+                        <div class="form-group flex-1"><label>Prioridad</label>
+                            <select id="t-pri" class="form-control" required>
+                                <option value="0">Baja</option><option value="1" selected>Normal</option><option value="2">Alta</option>
+                            </select>
+                        </div>
+                        <div class="form-group flex-1"><label>Fecha límite</label><input type="datetime-local" id="t-lim" class="form-control"></div>
+                    </div>
+                    <div class="d-flex mt-4" style="justify-content: flex-end;">
+                        <button type="button" class="btn" onclick="document.getElementById('modal-tarea').classList.add('d-none')">Cancelar</button>
+                        <button type="submit" class="btn btn-success">Guardar tarea</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div class="modal-overlay d-none" id="modal-evento">
+            <div class="modal-content" style="max-width: 500px;">
+                <h3 id="e-modal-titulo">Bloqueo de agenda</h3>
+                <form id="f-ev" class="mt-4" onsubmit="guardarEvento(event)">
+                    <input type="hidden" id="e-id">
+                    <div class="form-group"><label>Título descriptivo</label><input type="text" id="e-tit" class="form-control" required minlength="5"></div>
+                    <!-- Solución CU-16 (gap #3 del QA): campo Descripción; el backend ya lo soportaba (@Size max=2000) pero no existía en el HTML -->
+                    <div class="form-group"><label>Descripción (opcional)</label><textarea id="e-desc" class="form-control" rows="2" maxlength="2000"></textarea></div>
+                    <div class="form-group"><label>Tipo de ausencia</label>
+                        <select id="e-tip" class="form-control" required>
+                            <option value="0">Reunión institucional</option><option value="1">Descanso / almuerzo</option>
+                            <option value="2">Capacitación / congreso</option><option value="3">Asunto personal</option><option value="4">Otro</option>
+                        </select>
+                    </div>
+
+                    <div class="well mt-4 mb-4">
+                        <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; font-weight: bold;">
+                            <input type="checkbox" id="e-todo" onchange="toggleFechas()" style="width: 18px; height: 18px;"> Bloquear todo el día
+                        </label>
+                    </div>
+
+                    <div class="d-flex">
+                        <div class="form-group flex-1"><label>Inicia</label><input type="datetime-local" id="e-ini" class="form-control" required></div>
+                        <div class="form-group flex-1"><label>Finaliza</label><input type="datetime-local" id="e-fin" class="form-control" required></div>
+                    </div>
+
+                    <div class="d-flex mt-4" style="justify-content: flex-end;">
+                        <button type="button" class="btn" onclick="document.getElementById('modal-evento').classList.add('d-none')">Cancelar</button>
+                        <button type="submit" class="btn btn-primary">Reservar horario</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+    </main>
+</div>
+<script src="js/app.js"></script>
+<script>
+    App.requireAuth();
+    document.getElementById('user-name').textContent = App.getName() || 'Usuario del Sistema';
+    document.getElementById('user-role').textContent = App.getRole() || '';
+
+    // FIX QA (punto 4): médico ve/edita su propia agenda por defecto; si es
+    // Administrador, medicoActivoId se actualiza al elegir un médico del selector.
+    let medicoActivoId = App.getUid();
+
+    async function initSelectorMedico() {
+        const rol = (App.getRole() || '').toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+        if (rol !== 'ADMINISTRADOR') return;
+
+        document.getElementById('area-selector-medico').classList.remove('d-none');
+        try {
+            const usuarios = await App.apiFetch('/api/usuarios');
+            const medicos = usuarios.filter(u => {
+                const r = (u.rolNombre || '').toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+                return r === 'MEDICO' && u.activo;
+            });
+            const sel = document.getElementById('selector-medico');
+            if (!medicos.length) {
+                sel.innerHTML = `<option value="">No hay médicos activos registrados</option>`;
+                return;
+            }
+            sel.innerHTML = medicos.map(m => `<option value="${m.id}">${m.nombreCompleto}</option>`).join('');
+            medicoActivoId = sel.value;
+            await cargarTodo();
+        } catch(e) { App.showAlert('msg', e.message, true); }
+    }
+
+    function cambiarMedicoActivo() {
+        medicoActivoId = document.getElementById('selector-medico').value;
+        cargarTodo();
+    }
+
+    async function cargarTodo() {
+        await Promise.all([loadTasks(), cargarRangoYRenderizar()]);
+    }
+
+    let tasksCache = [];
+    let eventsCache = [];
+    let citasCache = []; // Solución CU-16 (gap del QA): citas del médico para pintarlas en el calendario
+
+    // Variables de Calendario
+    let currentDate = new Date();
+    let currentView = 'semana'; // Solución CU-16 (gap #1 del QA, FA05): 'mes' | 'semana' | 'dia'
+    const HORAS_LABORALES = 10; // 8am a 5pm (8 a 17)
+    const HORA_INICIO = 8;
+
+    const mapTipos = {0: 'Reunión', 1: 'Descanso', 2: 'Capacitación', 3: 'Personal', 4: 'Otro'};
+    // Colores por estado de cita, para diferenciarlas visualmente en el calendario
+    const mapColorEstado = {
+        'Pendiente de Pago': '#d7a17a', 'Confirmada': '#4c9a6b', 'En Consulta': '#3b82f6',
+        'Atendida': '#6b7280', 'No Asistió': '#ef4444'
+    };
+
+    async function loadTasks() {
+        try {
+            tasksCache = await App.apiFetch(`/api/agenda/medicos/${medicoActivoId}/tareas`);
+            renderTasks();
+        } catch(e) {}
+    }
+
+    function renderTasks() {
+        const f = document.getElementById('filtro-tareas').value;
+        const list = document.getElementById('l-ta');
+        const mapCol = {0: 'var(--ink-faint)', 1: 'var(--coffee)', 2: 'var(--danger)'};
+
+        const filtered = tasksCache.filter(t => f === 'ALL' ? true : (f === 'DONE' ? t.completada : !t.completada));
+
+        // Solución CU-16 (gap #1 del QA): conteo de tareas pendientes en el botón toggle
+        document.getElementById('contador-tareas').textContent = tasksCache.filter(t => !t.completada).length;
+
+        list.innerHTML = filtered.length ? filtered.map(t => `
+            <div class="item-card" style="border-left-color: ${mapCol[t.prioridad]}; ${t.completada ? 'opacity: 0.6;' : ''}; padding: 0.75rem;">
+                <div class="d-flex" style="justify-content: space-between; align-items: flex-start;">
+                    <div>
+                        <div class="font-bold ${t.completada ? 'text-muted' : ''}" style="font-size:0.9rem; ${t.completada ? 'text-decoration: line-through;' : ''}">${t.titulo}</div>
+                        ${t.fechaLimite ? `<div style="font-size: 0.75rem; color: var(--ink-soft);">Vence: ${t.fechaLimite.replace('T', ' ')}</div>` : ''}
+                    </div>
+                    <div style="display: flex; gap: 3px;">
+                        <button onclick="toggleT(${t.id})" title="Completar" class="icon-btn ${t.completada ? 'success' : ''}"><i class="fa-regular ${t.completada ? 'fa-square-check' : 'fa-square'}"></i></button>
+                        <button onclick="abrirTareaModal(${t.id})" title="Editar" class="icon-btn"><i class="fa-solid fa-pen"></i></button>
+                        <button onclick="borrarTarea(${t.id})" title="Eliminar" class="icon-btn danger"><i class="fa-solid fa-trash"></i></button>
+                    </div>
+                </div>
+            </div>
+        `).join('') : '<p class="text-muted" style="text-align:center; padding: 1rem;">No hay tareas que coincidan.</p>';
+    }
+
+    // Solución CU-16 (gap #1 del QA, FA06): panel de tareas colapsable a la derecha
+    function toggleTaskPanel() {
+        const panel = document.getElementById('panel-tareas');
+        panel.classList.toggle('d-none');
+        document.getElementById('icon-toggle-tareas').classList.toggle('fa-chevron-right');
+        document.getElementById('icon-toggle-tareas').classList.toggle('fa-chevron-left');
+    }
+
+    // Modal de Tareas (Mismo de antes)
+    function abrirTareaModal(id = null) {
+        document.getElementById('modal-tarea').classList.remove('d-none');
+        document.getElementById('f-ta').reset();
+        document.getElementById('t-modal-titulo').textContent = id ? "Editar tarea" : "Nueva tarea";
+        document.getElementById('t-id').value = id || '';
+        if (id) {
+            const t = tasksCache.find(x => x.id === id);
+            document.getElementById('t-tit').value = t.titulo;
+            document.getElementById('t-desc').value = t.descripcion || '';
+            document.getElementById('t-pri').value = t.prioridad;
+            document.getElementById('t-lim').value = t.fechaLimite || '';
+        }
+    }
+
+    async function guardarTarea(e) {
+        e.preventDefault();
+        const id = document.getElementById('t-id').value;
+        const payload = {
+            titulo: document.getElementById('t-tit').value,
+            descripcion: document.getElementById('t-desc').value || null,
+            prioridad: parseInt(document.getElementById('t-pri').value),
+            fechaLimite: document.getElementById('t-lim').value || null,
+            completada: id ? tasksCache.find(x => x.id == id).completada : false
+        };
+        try {
+            await App.apiFetch(id ? `/api/agenda/tareas/${id}` : `/api/agenda/medicos/${medicoActivoId}/tareas`, id ? 'PUT' : 'POST', payload);
+            document.getElementById('modal-tarea').classList.add('d-none');
+            loadTasks();
+        } catch(err) { App.showAlert('msg', err.message, true); }
+    }
+
+    async function toggleT(id) { try { await App.apiFetch(`/api/agenda/tareas/${id}/toggle`, 'PATCH'); loadTasks(); } catch(e) { App.showAlert('msg', e.message, true); } }
+    async function borrarTarea(id) { if (await App.confirm("¿Eliminar tarea permanentemente?", { titulo: '¿Eliminar tarea?', textoBoton: 'Eliminar' })) { try { await App.apiFetch(`/api/agenda/tareas/${id}`, 'DELETE'); loadTasks(); } catch(e) { App.showAlert('msg', e.message, true); } } }
+
+    // ====== LÓGICA DE CALENDARIO (CU-16) ======
+
+    function getInicioSemana(date) {
+        const d = new Date(date);
+        const day = d.getDay() || 7;
+        if (day !== 1) d.setHours(-24 * (day - 1));
+        return d;
+    }
+
+    function formatDateIso(d) {
+        return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, '0') + "-" + String(d.getDate()).padStart(2, '0');
+    }
+
+    // Solución CU-16 (gap #1 del QA, FA05): botones Mes / Semana / Día
+    function cambiarVista(vista) {
+        currentView = vista;
+        ['mes','semana','dia'].forEach(v => document.getElementById(`btn-vista-${v}`).classList.toggle('btn-primary', v === vista));
+        renderCalendar();
+    }
+
+    function navegarAnterior() { navegar(-1); }
+    function navegarSiguiente() { navegar(1); }
+
+    function navegar(delta) {
+        if (currentView === 'mes') currentDate.setMonth(currentDate.getMonth() + delta);
+        else if (currentView === 'dia') currentDate.setDate(currentDate.getDate() + delta);
+        else currentDate.setDate(currentDate.getDate() + (delta * 7));
+        cargarRangoYRenderizar();
+    }
+
+    function irAHoy() {
+        currentDate = new Date();
+        cargarRangoYRenderizar();
+    }
+
+    // Solución CU-16 (gap #4 del QA): calcula el rango visible según la vista activa,
+    // y vuelve a pedir citas/eventos para ese rango antes de dibujar
+    function obtenerRangoVisible() {
+        if (currentView === 'dia') {
+            const ini = new Date(currentDate); ini.setHours(0,0,0,0);
+            const fin = new Date(currentDate); fin.setHours(23,59,59,999);
+            return [ini, fin];
+        } else if (currentView === 'mes') {
+            const ini = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+            const fin = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0, 23, 59, 59);
+            return [ini, fin];
+        } else {
+            const ini = getInicioSemana(currentDate); ini.setHours(0,0,0,0);
+            const fin = new Date(ini); fin.setDate(fin.getDate() + 6); fin.setHours(23,59,59,999);
+            return [ini, fin];
+        }
+    }
+
+    async function cargarRangoYRenderizar() {
+        await loadEvents();
+    }
+
+    async function loadEvents() {
+        try {
+            // El backend ya provee los eventos del médico
+            eventsCache = await App.apiFetch(`/api/agenda/medicos/${medicoActivoId}/eventos`);
+
+            // Solución CU-16 (gap #4 del QA): antes solo se pintaban los bloqueos (eventsCache);
+            // ahora también se consultan las citas programadas del médico para el rango visible
+            const [ini, fin] = obtenerRangoVisible();
+            const desde = formatDateIso(ini) + 'T00:00:00';
+            const hasta = formatDateIso(fin) + 'T23:59:59';
+            citasCache = await App.apiFetch(`/api/citas/medico/${medicoActivoId}?desde=${desde}&hasta=${hasta}`).catch(() => []);
+
+            renderCalendar();
+        } catch(e) {}
+    }
+
+    function renderCalendar() {
+        if (currentView === 'mes') renderMes();
+        else if (currentView === 'dia') renderDia();
+        else renderSemana();
+    }
+
+    function pintarEventoEnCelda(idCelda, topPx, heightPx, claseCss, colorFondo, titulo, onclickAttr, tooltip) {
+        const targetCell = document.getElementById(idCelda);
+        if (!targetCell) return;
+        targetCell.innerHTML += `
+            <div class="cal-event ${claseCss}"
+                 style="top: ${topPx}px; height: ${heightPx}px; background-color: ${colorFondo}"
+                 ${onclickAttr}
+                 title="${tooltip}">
+                 <strong>${titulo}</strong>
+            </div>
+        `;
+    }
+
+    // Dibuja, sobre una grilla de columnas de fecha ya construida, tanto los bloqueos
+    // de agenda (violeta, RN-CU14-01) como las citas programadas (coloreadas por estado)
+    function pintarEventosYCitasEnGrilla(fechasStr, altoCelda) {
+        eventsCache.forEach(ev => {
+            const evIni = new Date(ev.fechaInicio);
+            const evFin = new Date(ev.fechaFin);
+            const evIso = formatDateIso(evIni);
+            if (fechasStr.indexOf(evIso) === -1) return;
+
+            let horaStart = evIni.getHours();
+            if (ev.todoElDia) horaStart = HORA_INICIO;
+            if (horaStart < HORA_INICIO || horaStart >= HORA_INICIO + HORAS_LABORALES) return;
+
+            const minsOffset = ev.todoElDia ? 0 : evIni.getMinutes();
+            const topPx = (minsOffset / 60) * altoCelda;
+            let durationHrs = ev.todoElDia ? HORAS_LABORALES : (evFin - evIni) / (1000 * 60 * 60);
+            if (durationHrs < 0.5) durationHrs = 0.5;
+            const heightPx = durationHrs * altoCelda - 4;
+
+            pintarEventoEnCelda(`cell-${evIso}-${horaStart}`, topPx, heightPx, 'bloqueo',
+                ev.color || 'var(--primary)', ev.titulo, `onclick="abrirEventoModal(${ev.id})"`,
+                `${mapTipos[ev.tipoEvento]} - ${ev.titulo}`);
+        });
+
+        // Solución CU-16 (gap #4 del QA): las citas ahora se dibujan igual que los bloqueos,
+        // usando la clase .cal-event.cita ya definida en el CSS (antes nunca se usaba)
+        citasCache.forEach(c => {
+            const cIni = new Date(c.fechaHora);
+            const cIso = formatDateIso(cIni);
+            if (fechasStr.indexOf(cIso) === -1) return;
+
+            const horaStart = cIni.getHours();
+            if (horaStart < HORA_INICIO || horaStart >= HORA_INICIO + HORAS_LABORALES) return;
+
+            const topPx = (cIni.getMinutes() / 60) * altoCelda;
+            const heightPx = 0.5 * altoCelda - 4; // Duración estándar de cita: 30 min
+
+            pintarEventoEnCelda(`cell-${cIso}-${horaStart}`, topPx, heightPx, 'cita',
+                mapColorEstado[c.estadoNombre] || 'rgba(215,161,122,0.85)',
+                c.pacienteNombre, '', `Cita (${c.estadoNombre}) - ${c.pacienteNombre}`);
+        });
+    }
+
+    function renderSemana() {
+        const inicioSemana = getInicioSemana(currentDate);
+        const finSemana = new Date(inicioSemana);
+        finSemana.setDate(finSemana.getDate() + 6);
+
+        const meses = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
+        document.getElementById('lbl-semana').textContent = `${inicioSemana.getDate()} ${meses[inicioSemana.getMonth()]} - ${finSemana.getDate()} ${meses[finSemana.getMonth()]} ${finSemana.getFullYear()}`;
+
+        const container = document.getElementById('calendar-container');
+        let html = '<div class="cal-grid">';
+
+        html += '<div class="cal-header" style="border-bottom: 1px solid var(--line);">GMT-6</div>';
+        const diasSemana = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"];
+
+        const hoyIso = formatDateIso(new Date());
+        let fechasStr = [];
+
+        for (let i = 0; i < 7; i++) {
+            const d = new Date(inicioSemana);
+            d.setDate(d.getDate() + i);
+            const iso = formatDateIso(d);
+            fechasStr.push(iso);
+            const isToday = iso === hoyIso;
+            html += `<div class="cal-header ${isToday ? 'text-primary' : ''}">${diasSemana[i]} ${d.getDate()}</div>`;
+        }
+
+        for (let h = 0; h < HORAS_LABORALES; h++) {
+            const hora = HORA_INICIO + h;
+            html += `<div class="cal-cell cal-time">${hora}:00</div>`;
+            for (let d = 0; d < 7; d++) {
+                const isToday = fechasStr[d] === hoyIso;
+                html += `<div class="cal-cell ${isToday ? 'today-col' : ''}" id="cell-${fechasStr[d]}-${hora}"></div>`;
+            }
+        }
+
+        html += '</div>';
+        container.innerHTML = html;
+        pintarEventosYCitasEnGrilla(fechasStr, 50);
+    }
+
+    // Solución CU-16 (gap #1 del QA, FA05): vista de un solo día
+    function renderDia() {
+        const meses = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
+        const diasSemana = ["Domingo","Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
+        document.getElementById('lbl-semana').textContent = `${diasSemana[currentDate.getDay()]} ${currentDate.getDate()} ${meses[currentDate.getMonth()]} ${currentDate.getFullYear()}`;
+
+        const container = document.getElementById('calendar-container');
+        const iso = formatDateIso(currentDate);
+        const hoyIso = formatDateIso(new Date());
+        let html = `<div class="cal-grid" style="grid-template-columns: 60px 1fr;">`;
+        html += `<div class="cal-header" style="border-bottom: 1px solid var(--line);">GMT-6</div>`;
+        html += `<div class="cal-header ${iso === hoyIso ? 'text-primary' : ''}">${diasSemana[currentDate.getDay()]} ${currentDate.getDate()}</div>`;
+
+        for (let h = 0; h < HORAS_LABORALES; h++) {
+            const hora = HORA_INICIO + h;
+            html += `<div class="cal-cell cal-time">${hora}:00</div>`;
+            html += `<div class="cal-cell ${iso === hoyIso ? 'today-col' : ''}" id="cell-${iso}-${hora}" style="min-height:70px;"></div>`;
+        }
+        html += '</div>';
+        container.innerHTML = html;
+        pintarEventosYCitasEnGrilla([iso], 70);
+    }
+
+    // Solución CU-16 (gap #1 del QA, FA05): vista de mes (rejilla de días con conteo de eventos/citas)
+    function renderMes() {
+        const meses = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
+        document.getElementById('lbl-semana').textContent = `${meses[currentDate.getMonth()]} ${currentDate.getFullYear()}`;
+
+        const primerDiaMes = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+        const inicioGrilla = getInicioSemana(primerDiaMes);
+        const hoyIso = formatDateIso(new Date());
+        const mesActual = currentDate.getMonth();
+
+        const container = document.getElementById('calendar-container');
+        let html = `<div class="cal-grid" style="grid-template-columns: repeat(7, 1fr);">`;
+        ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"].forEach(d => {
+            html += `<div class="cal-header">${d}</div>`;
+        });
+
+        for (let i = 0; i < 42; i++) {
+            const d = new Date(inicioGrilla);
+            d.setDate(d.getDate() + i);
+            const iso = formatDateIso(d);
+            const esOtroMes = d.getMonth() !== mesActual;
+            const nEventos = eventsCache.filter(ev => formatDateIso(new Date(ev.fechaInicio)) === iso).length;
+            const nCitas = citasCache.filter(c => formatDateIso(new Date(c.fechaHora)) === iso).length;
+
+            html += `<div class="cal-cell ${iso === hoyIso ? 'today-col' : ''}" style="min-height:90px; padding:6px; cursor:pointer; ${esOtroMes ? 'opacity:0.35;' : ''}" onclick="irADiaDesdeElMes('${iso}')">
+                <div class="font-bold" style="font-size:0.8rem;">${d.getDate()}</div>
+                ${nCitas ? `<div style="font-size:0.65rem; color:#d7a17a;">● ${nCitas} cita(s)</div>` : ''}
+                ${nEventos ? `<div style="font-size:0.65rem; color:#8b5cf6;">● ${nEventos} bloqueo(s)</div>` : ''}
+            </div>`;
+        }
+        html += '</div>';
+        container.innerHTML = html;
+    }
+
+    function irADiaDesdeElMes(iso) {
+        currentDate = new Date(iso + 'T00:00:00');
+        cambiarVista('dia');
+    }
+
+    // --- Lógica Modal Eventos (Mismo de antes) ---
+    function toggleFechas() {
+        const todo = document.getElementById('e-todo').checked;
+        document.getElementById('e-ini').type = todo ? 'date' : 'datetime-local';
+        document.getElementById('e-fin').type = todo ? 'date' : 'datetime-local';
+    }
+
+    function abrirEventoModal(id = null) {
+        document.getElementById('modal-evento').classList.remove('d-none');
+        document.getElementById('f-ev').reset();
+        document.getElementById('e-modal-titulo').textContent = id ? "Editar bloqueo" : "Nuevo bloqueo de agenda";
+        document.getElementById('e-id').value = id || '';
+        document.getElementById('e-todo').checked = false; toggleFechas();
+
+        // Boton extra para liberar si es edición
+        let btnLib = document.getElementById('btn-liberar');
+        if(!btnLib) {
+            btnLib = document.createElement('button');
+            btnLib.type = 'button';
+            btnLib.id = 'btn-liberar';
+            btnLib.className = 'btn btn-danger mr-auto';
+            btnLib.textContent = 'Liberar Horario';
+            document.querySelector('#f-ev .d-flex.mt-4').prepend(btnLib);
+        }
+        btnLib.style.display = id ? 'block' : 'none';
+        btnLib.onclick = () => borrarEvento(id);
+
+        if (id) {
+            const ev = eventsCache.find(x => x.id === id);
+            document.getElementById('e-tit').value = ev.titulo;
+            document.getElementById('e-desc').value = ev.descripcion || '';
+            document.getElementById('e-tip').value = ev.tipoEvento;
+            document.getElementById('e-todo').checked = ev.todoElDia; toggleFechas();
+            // Solución QA: los navegadores rechazan y vacían un <input type="datetime-local">
+            // si se le asigna un string con segundos/milisegundos (LocalDateTime del backend).
+            // Se trunca siempre a YYYY-MM-DDThh:mm (16 caracteres).
+            document.getElementById('e-ini').value = ev.todoElDia ? ev.fechaInicio.substring(0,10) : ev.fechaInicio.substring(0,16);
+            document.getElementById('e-fin').value = ev.todoElDia ? ev.fechaFin.substring(0,10) : ev.fechaFin.substring(0,16);
+        } else {
+            // Predeterminar fecha si es nuevo
+            document.getElementById('e-ini').value = formatDateIso(currentDate) + "T08:00";
+            document.getElementById('e-fin').value = formatDateIso(currentDate) + "T09:00";
+        }
+    }
+
+    async function guardarEvento(e) {
+        e.preventDefault();
+        const id = document.getElementById('e-id').value;
+        const todo = document.getElementById('e-todo').checked;
+        const payload = {
+            titulo: document.getElementById('e-tit').value,
+            // Solución CU-16 (gap #3 del QA): el backend ya soportaba descripción, faltaba enviarla
+            descripcion: document.getElementById('e-desc').value || null,
+            tipoEvento: parseInt(document.getElementById('e-tip').value),
+            todoElDia: todo,
+            fechaInicio: todo ? document.getElementById('e-ini').value + "T00:00:00" : document.getElementById('e-ini').value,
+            fechaFin: todo ? document.getElementById('e-fin').value + "T23:59:59" : document.getElementById('e-fin').value
+        };
+        try {
+            const res = await App.apiFetch(id ? `/api/agenda/eventos/${id}` : `/api/agenda/medicos/${medicoActivoId}/eventos`, id ? 'PUT' : 'POST', payload);
+            document.getElementById('modal-evento').classList.add('d-none');
+            // Solución CU-16 (gap #4 del QA): mensaje con el formato exacto exigido por el spec
+            // ("Evento creado exitosamente. [Título] — [Fecha inicio] a [Fecha fin]."), usando
+            // la fecha que realmente devuelve el backend en vez del texto genérico anterior.
+            const fIni = new Date(res.evento.fechaInicio).toLocaleDateString('es-GT', { day: 'numeric', month: 'numeric', year: 'numeric' });
+            const fFin = new Date(res.evento.fechaFin).toLocaleDateString('es-GT', { day: 'numeric', month: 'numeric', year: 'numeric' });
+            const accion = id ? 'actualizado' : 'creado';
+            App.showAlert('msg', `Evento ${accion} exitosamente. ${res.evento.titulo} — ${fIni} a ${fFin}.`);
+            loadEvents();
+        } catch(err) { App.showAlert('msg', err.message, true); }
+    }
+
+    async function borrarEvento(id) {
+        if (await App.confirm("¿Liberar este horario en la agenda de citas?", { titulo: '¿Liberar horario?', textoBoton: 'Liberar' })) {
+            try {
+                await App.apiFetch(`/api/agenda/eventos/${id}`, 'DELETE');
+                App.showAlert('msg', 'Horario liberado para los pacientes.');
+                document.getElementById('modal-evento').classList.add('d-none');
+                loadEvents();
+            } catch(e) { App.showAlert('msg', e.message, true); }
+        }
+    }
+
+    function toggleMobileSidebar() {
+        document.getElementById('sidebar').classList.toggle('mobile-open');
+        document.getElementById('backdrop').classList.toggle('show');
+    }
+    function toggleSidebarCollapse() {
+        document.getElementById('sidebar').classList.toggle('collapsed');
+        document.getElementById('collapse-icon').classList.toggle('fa-angles-left');
+        document.getElementById('collapse-icon').classList.toggle('fa-angles-right');
+    }
+
+    document.getElementById('btn-vista-semana').classList.add('btn-primary');
+    initSelectorMedico().then(() => {
+        const rol = (App.getRole() || '').toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+        // Para Administrador, initSelectorMedico() ya carga todo tras elegir el primer médico.
+        if (rol !== 'ADMINISTRADOR') {
+            cargarTodo();
+        }
+    });
+</script>
+</body>
+</html>
