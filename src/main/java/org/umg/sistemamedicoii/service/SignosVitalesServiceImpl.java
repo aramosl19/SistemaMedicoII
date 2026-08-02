@@ -17,6 +17,7 @@ import org.umg.sistemamedicoii.repository.UsuarioRepository;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Service
 public class SignosVitalesServiceImpl implements SignosVitalesService {
@@ -55,6 +56,22 @@ public class SignosVitalesServiceImpl implements SignosVitalesService {
     @Autowired private UsuarioRepository usuarioRepository;
     @Autowired private SignosVitalesRepository signosVitalesRepository;
     @Autowired private EstadoCitaCache estadoCache;
+
+    @Override
+    public List<CitaEnfermeriaResponseDTO> listarCitasPresentes() {
+        String estadoPacientePresente = EstadoCitaEnum.PACIENTE_PRESENTE.getNombreBd();
+        return citaRepository.findByEstado_NombreOrderByEmergenciaDescFechaHoraAsc(estadoPacientePresente)
+                .stream()
+                .map(c -> {
+                    CitaEnfermeriaResponseDTO dto = new CitaEnfermeriaResponseDTO();
+                    dto.setId(c.getId());
+                    dto.setPacienteNombre(c.getPaciente().getNombreCompleto());
+                    dto.setEstadoNombre(c.getEstado().getNombre());
+                    dto.setEmergencia(c.isEmergencia());
+                    return dto;
+                })
+                .toList();
+    }
 
     @Override
     public CitaEnfermeriaResponseDTO llamarPaciente(Integer citaId) {
@@ -197,10 +214,9 @@ public class SignosVitalesServiceImpl implements SignosVitalesService {
         String nombrePaciente = signos.getCita().getPaciente().getNombreCompleto();
         if (emergencia) {
             respuesta.setMensaje("Signos vitales de emergencia registrados para el paciente " + nombrePaciente
-                    + ". Será notificado al médico con prioridad de atención inmediata.");
+                    + ". Será atendido con prioridad.");
         } else {
-            respuesta.setMensaje("Signos vitales del paciente " + nombrePaciente
-                    + " registrados correctamente. El paciente puede regresar a la sala de espera.");
+            respuesta.setMensaje("Signos vitales registrados correctamente para el paciente " + nombrePaciente + ".");
         }
         return respuesta;
     }

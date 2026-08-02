@@ -7,12 +7,19 @@ import org.umg.sistemamedicoii.dto.SignosVitalesRequestDTO;
 import org.umg.sistemamedicoii.dto.SignosVitalesResponseDTO;
 import org.umg.sistemamedicoii.service.SignosVitalesService;
 
+import java.util.List;
+
 @RestController
 @RequestMapping("/api/enfermeria")
 public class SignosVitalesController {
 
     @Autowired
     private SignosVitalesService signosVitalesService;
+
+    @GetMapping("/citas/en-espera")
+    public List<CitaEnfermeriaResponseDTO> listarEnEspera() {
+        return signosVitalesService.listarCitasPresentes();
+    }
 
     @PostMapping("/citas/{id}/llamar")
     public CitaEnfermeriaResponseDTO llamarPaciente(@PathVariable Integer id) {
