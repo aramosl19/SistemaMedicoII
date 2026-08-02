@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mis Pagos - Hospital El Milagro</title>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div class="aurora aurora-a"></div>
+<div class="aurora aurora-b"></div>
+<div class="paper-grain"></div>
+
+<div class="app-container">
+  <div class="backdrop" id="backdrop" onclick="toggleMobileSidebar()"></div>
+  <button class="sidebar-toggle-mobile" onclick="toggleMobileSidebar()" aria-label="Abrir menú">
+    <i class="fa-solid fa-bars"></i>
+  </button>
+
+  <nav class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <h3>Hospital El Milagro</h3>
+      <button class="sidebar-collapse-btn" onclick="toggleSidebarCollapse()" aria-label="Colapsar menú">
+        <i class="fa-solid fa-angles-left" id="collapse-icon"></i>
+      </button>
+    </div>
+    <div class="user-badge">
+      <span id="user-name"></span>
+      <span id="user-role"></span>
+    </div>
+    <div class="nav-menu" id="sidebar-menu"></div>
+  </nav>
+
+  <main class="main-content">
+    <h2>Gestión de Citas y Pagos en Línea</h2>
+    <div id="msg" class="alert"></div>
+
+    <div class="card" id="listado">
+      <p class="text-muted">Consulte las citas que requieren confirmación mediante pago electrónico.</p>
+      <div class="d-flex mt-4" id="buscador-dpi">
+        <input type="text" id="dpi" class="form-control" maxlength="13" placeholder="Ingrese DPI de paciente" style="max-width: 260px;">
+        <button onclick="buscarCitas()" class="btn btn-primary">Buscar pendientes</button>
+      </div>
+      <table class="table mt-4">
+        <thead><tr><th>Referencia</th><th>Especialidad</th><th>Fecha programada</th><th>Costo</th><th>Acción</th></tr></thead>
+        <tbody id="tb-citas"></tbody>
+      </table>
+    </div>
+
+    <div class="card mt-4 d-none" id="historial-citas">
+      <h3>Historial de mis citas</h3>
+      <table class="table mt-4">
+        <thead><tr><th>Referencia</th><th>Especialidad</th><th>Médico</th><th>Fecha</th><th>Estado</th></tr></thead>
+        <tbody id="tb-historial"></tbody>
+      </table>
+    </div>
+
+    <div class="card ticket-card d-none" id="area-pago" style="max-width: 480px; margin: 0 auto; border-top: 3px solid var(--coffee);">
+      <h3>Confirmación de reserva</h3>
+      <p class="text-error font-bold mt-4">Tiempo para confirmar: <span id="timer" class="font-bold">05:00</span></p>
+
+      <div class="well mt-4">
+        <p>Cita: #<span id="p-citaIdText" class="font-bold"></span></p>
+        <p>Total a cargo: <span class="font-bold text-primary" style="font-size: 1.2rem;">Q<span id="p-monto"></span></span></p>
+      </div>
+
+      <form id="form-pago" class="mt-4">
+        <input type="hidden" id="p-citaId">
+        <div class="form-group">
+          <label>Número de tarjeta</label>
+          <input type="text" id="p-tarjeta" class="form-control" required pattern="^(\d{13,19}|\*{9,15}\d{4})$" placeholder="Sin espacios (ej. 4111222233334444)" onfocus="restaurarTarjeta(this)" onblur="enmascararTarjeta(this)" oninput="limpiarTarjetaSiVacio(this)" title="Ingrese de 13 a 19 dígitos">
+        </div>
+        <div class="form-group">
+          <!-- Solución CU-04: Validación de longitud y patrón alfabético en el titular -->
+          <label>Nombre del titular</label>
+          <input type="text" id="p-titular" class="form-control" required minlength="5" maxlength="100" pattern="^[a-zA-ZÀ-ÿ\s]+$" style="text-transform: uppercase;" oninput="this.value = this.value.toUpperCase()" title="Solo letras y espacios permitidos">
+        </div>
+        <div class="d-flex">
+          <div class="form-group flex-1">
+            <label>Vencimiento</label>
+            <input type="text" id="p-venc" class="form-control" required pattern="(0[1-9]|1[0-2])/\d{2}" placeholder="MM/AA" oninput="formatearFecha(this)" title="Formato MM/AA">
+          </div>
+          <div class="form-group flex-1">
+            <label>Código CVV</label>
+            <input type="password" id="p-cvv" class="form-control" required pattern="\d{3,4}" placeholder="***">
+          </div>
+        </div>
+        <button type="submit" id="btn-pagar" class="btn btn-success mt-4" style="width: 100%;">Procesar cargo seguro</button>
+        <button type="button" onclick="cancelarPago()" class="btn mt-4" style="width: 100%;">Cancelar operación</button>
+      </form>
+    </div>
+
+    <div class="card ticket-card d-none" id="area-recibo" style="max-width: 480px; margin: 0 auto; text-align: center;">
+      <h3 class="text-success mb-4">Transacción aprobada</h3>
+      <div class="receipt-box" style="text-align: left;">
+        <p><strong>Transacción No:</strong> <span id="r-trx"></span></p>
+        <p><strong>Fecha autorización:</strong> <span id="r-fec"></span></p>
+        <p><strong>Paciente:</strong> <span id="r-pac"></span></p>
+        <hr style="margin: 1rem 0; border: 0; border-top: 1px solid var(--line);">
+        <p><strong>Médico:</strong> <span id="r-med"></span> (<span id="r-esp"></span>)</p>
+        <p><strong>Sede:</strong> <span id="r-suc"></span></p>
+        <h3 class="text-primary mt-4" style="text-align: right;">Pagado: Q<span id="r-mon"></span></h3>
+      </div>
+      <p class="text-muted mt-4">Se ha enviado una copia de este comprobante a su correo electrónico registrado.</p>
+      <div class="d-flex mt-4" style="justify-content: center; flex-direction: column;">
+        <button onclick="window.location.href='dashboard.html'" class="btn btn-primary" style="width: 100%;">Volver al Portal</button>
+        <button onclick="window.location.href='paciente_citas.html'" class="btn mt-2" style="width: 100%;">Ver Mis Citas</button>
+      </div>
+    </div>
+  </main>
+</div>
+<script src="js/app.js"></script>
+<script>
+  App.requireAuth();
+  document.getElementById('user-name').textContent = App.getName() || 'Usuario del Sistema';
+  document.getElementById('user-role').textContent = App.getRole() || '';
+
+  let intervalo;
+  let tarjetaReal = '';
+
+  const urlParams = new URLSearchParams(window.location.search);
+  if(urlParams.has('autoPay') && urlParams.has('monto')) {
+    abrirPago(urlParams.get('autoPay'), urlParams.get('monto'));
+  }
+
+  if (App.getRole() && App.getRole().toUpperCase() === 'PACIENTE') {
+    document.getElementById('buscador-dpi').classList.add('d-none');
+    buscarCitas();
+    cargarHistorial();
+  }
+
+  async function cargarHistorial() {
+    try {
+      const data = await App.apiFetch('/api/citas/mis-citas');
+      if (document.getElementById('area-pago').classList.contains('d-none')) {
+        document.getElementById('historial-citas').classList.remove('d-none');
+      }
+      const badge = { 'Pagada': 'badge-success', 'Confirmada': 'badge-success', 'Pendiente de pago': 'badge-warning',
+        'Cancelada': 'badge-danger', 'No Asistió': 'badge-danger', 'Atención Finalizada': 'badge-success' };
+      document.getElementById('tb-historial').innerHTML = data.length ? data.map(c => `<tr>
+        <td>#${c.id}</td><td>${c.especialidadNombre}</td><td>${c.medicoNombre}</td>
+        <td>${c.fechaHora.replace('T',' ')}</td>
+        <td><span class="badge ${badge[c.estadoNombre] || 'badge-primary'}">${c.estadoNombre}</span></td>
+      </tr>`).join('') : '<tr><td colspan="5" class="text-muted">No tiene citas registradas.</td></tr>';
+    } catch(e) { App.showAlert('msg', e.message, true); }
+  }
+
+  async function buscarCitas() {
+    const esPaciente = App.getRole() && App.getRole().toUpperCase() === 'PACIENTE';
+    const dpi = document.getElementById('dpi').value;
+    if(!esPaciente && !dpi) return App.showAlert('msg', 'Ingrese su DPI para realizar la búsqueda.', true);
+    try {
+      const data = await App.apiFetch('/api/caja/citas/buscar' + (esPaciente ? '' : ('?dpi=' + dpi)));
+      document.getElementById('tb-citas').innerHTML = data.length ? data.map(c=>`<tr>
+                        <td>#${c.id}</td><td>${c.especialidadNombre}</td><td>${c.fechaHora.replace('T',' ')}</td><td class="font-bold">Q${c.monto}</td>
+                        <td><button class="btn btn-success" onclick="abrirPago(${c.id}, ${c.monto})">Pagar</button></td>
+                    </tr>`).join('') : '<tr><td colspan="5" class="text-muted">No tiene citas pendientes de pago.</td></tr>';
+      App.hideAlert('msg');
+    } catch(e) { App.showAlert('msg', e.message, true); }
+  }
+
+  function abrirPago(id, monto) {
+    document.getElementById('listado').classList.add('d-none');
+    document.getElementById('historial-citas').classList.add('d-none');
+    document.getElementById('area-pago').classList.remove('d-none');
+    document.getElementById('p-citaId').value = id;
+    document.getElementById('p-citaIdText').innerText = id;
+    document.getElementById('p-monto').innerText = monto;
+    document.getElementById('btn-pagar').disabled = false;
+    document.getElementById('form-pago').reset();
+    App.clearInvalidFields(document.getElementById('form-pago'));
+    tarjetaReal = '';
+    iniciarTemporizador(5 * 60);
+  }
+
+  function cancelarPago() {
+    clearInterval(intervalo);
+    document.getElementById('listado').classList.remove('d-none');
+    if (App.getRole() && App.getRole().toUpperCase() === 'PACIENTE') {
+      document.getElementById('historial-citas').classList.remove('d-none');
+    }
+    document.getElementById('area-pago').classList.add('d-none');
+    window.history.replaceState({}, document.title, window.location.pathname);
+  }
+
+  function iniciarTemporizador(duracion) {
+    clearInterval(intervalo);
+    let tiempo = duracion;
+    const display = document.getElementById('timer');
+    intervalo = setInterval(() => {
+      let m = parseInt(tiempo / 60, 10), s = parseInt(tiempo % 60, 10);
+      display.textContent = (m < 10 ? "0" + m : m) + ":" + (s < 10 ? "0" + s : s);
+      if (--tiempo < 0) {
+        clearInterval(intervalo);
+        // FIX CU-04: aviso explícito de redirección, como pide el literal del spec
+        App.showAlert('msg', 'El tiempo para confirmar ha expirado. El horario fue liberado. Será redirigido en unos segundos...', true);
+        document.getElementById('btn-pagar').disabled = true;
+        setTimeout(() => { cancelarPago(); }, 4000);
+      }
+    }, 1000);
+  }
+
+  function enmascararTarjeta(input) {
+    if (input.value.length >= 13 && !input.value.includes('*')) {
+      tarjetaReal = input.value;
+      input.value = '*'.repeat(tarjetaReal.length - 4) + tarjetaReal.slice(-4);
+    }
+  }
+
+  function restaurarTarjeta(input) {
+    if (tarjetaReal) input.value = tarjetaReal;
+  }
+
+  function limpiarTarjetaSiVacio(input) {
+    if (!input.value.includes('*')) tarjetaReal = input.value;
+  }
+
+  function formatearFecha(input) {
+    let val = input.value.replace(/\D/g, '');
+    if (val.length >= 2) val = val.substring(0,2) + '/' + val.substring(2,4);
+    input.value = val;
+  }
+
+  function esLuhnValido(num) {
+    let sum = 0; let shouldDouble = false;
+    for (let i = num.length - 1; i >= 0; i--) {
+      let digit = parseInt(num.charAt(i));
+      if (shouldDouble) { if ((digit *= 2) > 9) digit -= 9; }
+      sum += digit; shouldDouble = !shouldDouble;
+    }
+    return (sum % 10) == 0;
+  }
+
+  function esTarjetaVigente(mmyy) {
+    const parts = mmyy.split('/');
+    if(parts.length !== 2) return false;
+    const mm = parseInt(parts[0], 10);
+    const yy = parseInt(parts[1], 10) + 2000;
+    const now = new Date();
+    const expirationDate = new Date(yy, mm - 1, 1);
+    const currentDate = new Date(now.getFullYear(), now.getMonth(), 1);
+    return expirationDate >= currentDate;
+  }
+
+  document.getElementById('form-pago').addEventListener('submit', async(e)=>{
+    e.preventDefault();
+    App.hideAlert('msg');
+    const form = e.target;
+    App.clearInvalidFields(form);
+
+    const numeroAProcesar = tarjetaReal || document.getElementById('p-tarjeta').value;
+    if (!esLuhnValido(numeroAProcesar)) {
+      // FIX CU-04 FA01: resaltar el campo específico, no solo alert general
+      document.getElementById('p-tarjeta').classList.add('is-invalid');
+      return App.showAlert('msg', 'El número de tarjeta ingresado no es válido.', true);
+    }
+
+    const fechaVencimiento = document.getElementById('p-venc').value;
+    if (!esTarjetaVigente(fechaVencimiento)) {
+      document.getElementById('p-venc').classList.add('is-invalid');
+      return App.showAlert('msg', 'La tarjeta de crédito/débito se encuentra vencida.', true);
+    }
+
+    const btn = document.getElementById('btn-pagar');
+    btn.disabled = true; btn.innerText = "Autorizando con el banco...";
+    try {
+      const payload = {
+        citaId: parseInt(document.getElementById('p-citaId').value),
+        numeroTarjeta: numeroAProcesar,
+        nombreTitular: document.getElementById('p-titular').value,
+        vencimiento: fechaVencimiento,
+        cvv: document.getElementById('p-cvv').value
+      };
+
+      const data = await App.apiFetch('/api/pagos', 'POST', payload, { 'Idempotency-Key': crypto.randomUUID() });
+      clearInterval(intervalo);
+
+      document.getElementById('area-pago').classList.add('d-none');
+      document.getElementById('area-recibo').classList.remove('d-none');
+
+      document.getElementById('r-trx').textContent = data.numeroTransaccion;
+      document.getElementById('r-fec').textContent = data.fechaHoraCita.replace('T', ' ');
+      document.getElementById('r-pac').textContent = App.getName() || 'Paciente Registrado';
+      document.getElementById('r-med').textContent = data.medicoNombre;
+      document.getElementById('r-esp').textContent = data.especialidadNombre;
+      document.getElementById('r-suc').textContent = data.sucursalNombre;
+      document.getElementById('r-mon').textContent = data.monto;
+
+    } catch(err) {
+      App.showAlert('msg', err.message, true);
+      btn.disabled = false; btn.innerText = "Procesar cargo seguro";
+      document.getElementById('p-tarjeta').value = '';
+      tarjetaReal = '';
+    }
+  });
+
+  function toggleMobileSidebar() {
+    document.getElementById('sidebar').classList.toggle('mobile-open');
+    document.getElementById('backdrop').classList.toggle('show');
+  }
+  function toggleSidebarCollapse() {
+    document.getElementById('sidebar').classList.toggle('collapsed');
+    document.getElementById('collapse-icon').classList.toggle('fa-angles-left');
+    document.getElementById('collapse-icon').classList.toggle('fa-angles-right');
+  }
+</script>
+</body>
+</html>

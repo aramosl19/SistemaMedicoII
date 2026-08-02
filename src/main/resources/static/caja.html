@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Caja Central - Hospital El Milagro</title>
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div class="aurora aurora-a"></div>
+<div class="aurora aurora-b"></div>
+<div class="paper-grain"></div>
+
+<div class="app-container">
+    <div class="backdrop" id="backdrop" onclick="toggleMobileSidebar()"></div>
+    <button class="sidebar-toggle-mobile" onclick="toggleMobileSidebar()" aria-label="Abrir menú">
+        <i class="fa-solid fa-bars"></i>
+    </button>
+
+    <nav class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <h3>Hospital El Milagro</h3>
+            <button class="sidebar-collapse-btn" onclick="toggleSidebarCollapse()" aria-label="Colapsar menú">
+                <i class="fa-solid fa-angles-left" id="collapse-icon"></i>
+            </button>
+        </div>
+        <div class="user-badge">
+            <span id="user-name"></span>
+            <span id="user-role"></span>
+        </div>
+        <div class="nav-menu" id="sidebar-menu"></div>
+    </nav>
+
+    <main class="main-content">
+        <h2>Módulo de Caja Centralizada</h2>
+        <div id="msg" class="alert"></div>
+
+        <div class="card" id="area-busqueda">
+            <p class="text-muted">Busque la cuenta pendiente del paciente para proceder al cobro.</p>
+            <div class="d-flex mt-4" style="align-items: flex-end;">
+                <div class="form-group flex-1">
+                    <label>Tipo de servicio</label>
+                    <select id="tipoServ" class="form-control">
+                        <option value="CITA">Consulta médica</option>
+                        <option value="LAB">Exámenes de laboratorio</option>
+                    </select>
+                </div>
+                <div class="form-group flex-1">
+                    <label>ID de referencia</label>
+                    <input type="number" id="refId" class="form-control" placeholder="No. cita / orden">
+                </div>
+                <div class="form-group flex-1">
+                    <label>DPI del paciente</label>
+                    <input type="text" id="refDpi" class="form-control" placeholder="13 dígitos" maxlength="13">
+                </div>
+                <div class="form-group">
+                    <button onclick="buscarCobro()" class="btn btn-primary">Buscar cuentas</button>
+                </div>
+            </div>
+
+            <table class="table mt-4 d-none" id="tb-cuentas-container">
+                <thead><tr><th>No. referencia</th><th>Paciente</th><th>Servicio</th><th>Monto</th><th>Acción</th></tr></thead>
+                <tbody id="tb-cuentas"></tbody>
+            </table>
+        </div>
+
+        <div class="card d-none" id="cobro-area">
+            <h3 class="text-error">Total a cobrar: Q<span id="c-monto"></span></h3>
+            <p class="text-muted mt-4">Paciente: <span id="c-paciente" class="font-bold"></span> | Servicio: <span id="c-tipo-text"></span> #<span id="c-id-text"></span></p>
+            <hr style="margin: 1.5rem 0; border: 0; border-top: 1px solid var(--line);">
+            <form id="form-cobro">
+                <input type="hidden" id="c-id">
+                <div class="form-group">
+                    <label>Método de pago presencial</label>
+                    <select id="metodo" class="form-control" required onchange="toggleMetodo()">
+                        <option value="">Seleccione una opción</option>
+                        <option value="EFECTIVO">Efectivo (moneda local)</option>
+                        <option value="VISA">Tarjeta de crédito Visa</option>
+                        <option value="MASTERCARD">Tarjeta de crédito Mastercard</option>
+                        <option value="DEBITO">Tarjeta de débito</option>
+                    </select>
+                </div>
+                <!-- Solución CU-10: Cálculo de cambio en tiempo real -->
+                <div class="form-group d-none" id="div-efectivo">
+                    <label>Monto entregado por paciente (Q)</label>
+                    <input type="number" step="0.01" id="montoRecibido" class="form-control" oninput="calcularCambioVivo()">
+                    <small id="cambio-vivo" class="text-muted" style="display:block; margin-top: 0.5rem; font-weight: 600; color: var(--brass);"></small>
+                </div>
+                <div class="form-group d-none" id="div-tarjeta">
+                    <label>Últimos 4 dígitos del plástico</label>
+                    <input type="text" id="ultimos" class="form-control" maxlength="4" pattern="\d{4}">
+                </div>
+                <div class="d-flex mt-4">
+                    <button type="submit" class="btn btn-success">Registrar ingreso de caja</button>
+                    <button type="button" onclick="cancelarCobro()" class="btn">Cancelar</button>
+                </div>
+            </form>
+        </div>
+
+        <div class="card ticket-card d-none" id="area-comprobante" style="max-width: 420px; margin: 0 auto;">
+            <div style="text-align: center; margin-bottom: 1rem;">
+                <h3>Hospital El Milagro</h3>
+                <p class="text-muted">Comprobante de pago</p>
+            </div>
+            <div class="receipt-box">
+                <p><strong>Transacción:</strong> <span id="rec-trx"></span></p>
+                <p><strong>Fecha:</strong> <span id="rec-fec"></span></p>
+                <p><strong>Paciente:</strong> <span id="rec-pac"></span></p>
+                <p><strong>Concepto:</strong> <span id="rec-con"></span></p>
+                <hr style="margin: 1rem 0; border-top: 1px dashed var(--line);">
+                <h2 style="text-align: right;">Total: Q<span id="rec-tot"></span></h2>
+                <p style="text-align: right;"><strong>Método:</strong> <span id="rec-met"></span></p>
+                <p style="text-align: right; color: var(--brass);"><strong>Cambio/vuelto:</strong> Q<span id="rec-cam"></span></p>
+            </div>
+
+            <div class="d-flex mt-4" style="justify-content: center;">
+                <button class="btn btn-primary" onclick="window.print()">Imprimir recibo</button>
+                <button class="btn btn-success" onclick="nuevoCobro()">Nuevo cobro</button>
+            </div>
+        </div>
+    </main>
+</div>
+<script src="js/app.js"></script>
+<script>
+    App.requireAuth();
+    document.getElementById('user-name').textContent = App.getName() || 'Usuario del Sistema';
+    document.getElementById('user-role').textContent = App.getRole() || '';
+
+    let cuentasPendientes = [];
+
+    function toggleMetodo() {
+        const m = document.getElementById('metodo').value;
+        document.getElementById('div-efectivo').classList.toggle('d-none', m !== 'EFECTIVO');
+        document.getElementById('montoRecibido').required = (m === 'EFECTIVO');
+        document.getElementById('div-tarjeta').classList.toggle('d-none', m === '' || m === 'EFECTIVO');
+        document.getElementById('ultimos').required = (m !== '' && m !== 'EFECTIVO');
+    }
+
+    function calcularCambioVivo() {
+        const monto = parseFloat(document.getElementById('c-monto').innerText) || 0;
+        const recibido = parseFloat(document.getElementById('montoRecibido').value) || 0;
+        const el = document.getElementById('cambio-vivo');
+        el.innerText = recibido >= monto ? `Cambio a devolver: Q${(recibido - monto).toFixed(2)}` : '';
+    }
+
+    async function buscarCobro() {
+        const t = document.getElementById('tipoServ').value, id = document.getElementById('refId').value, dpi = document.getElementById('refDpi').value;
+        const isCita = t === 'CITA';
+
+        if(!id && !dpi) return App.showAlert('msg', 'Ingrese el número de referencia o el DPI del paciente.', true);
+
+        let query = id ? `numero${isCita?'Cita':'Orden'}=${id}` : `dpi=${dpi}`;
+
+        try {
+            cuentasPendientes = await App.apiFetch(isCita ? `/api/caja/citas/buscar?${query}` : `/api/caja/laboratorio/ordenes/buscar?${query}`);
+
+            // Solución CU-06: Distinguir mensaje
+            if(!cuentasPendientes.length) return App.showAlert('msg',
+                isCita ? 'No se encontraron citas pendientes de pago para el criterio ingresado.'
+                    : 'No se encontraron órdenes de laboratorio pendientes de pago para el criterio ingresado.', true);
+
+            document.getElementById('tb-cuentas-container').classList.remove('d-none');
+            document.getElementById('tb-cuentas').innerHTML = cuentasPendientes.map(d => `
+                        <tr>
+                            <td>#${d.id}</td><td>${d.pacienteNombre}</td><td>${isCita?'Consulta médica':'Orden laboratorio'}</td><td class="font-bold">Q${d.monto || d.montoTotal}</td>
+                            <td><button class="btn btn-primary" onclick="prepararCobro(${d.id})">Cobrar</button></td>
+                        </tr>`).join('');
+            App.hideAlert('msg');
+        } catch(e) { App.showAlert('msg', e.message, true); }
+    }
+
+    function prepararCobro(id) {
+        const t = document.getElementById('tipoServ').value;
+        const isCita = t === 'CITA';
+        const d = cuentasPendientes.find(x => x.id === id);
+
+        document.getElementById('area-busqueda').classList.add('d-none');
+        document.getElementById('cobro-area').classList.remove('d-none');
+        document.getElementById('cambio-vivo').innerText = ''; // Reset
+
+        document.getElementById('c-monto').innerText = d.monto || d.montoTotal;
+        document.getElementById('c-paciente').innerText = d.pacienteNombre;
+        document.getElementById('c-id-text').innerText = d.id;
+        document.getElementById('c-tipo-text').innerText = isCita ? 'Consulta' : 'Laboratorio';
+        document.getElementById('c-id').value = d.id;
+    }
+
+    function cancelarCobro() {
+        document.getElementById('area-busqueda').classList.remove('d-none');
+        document.getElementById('cobro-area').classList.add('d-none');
+        document.getElementById('cambio-vivo').innerText = ''; // Reset
+        document.getElementById('form-cobro').reset();
+    }
+
+    function nuevoCobro() {
+        document.getElementById('area-comprobante').classList.add('d-none');
+        document.getElementById('area-busqueda').classList.remove('d-none');
+        document.getElementById('tb-cuentas-container').classList.add('d-none');
+        document.getElementById('refId').value = '';
+        document.getElementById('refDpi').value = '';
+        App.hideAlert('msg');
+    }
+
+    document.getElementById('form-cobro').addEventListener('submit', async(e)=>{
+        e.preventDefault();
+        App.hideAlert('msg');
+        const t = document.getElementById('tipoServ').value, isCita = t === 'CITA';
+        const metodo = document.getElementById('metodo').value;
+        const ultimos = document.getElementById('ultimos').value;
+
+        // Solución CU-06 / CU-10: Validación explícita de dígitos de tarjeta
+        if (metodo !== 'EFECTIVO') {
+            if (!/^\d{4}$/.test(ultimos)) {
+                return App.showAlert('msg', 'Ingrese los últimos 4 dígitos de la tarjeta.', true);
+            }
+        }
+
+        // Solución CU-06: Validación en cliente de "monto recibido < monto a cobrar"
+        if (metodo === 'EFECTIVO') {
+            const monto = parseFloat(document.getElementById('c-monto').innerText);
+            const recibido = parseFloat(document.getElementById('montoRecibido').value);
+            if (isNaN(recibido) || recibido < monto) {
+                return App.showAlert('msg', `El monto recibido (Q${recibido || 0}) es menor al monto a cobrar (Q${monto}).`, true);
+            }
+        }
+
+        const payload = {
+            metodoPago: metodo,
+            montoRecibido: document.getElementById('montoRecibido').value || null,
+            ultimosCuatroDigitos: ultimos || null
+        };
+
+        if(isCita) payload.citaId = parseInt(document.getElementById('c-id').value);
+        else payload.ordenId = parseInt(document.getElementById('c-id').value);
+
+        const btnCobrar = e.target.querySelector('button[type="submit"]');
+        btnCobrar.disabled = true;
+        const textoOriginal = btnCobrar.innerText;
+        btnCobrar.innerText = "Procesando...";
+
+        try {
+            const data = await App.apiFetch(isCita ? '/api/caja/cobro' : '/api/caja/laboratorio/cobro', 'POST', payload);
+
+            document.getElementById('cobro-area').classList.add('d-none');
+            document.getElementById('area-comprobante').classList.remove('d-none');
+
+            document.getElementById('rec-trx').innerText = data.numeroTransaccion;
+            document.getElementById('rec-fec').innerText = new Date().toLocaleString();
+            document.getElementById('rec-pac').innerText = data.pacienteNombre;
+            document.getElementById('rec-con').innerText = isCita ? 'Pago consulta médica' : 'Pago orden de laboratorio';
+            document.getElementById('rec-tot').innerText = data.monto;
+            document.getElementById('rec-met').innerText = data.metodoPago;
+            document.getElementById('rec-cam').innerText = data.cambio || '0.00';
+
+            App.showAlert('msg', data.mensaje);
+        } catch(err) {
+            App.showAlert('msg', err.message, true);
+            btnCobrar.disabled = false;
+            btnCobrar.innerText = textoOriginal;
+        }
+    });
+
+    function toggleMobileSidebar() {
+        document.getElementById('sidebar').classList.toggle('mobile-open');
+        document.getElementById('backdrop').classList.toggle('show');
+    }
+    function toggleSidebarCollapse() {
+        document.getElementById('sidebar').classList.toggle('collapsed');
+        document.getElementById('collapse-icon').classList.toggle('fa-angles-left');
+        document.getElementById('collapse-icon').classList.toggle('fa-angles-right');
+    }
+</script>
+</body>
+</html>
