@@ -33,3 +33,4 @@ variables:
   usuario_admin_id: ""
   enfermero_id: ""
   cajero_id: ""
+  paciente_directo_id: ""
