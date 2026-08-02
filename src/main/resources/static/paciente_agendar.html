@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Agendar Cita Médica - Hospital El Milagro</title>
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div class="aurora aurora-a"></div>
+<div class="aurora aurora-b"></div>
+<div class="paper-grain"></div>
+
+<div class="app-container">
+    <div class="backdrop" id="backdrop" onclick="toggleMobileSidebar()"></div>
+    <button class="sidebar-toggle-mobile" onclick="toggleMobileSidebar()" aria-label="Abrir menú">
+        <i class="fa-solid fa-bars"></i>
+    </button>
+
+    <nav class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <h3>Hospital El Milagro</h3>
+            <button class="sidebar-collapse-btn" onclick="toggleSidebarCollapse()" aria-label="Colapsar menú">
+                <i class="fa-solid fa-angles-left" id="collapse-icon"></i>
+            </button>
+        </div>
+        <div class="user-badge">
+            <span id="user-name"></span>
+            <span id="user-role"></span>
+        </div>
+        <div class="nav-menu" id="sidebar-menu"></div>
+    </nav>
+
+    <main class="main-content">
+        <h2>Asistente de Reservación de Citas</h2>
+        <div id="msg" class="alert"></div>
+
+        <div class="card ticket-card" style="max-width: 640px; margin: 0 auto;">
+            <div class="wizard-steps">
+                <span id="ind-1" class="active"><i class="fa-solid fa-hospital"></i> Sede</span>
+                <span id="ind-2">Especialidad</span>
+                <span id="ind-3">Médico</span>
+                <span id="ind-4">Horario</span>
+                <span id="ind-5">Confirmación</span>
+            </div>
+
+            <form id="form-cita">
+                <div id="paso-1" class="wizard-step">
+                    <h3 class="mb-4">Seleccione la sede</h3>
+                    <div class="form-group"><select id="suc" class="form-control" required></select></div>
+                    <button type="button" class="btn btn-primary mt-4" onclick="siguiente(1)">Continuar a especialidad <i class="fa-solid fa-arrow-right"></i></button>
+                </div>
+
+                <div id="paso-2" class="wizard-step d-none">
+                    <h3 class="mb-4">Seleccione la especialidad</h3>
+                    <div class="form-group"><select id="esp" class="form-control" required></select></div>
+                    <div class="d-flex mt-4" style="justify-content: space-between;">
+                        <button type="button" class="btn" onclick="volver(2)"><i class="fa-solid fa-arrow-left"></i> Volver</button>
+                        <button type="button" class="btn btn-primary" onclick="siguiente(2)">Continuar a médico <i class="fa-solid fa-arrow-right"></i></button>
+                    </div>
+                </div>
+
+                <div id="paso-3" class="wizard-step d-none">
+                    <h3 class="mb-4">Seleccione el médico tratante</h3>
+                    <div class="form-group"><select id="med" class="form-control" required></select></div>
+                    <div class="d-flex mt-4" style="justify-content: space-between;">
+                        <button type="button" class="btn" onclick="volver(3)"><i class="fa-solid fa-arrow-left"></i> Volver</button>
+                        <button type="button" class="btn btn-primary" onclick="siguiente(3)">Continuar a horario <i class="fa-solid fa-arrow-right"></i></button>
+                    </div>
+                </div>
+
+                <div id="paso-4" class="wizard-step d-none">
+                    <h3 class="mb-4">Seleccione fecha y hora</h3>
+                    <div class="form-group"><label>Tipo de consulta</label><select id="tipo" class="form-control" required></select></div>
+                    <div class="d-flex">
+                        <div class="form-group flex-1"><label>Fecha deseada</label><input type="date" id="fecha" class="form-control" required onchange="buscarHorarios()"></div>
+                        <div class="form-group flex-1"><label>Horarios disponibles</label><select id="hora" class="form-control" required><option value="">Seleccione una fecha</option></select></div>
+                    </div>
+                    <div class="d-flex mt-4" style="justify-content: space-between;">
+                        <button type="button" class="btn" onclick="volver(4)"><i class="fa-solid fa-arrow-left"></i> Volver</button>
+                        <button type="button" class="btn btn-primary" onclick="siguiente(4)">Ir a confirmación <i class="fa-solid fa-arrow-right"></i></button>
+                    </div>
+                </div>
+
+                <div id="paso-5" class="wizard-step d-none">
+                    <h3 class="mb-4">Confirmar datos y motivo</h3>
+                    <div class="well">
+                        <p><strong>Médico:</strong> <span id="res-med"></span></p>
+                        <p><strong>Sede:</strong> <span id="res-suc"></span></p>
+                        <p><strong>Fecha:</strong> <span id="res-fec"></span></p>
+                    </div>
+                    <div class="form-group mt-4">
+                        <label>Motivo de la consulta (requerido por el médico)</label>
+                        <textarea id="motivo" class="form-control" rows="3" required minlength="10" maxlength="2000"></textarea>
+                    </div>
+
+                    <!-- Adjuntar documento PDF (CU-03) -->
+                    <div class="form-group mt-4">
+                        <label>Adjuntar documento / referencia (PDF, máximo 2 MB, opcional)</label>
+                        <input type="file" id="doc_ref" class="form-control" accept="application/pdf">
+                    </div>
+
+                    <div class="d-flex mt-4" style="justify-content: space-between;">
+                        <button type="button" class="btn" onclick="volver(5)"><i class="fa-solid fa-arrow-left"></i> Volver</button>
+                        <button type="submit" class="btn btn-success" id="btn-finalizar">Finalizar reservación</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </main>
+</div>
+<script src="js/app.js"></script>
+<script>
+    App.requireAuth();
+    document.getElementById('user-name').textContent = App.getName() || 'Usuario del Sistema';
+    document.getElementById('user-role').textContent = App.getRole() || '';
+
+    // Solución QA (secuestro de identidad): cuando la recepcionista agenda un walk-in,
+    // el pacienteId real llega por la URL; de lo contrario se usa el usuario logueado.
+    const urlParamsPaciente = new URLSearchParams(window.location.search);
+    const esWalkInRecepcion = App.getRole() && App.getRole().toUpperCase() === 'RECEPCIONISTA' && urlParamsPaciente.has('pacienteId');
+    const pacienteFinalId = esWalkInRecepcion ? parseInt(urlParamsPaciente.get('pacienteId')) : App.getUid();
+
+    let catEspSuc = [];
+
+    async function init() {
+        try {
+            const [suc, esp, tip, asignaciones] = await Promise.all([
+                App.apiFetch('/api/sucursales'),
+                App.apiFetch('/api/especialidades'),
+                App.apiFetch('/api/tipos-cita'),
+                App.apiFetch('/api/sucursal-especialidad')
+            ]);
+            catEspSuc = asignaciones.filter(a => a.activo);
+            document.getElementById('suc').innerHTML = `<option value="">Seleccione una sede</option>` + suc.filter(d=>d.activo).map(d=>`<option value="${d.id}">${d.nombre}</option>`).join('');
+            document.getElementById('tipo').innerHTML = `<option value="">Seleccione una tarifa</option>` + tip.filter(d=>d.activo).map(d=>`<option value="${d.id}">${d.nombre} (Q${d.precio})</option>`).join('');
+        } catch(e) { App.showAlert('msg', e.message, true); }
+    }
+
+    async function siguiente(pasoActual) {
+        App.hideAlert('msg');
+        try {
+            if (pasoActual === 1) {
+                const selectSede = document.getElementById('suc');
+                if (!selectSede.reportValidity()) return;
+                const sucVal = selectSede.value;
+                const nombreSede = selectSede.options[selectSede.selectedIndex].text;
+
+                const sId = parseInt(sucVal);
+                const disponibles = catEspSuc.filter(a => a.sucursalId === sId);
+
+                if(disponibles.length === 0) {
+                    window.scrollTo(0,0);
+                    return App.showAlert('msg', `No hay especialidades disponibles para la sucursal ${nombreSede}. Seleccione otra sede o contacte a administración.`, true);
+                }
+                document.getElementById('esp').innerHTML = `<option value="">Seleccione una especialidad</option>` + disponibles.map(d=>`<option value="${d.especialidadId}">${d.especialidadNombre}</option>`).join('');
+
+            } else if (pasoActual === 2) {
+                const selectEsp = document.getElementById('esp');
+                if (!selectEsp.reportValidity()) return;
+                const espVal = selectEsp.value;
+                const sucVal = document.getElementById('suc').value;
+
+                document.getElementById('med').innerHTML = `<option value="">Buscando médicos...</option>`;
+
+                const data = await App.apiFetch(`/api/citas/medicos-disponibles?sucursalId=${sucVal}&especialidadId=${espVal}`);
+
+                if(data.length === 0) {
+                    document.getElementById('med').innerHTML = `<option value="">Sin médicos disponibles</option>`;
+                    window.scrollTo(0,0);
+
+                    // --- AQUÍ ESTÁ LA CORRECCIÓN ---
+                    const selectSede = document.getElementById('suc');
+                    const nombreSede = selectSede.options[selectSede.selectedIndex].text;
+                    const nombreEspecialidad = selectEsp.options[selectEsp.selectedIndex].text;
+                    // -------------------------------
+
+                    return App.showAlert('msg', `No se encontraron medicos disponibles para la especialidad ${nombreEspecialidad} en la Sede ${nombreSede}. Por favor, seleccione otra especialidad o sede.`, true);
+                }
+                document.getElementById('med').innerHTML = `<option value="">Seleccione un médico</option>` + data.map(m=>`<option value="${m.id}">${m.nombreCompleto}</option>`).join('');
+
+            } else if (pasoActual === 3) {
+                const selectMed = document.getElementById('med');
+                if (!selectMed.reportValidity()) return;
+                document.getElementById('fecha').min = new Date().toISOString().split("T")[0];
+
+                document.getElementById('hora').innerHTML = '<option value="">Seleccione una fecha</option>';
+                if (document.getElementById('fecha').value) {
+                    await buscarHorarios();
+                }
+
+            } else if (pasoActual === 4) {
+                const selectTipo = document.getElementById('tipo');
+                const selectHora = document.getElementById('hora');
+                if (!selectTipo.reportValidity()) return;
+                if (!selectHora.reportValidity()) return;
+                document.getElementById('res-med').textContent = document.getElementById('med').options[document.getElementById('med').selectedIndex].text;
+                document.getElementById('res-suc').textContent = document.getElementById('suc').options[document.getElementById('suc').selectedIndex].text;
+                document.getElementById('res-fec').textContent = document.getElementById('hora').value.replace('T', ' a las ');
+            }
+
+            document.getElementById(`paso-${pasoActual}`).classList.add('d-none');
+            document.getElementById(`paso-${pasoActual + 1}`).classList.remove('d-none');
+            document.getElementById(`ind-${pasoActual}`).classList.remove('active');
+            document.getElementById(`ind-${pasoActual + 1}`).classList.add('active');
+
+        } catch (error) {
+            window.scrollTo(0,0);
+            App.showAlert('msg', 'Atención: ' + error.message, true);
+        }
+    }
+
+    // FIX CU-03 FA04: al volver, se limpian explícitamente las selecciones de los
+    // pasos posteriores para que no quede ningún residuo, aunque en la práctica
+    // los combos ya se recargaban al reingresar.
+    function volver(pasoActual) {
+        App.hideAlert('msg');
+        if (pasoActual === 2) {
+            document.getElementById('med').innerHTML = '';
+            document.getElementById('hora').innerHTML = '<option value="">Seleccione una fecha</option>';
+        } else if (pasoActual === 3) {
+            document.getElementById('hora').innerHTML = '<option value="">Seleccione una fecha</option>';
+        }
+        document.getElementById(`paso-${pasoActual}`).classList.add('d-none');
+        document.getElementById(`paso-${pasoActual - 1}`).classList.remove('d-none');
+        document.getElementById(`ind-${pasoActual}`).classList.remove('active');
+        document.getElementById(`ind-${pasoActual - 1}`).classList.add('active');
+    }
+
+    async function buscarHorarios() {
+        App.hideAlert('msg');
+        try {
+            const m = document.getElementById('med').value, f = document.getElementById('fecha').value;
+            const hr = document.getElementById('hora');
+            if(m && f) {
+                hr.innerHTML = `<option value="">Cargando horarios...</option>`;
+                const data = await App.apiFetch(`/api/citas/horarios-disponibles?medicoId=${m}&fecha=${f}`);
+                hr.innerHTML = data.length ? `<option value="">Seleccione un horario</option>` + data.map(h=>`<option value="${h}">${h.split('T')[1].substring(0,5)}</option>`).join('') : `<option value="">Sin horarios en esta fecha</option>`;
+            }
+        } catch (error) {
+            window.scrollTo(0,0);
+            App.showAlert('msg', 'Error al cargar horarios: ' + error.message, true);
+        }
+    }
+
+    document.getElementById('form-cita').addEventListener('submit', async(e)=>{
+        e.preventDefault();
+        App.hideAlert('msg');
+        const btnFinalizar = document.getElementById('btn-finalizar');
+        // FIX QA: antes solo el min del date picker bloqueaba fechas pasadas, sin avisar
+        const horaSeleccionada = document.getElementById('hora').value;
+        if (horaSeleccionada && new Date(horaSeleccionada) <= new Date()) {
+            window.scrollTo(0,0);
+            return App.showAlert('msg', 'La fecha y hora seleccionadas ya pasaron. Elija una fecha y hora futuras.', true);
+        }
+
+        // Validación del Archivo (Regla de negocio CU-03-04)
+        const fileInput = document.getElementById('doc_ref');
+        if (fileInput.files.length > 0) {
+            const file = fileInput.files[0];
+            if (file.type !== "application/pdf") {
+                window.scrollTo(0,0);
+                return App.showAlert('msg', 'El documento debe ser un archivo PDF válido.', true);
+            }
+            if (file.size > 2 * 1024 * 1024) { // 2MB
+                window.scrollTo(0,0);
+                return App.showAlert('msg', 'El tamaño del documento excede el máximo permitido de 2 MB.', true);
+            }
+        }
+
+        btnFinalizar.disabled = true;
+
+        try {
+            const data = await App.apiFetch('/api/citas', 'POST', {
+                // FIX CRÍTICO CU-03 (secuestro de identidad): antes se enviaba
+                // App.getUid() aquí, ignorando pacienteFinalId. Con un walk-in de
+                // recepción esto creaba la cita a nombre de la recepcionista.
+                pacienteId: pacienteFinalId,
+                sucursalId: parseInt(document.getElementById('suc').value),
+                especialidadId: parseInt(document.getElementById('esp').value),
+                medicoId: parseInt(document.getElementById('med').value),
+                tipoCitaId: parseInt(document.getElementById('tipo').value),
+                fechaHora: document.getElementById('hora').value,
+                motivo: document.getElementById('motivo').value
+            });
+
+            let errorArchivo = false;
+
+            // Si adjuntó PDF, se sube ahora que ya existe el id de la cita
+            if (fileInput.files.length > 0) {
+                try {
+                    await App.apiUpload(`/api/citas/${data.id}/documento`, fileInput.files[0]);
+                } catch (errArchivo) {
+                    errorArchivo = true;
+                    window.scrollTo(0,0);
+                    App.showAlert('msg', 'La cita se agendó, pero el documento no pudo cargarse: ' + errArchivo.message, false, true);
+                    // seguimos con el flujo de pago aunque el documento haya fallado
+                }
+            }
+
+            window.scrollTo(0,0);
+
+            // Mostrar mensaje de éxito normal si no hubo advertencias de archivo (ClamAV)
+            if (!errorArchivo) {
+                App.showAlert('msg', 'Reservación temporal creada. Redirigiendo a pasarela de pago seguro...');
+            }
+
+            // Redirección directa al panel de pago
+            const tipoSel = document.getElementById('tipo');
+            const textoTarifa = tipoSel.options[tipoSel.selectedIndex].text;
+            const matchMonto = textoTarifa.match(/Q(\d+(\.\d+)?)/);
+            const monto = matchMonto ? matchMonto[1] : 0;
+
+            // Dar un segundo más de gracia para leer si hubo un warning del archivo
+            const tiempoEspera = errorArchivo ? 3500 : 2000;
+            setTimeout(() => window.location.href = `paciente_citas.html?autoPay=${data.id}&monto=${monto}`, tiempoEspera);
+
+        } catch(err) {
+            window.scrollTo(0,0);
+            App.showAlert('msg', err.message, true);
+            btnFinalizar.disabled = false;
+        }
+    });
+
+    function toggleMobileSidebar() {
+        document.getElementById('sidebar').classList.toggle('mobile-open');
+        document.getElementById('backdrop').classList.toggle('show');
+    }
+    function toggleSidebarCollapse() {
+        document.getElementById('sidebar').classList.toggle('collapsed');
+        document.getElementById('collapse-icon').classList.toggle('fa-angles-left');
+        document.getElementById('collapse-icon').classList.toggle('fa-angles-right');
+    }
+
+    init();
+</script>
+</body>
+</html>
