@@ -11,10 +11,12 @@ import org.umg.sistemamedicoii.models.InventarioMedicamento;
 import org.umg.sistemamedicoii.models.Medicamento;
 import org.umg.sistemamedicoii.models.MovimientoInventario;
 import org.umg.sistemamedicoii.models.Sucursal;
+import org.umg.sistemamedicoii.models.Usuario;
 import org.umg.sistemamedicoii.repository.InventarioMedicamentoRepository;
 import org.umg.sistemamedicoii.repository.MedicamentoRepository;
 import org.umg.sistemamedicoii.repository.MovimientoInventarioRepository;
 import org.umg.sistemamedicoii.repository.SucursalRepository;
+import org.umg.sistemamedicoii.repository.UsuarioRepository;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -30,6 +32,8 @@ public class MovimientoInventarioServiceImpl implements MovimientoInventarioServ
     @Autowired private InventarioMedicamentoRepository inventarioRepository;
     @Autowired private MedicamentoRepository medicamentoRepository;
     @Autowired private SucursalRepository sucursalRepository;
+    // Solución CU-15 (gap #1 del QA): se necesita para resolver el nombre del usuario que registró el movimiento
+    @Autowired private UsuarioRepository usuarioRepository;
 
     @Override
     public List<MovimientoInventarioResponseDTO> listar() {
@@ -84,6 +88,7 @@ public class MovimientoInventarioServiceImpl implements MovimientoInventarioServ
         movimiento.setCostoUnitario(dto.getCostoUnitario());
         movimiento.setReferencia(dto.getReferencia());
         movimiento.setMotivo(dto.getMotivo());
+        movimiento.setActivo(true);
 
         var auth = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
         if (auth != null && auth.getPrincipal() instanceof org.umg.sistemamedicoii.config.security.UsuarioPrincipal principal) {
@@ -97,13 +102,27 @@ public class MovimientoInventarioServiceImpl implements MovimientoInventarioServ
         return toResponseDTO(guardado);
     }
 
+    // Solución CU-15 (gap #2 del QA): habilita el botón "Desactivar/Activar" de la tabla
+    @Override
+    @Transactional
+    public MovimientoInventarioResponseDTO toggleEstado(Integer id) {
+        MovimientoInventario movimiento = movimientoRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Movimiento no encontrado."));
+        movimiento.setActivo(!movimiento.isActivo());
+        MovimientoInventario guardado = movimientoRepository.save(movimiento);
+        return toResponseDTO(guardado);
+    }
+
     @Override
     public List<ResumenMensualInventarioResponseDTO> generarResumenMensual(Integer sucursalId, int anio, int mes) {
         LocalDateTime desde = LocalDateTime.of(anio, mes, 1, 0, 0);
         LocalDateTime hasta = desde.plusMonths(1);
 
         List<MovimientoInventario> movimientos = movimientoRepository
-                .findBySucursalIdAndFechaHoraBetweenOrderByFechaHoraAsc(sucursalId, desde, hasta);
+                .findBySucursalIdAndFechaHoraBetweenOrderByFechaHoraAsc(sucursalId, desde, hasta)
+                .stream()
+                .filter(MovimientoInventario::isActivo) // FIX QA: excluir movimientos desactivados del resumen mensual
+                .collect(Collectors.toList());
 
         Map<Integer, List<MovimientoInventario>> agrupadosPorMedicamento = movimientos.stream()
                 .collect(Collectors.groupingBy(m -> m.getMedicamento().getId()));
@@ -119,12 +138,26 @@ public class MovimientoInventarioServiceImpl implements MovimientoInventarioServ
 
             int totalEntradas = 0;
             int totalSalidas = 0;
+            java.math.BigDecimal montoEntradas = java.math.BigDecimal.ZERO;
+            java.math.BigDecimal montoSalidas = java.math.BigDecimal.ZERO;
 
             for (MovimientoInventario m : movs) {
+                // Fallback: si el movimiento no trae costoUnitario propio (p.ej. Venta/Reclamo,
+                // donde el campo es opcional), se usa el precio actual del medicamento como
+                // aproximación para que el reporte no muestre Q0 sin sentido.
+                java.math.BigDecimal costo = m.getCostoUnitario() != null
+                        ? m.getCostoUnitario()
+                        : m.getMedicamento().getPrecio();
+                java.math.BigDecimal subtotal = costo != null
+                        ? costo.multiply(java.math.BigDecimal.valueOf(m.getCantidad()))
+                        : java.math.BigDecimal.ZERO;
+
                 if (esMovimientoEntrada(m.getTipoMovimiento())) {
                     totalEntradas += m.getCantidad();
+                    montoEntradas = montoEntradas.add(subtotal);
                 } else {
                     totalSalidas += m.getCantidad();
+                    montoSalidas = montoSalidas.add(subtotal);
                 }
             }
 
@@ -136,6 +169,8 @@ public class MovimientoInventarioServiceImpl implements MovimientoInventarioServ
             resumen.setStockInicial(primerMovimiento.getStockAnterior());
             resumen.setStockFinal(ultimoMovimiento.getStockNuevo());
             resumen.setCantidadMovimientos(movs.size());
+            resumen.setMontoEntradas(montoEntradas.setScale(2, java.math.RoundingMode.HALF_UP));
+            resumen.setMontoSalidas(montoSalidas.setScale(2, java.math.RoundingMode.HALF_UP));
 
             resumenList.add(resumen);
         }
@@ -191,6 +226,15 @@ public class MovimientoInventarioServiceImpl implements MovimientoInventarioServ
         dto.setReferencia(mov.getReferencia());
         dto.setMotivo(mov.getMotivo());
         dto.setFechaHora(mov.getFechaHora());
+        dto.setActivo(mov.isActivo());
+
+        // Solución CU-15 (gap #1 del QA): columna "Usuario" obligatoria en la tabla.
+        // CU-15 define la columna como "Usuario" (nombre de usuario/login), no "Nombre completo".
+        if (mov.getUsuarioId() != null) {
+            usuarioRepository.findById(mov.getUsuarioId())
+                    .ifPresent(u -> dto.setUsuarioNombre(u.getNombreUsuario()));
+        }
+
         return dto;
     }
 }

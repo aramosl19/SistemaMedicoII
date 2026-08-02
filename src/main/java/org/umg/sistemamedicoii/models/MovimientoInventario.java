@@ -51,4 +51,10 @@ public class MovimientoInventario {
 
     @Column(nullable = false)
     private LocalDateTime fechaHora;
+
+    // Solución CU-15 (gap #2 del QA): la tabla del spec pide botones "Ver" y
+    // "Desactivar/Activar" por fila; el registro en sí es un log de auditoría
+    // (nunca se borra), por lo que "desactivar" se modela como un flag visual/lógico.
+    @Column(nullable = false)
+    private boolean activo = true;
 }

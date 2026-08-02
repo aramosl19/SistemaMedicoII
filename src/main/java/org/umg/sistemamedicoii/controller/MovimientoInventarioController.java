@@ -41,4 +41,10 @@ public class MovimientoInventarioController {
 
         return movimientoService.generarResumenMensual(sucursalId, anio, mes);
     }
+
+    // Solución CU-15 (gap #2 del QA): endpoint que soporta el botón "Desactivar/Activar" de la tabla
+    @PutMapping("/{id}/estado")
+    public MovimientoInventarioResponseDTO toggleEstado(@PathVariable Integer id) {
+        return movimientoService.toggleEstado(id);
+    }
 }

@@ -34,6 +34,7 @@ public class InventarioMedicamentoServiceImpl implements InventarioMedicamentoSe
     private InventarioMedicamentoResponseDTO toResponseDTO(InventarioMedicamento inv) {
         InventarioMedicamentoResponseDTO dto = new InventarioMedicamentoResponseDTO();
         dto.setId(inv.getId());
+        dto.setMedicamentoId(inv.getMedicamento().getId());
         dto.setMedicamentoNombre(inv.getMedicamento().getNombre());
         dto.setSucursalNombre(inv.getSucursal().getNombre());
         dto.setStockActual(inv.getStockActual());
