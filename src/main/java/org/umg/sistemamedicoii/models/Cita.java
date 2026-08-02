@@ -1,6 +1,5 @@
 package org.umg.sistemamedicoii.models;
 
-
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
@@ -15,7 +14,6 @@ public class Cita {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
-
 
     @ManyToOne
     @JoinColumn(name = "paciente_id",nullable = false)
@@ -42,11 +40,16 @@ public class Cita {
 
     @Column(name = "tipo_seguimiento", nullable = true, length = 100)
     private String tipoSeguimiento;
-    
+
+    // Solución CU-12 (gap del QA): RN-CU11-03 exige motivo del seguimiento Y prioridad;
+    // el formulario solo pedía motivo, faltaba este campo
+    @Column(name = "prioridad_seguimiento", nullable = true, length = 20)
+    private String prioridadSeguimiento;
+
     @ManyToOne
     @JoinColumn(name = "estado_id", nullable = false)
     private EstadoCita estado;
-    
+
     @Column (nullable = false)
     private LocalDateTime fechaHora;
 
@@ -70,4 +73,14 @@ public class Cita {
 
     @Column(nullable = true, precision = 10, scale = 2) // true por ahora, por si tienes datos viejos
     private java.math.BigDecimal precio;
+
+    // CU-03: documento/referencia PDF adjunto por el paciente al agendar
+    @Column(name = "documento_url", nullable = true, length = 500)
+    private String documentoUrl;
+
+    @Column(name = "documento_nombre_original", nullable = true, length = 255)
+    private String documentoNombreOriginal;
+
+    @Column(name = "documento_estado", nullable = true, length = 20)
+    private String documentoEstado; // LIMPIO, RECHAZADO
 }
