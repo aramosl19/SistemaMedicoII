@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Despacho de Farmacia - Hospital El Milagro</title>
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div class="aurora aurora-a"></div>
+<div class="aurora aurora-b"></div>
+<div class="paper-grain"></div>
+
+<div class="app-container">
+    <div class="backdrop" id="backdrop" onclick="toggleMobileSidebar()"></div>
+    <button class="sidebar-toggle-mobile" onclick="toggleMobileSidebar()" aria-label="Abrir menú">
+        <i class="fa-solid fa-bars"></i>
+    </button>
+
+    <nav class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <h3>Hospital El Milagro</h3>
+            <button class="sidebar-collapse-btn" onclick="toggleSidebarCollapse()" aria-label="Colapsar menú">
+                <i class="fa-solid fa-angles-left" id="collapse-icon"></i>
+            </button>
+        </div>
+        <div class="user-badge">
+            <span id="user-name"></span>
+            <span id="user-role"></span>
+        </div>
+        <div class="nav-menu" id="sidebar-menu"></div>
+    </nav>
+
+    <main class="main-content">
+        <h2>Despacho de Farmacia</h2>
+        <div id="msg" class="alert"></div>
+
+        <div class="card">
+            <!-- FIX CU-11: selector de criterio explícito, incluye ID de Consulta -->
+            <form id="form-buscar" class="d-flex" onsubmit="buscar(event)">
+                <div class="form-group" style="min-width: 180px;">
+                    <label>Buscar por</label>
+                    <select id="criterioTipo" class="form-control">
+                        <option value="recetaId">ID de Receta</option>
+                        <option value="consultaId">ID de Consulta</option>
+                        <option value="dpi">DPI del paciente</option>
+                    </select>
+                </div>
+                <div class="form-group flex-1">
+                    <label>Valor</label>
+                    <input type="text" id="criterio" class="form-control" placeholder="Ingrese el valor a buscar" required>
+                </div>
+                <div class="form-group" style="align-self: flex-end;">
+                    <button type="submit" class="btn btn-primary">Buscar receta</button>
+                </div>
+            </form>
+        </div>
+
+        <div class="card d-none" id="area-recetas">
+            <h3>Recetas encontradas</h3>
+            <!-- Solución CU-11: Columnas de Estado y Notas -->
+            <table class="table mt-4">
+                <thead><tr><th>No. receta</th><th>Paciente</th><th>Consulta</th><th>Vigencia</th><th>Notas Médicas</th><th>Acciones</th></tr></thead>
+                <tbody id="tb-recetas"></tbody>
+            </table>
+        </div>
+
+        <div class="card d-none" id="area-despacho">
+            <div style="display:flex; justify-content:space-between; align-items:flex-end;">
+                <div>
+                    <h3>Detalle de despacho — Receta #<span id="lbl-receta"></span></h3>
+                    <p class="mt-4">Paciente: <span id="lbl-paciente" class="font-bold"></span></p>
+                </div>
+                <!-- Solución CU-11: Mostrar Total del despacho en tiempo real -->
+                <h3 class="text-primary">Total del Despacho: Q<span id="lbl-total">0.00</span></h3>
+            </div>
+
+            <form id="form-despacho" class="mt-4">
+                <input type="hidden" id="hdn-receta-id">
+                <table class="table mb-4">
+                    <thead><tr><th>Medicamento</th><th>Dosis</th><th>Recetado</th><th>Stock (Sede)</th><th>A despachar</th><th>Sustituto (opcional)</th></tr></thead>
+                    <tbody id="tb-detalle"></tbody>
+                </table>
+
+                <div class="d-flex mt-4 well" style="justify-content: flex-end; align-items: center;">
+                    <p class="text-muted" style="margin-right:auto; font-size: 0.85rem;">Nota: El cobro físico es responsabilidad de farmacia fuera de este sistema.</p>
+                    <div class="form-group">
+                        <button type="button" class="btn btn-danger" onclick="rechazar()">Registrar abandono</button>
+                        <button type="submit" class="btn btn-success">Confirmar Despacho</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </main>
+</div>
+<script src="js/app.js"></script>
+<script>
+    App.requireAuth();
+    document.getElementById('user-name').textContent = App.getName() || 'Usuario del Sistema';
+    document.getElementById('user-role').textContent = App.getRole() || '';
+
+    let medicamentosCatalogo = [];
+    let inventarioSede = [];
+    let detalleRecetaActual = [];
+
+    async function buscar(e) {
+        e.preventDefault();
+        const criterio = document.getElementById('criterio').value.trim();
+        const tipo = document.getElementById('criterioTipo').value;
+        const url = `/api/farmacia/recetas/buscar?${tipo}=${encodeURIComponent(criterio)}`;
+
+        try {
+            const data = await App.apiFetch(url);
+
+            const hoy = new Date();
+
+            document.getElementById('tb-recetas').innerHTML = data.length ? data.map(r => {
+                const fEmision = new Date(r.fechaEmision);
+                const diffTime = Math.abs(hoy - fEmision);
+                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                const esVigente = diffDays <= 7;
+
+                return `
+                <tr>
+                    <td>${r.id}</td><td>${r.pacienteNombre}</td><td>${r.medicoNombre}</td>
+                    <td>
+                        ${esVigente
+                    ? `<span class="text-success font-bold">Vigente (${diffDays} días)</span>`
+                    : `<span class="badge badge-danger">Vencida (${diffDays} días)</span>`}
+                    </td>
+                    <td>${r.notas ? r.notas.substring(0, 30)+'...' : 'Ninguna'}</td>
+                    <td><button class="btn btn-primary" ${!esVigente ? 'disabled' : ''} onclick="cargarDetalle(${r.id})">Seleccionar</button></td>
+                </tr>`;
+            }).join('') : `<tr><td colspan="6" class="text-muted">No se encontraron recetas.</td></tr>`;
+
+            document.getElementById('area-recetas').classList.remove('d-none');
+            document.getElementById('area-despacho').classList.add('d-none');
+            App.hideAlert('msg');
+        } catch(err) { App.showAlert('msg', err.message, true); }
+    }
+
+    async function cargarDetalle(id) {
+        try {
+            if (medicamentosCatalogo.length === 0) {
+                medicamentosCatalogo = await App.apiFetch('/api/medicamentos');
+            }
+
+            const me = await App.apiFetch('/api/usuarios/me');
+            inventarioSede = await App.apiFetch('/api/inventario?sucursalId=' + me.sucursalId);
+
+            const data = await App.apiFetch(`/api/farmacia/recetas/${id}/detalle`);
+            document.getElementById('lbl-receta').textContent = data.id;
+            document.getElementById('lbl-paciente').textContent = data.pacienteNombre;
+            document.getElementById('hdn-receta-id').value = data.id;
+
+            detalleRecetaActual = data.medicamentos;
+
+            const opts = `<option value="">Sin sustituir</option>` + medicamentosCatalogo.filter(m=>m.activo).map(m=>`<option value="${m.id}">${m.nombre}</option>`).join('');
+
+            document.getElementById('tb-detalle').innerHTML = data.medicamentos.map((d, index) => {
+                const invItem = inventarioSede.find(i => i.medicamentoId === d.medicamentoId);
+                const stock = invItem ? invItem.stockActual : 0;
+
+                // Solución CU-11 FA01: Exponer mensaje en pantalla de alerta de stock antes de actuar
+                return `
+                <tr class="item-fila" data-id="${d.id}" data-index="${index}">
+                    <td>${d.medicamentoNombre}</td>
+                    <td>${d.dosis}</td>
+                    <td>${d.cantidad}</td>
+                    <td class="font-bold ${stock < d.cantidad ? 'text-error' : 'text-success'}">
+                        ${stock} ud.
+                        ${!invItem ? '<br><small class="text-error" style="font-weight:normal;">Sin inventario registrado</small>'
+                    : (stock <= (invItem.stockMinimo || 0) ? `<br><small class="text-error" style="font-weight:normal;">Stock bajo — disponible: ${stock} (mínimo: ${invItem.stockMinimo || 0})</small>` : '')}
+                    </td>
+                    <td><input type="number" class="form-control c-cant" value="${Math.min(d.cantidad, stock)}" min="0" max="${d.cantidad}" style="width: 80px;" oninput="calcularTotal()"></td>
+                    <td>
+                        <select class="form-control c-sus" style="margin-bottom: 5px;">${opts}</select>
+                        <input type="text" class="form-control c-razon d-none" placeholder="Razón de sustitución">
+                    </td>
+                </tr>
+            `}).join('');
+
+            document.querySelectorAll('.c-sus').forEach(s => {
+                s.addEventListener('change', (ev) => {
+                    const razon = ev.target.nextElementSibling;
+                    if(ev.target.value) {
+                        razon.classList.remove('d-none');
+                        razon.required = true;
+
+                        // Solución CU-11 FA02: Mostrar notificación visual al escoger sustituto
+                        const nombreOriginal = ev.target.closest('tr').children[0].innerText;
+                        const nombreSustituto = ev.target.options[ev.target.selectedIndex].text;
+                        App.showAlert('msg', `Medicamento ${nombreOriginal} sustituido por ${nombreSustituto}. El médico tratante será notificado.`);
+                    } else {
+                        razon.classList.add('d-none');
+                        razon.required = false;
+                        razon.value = '';
+                        App.hideAlert('msg');
+                    }
+                    calcularTotal();
+                });
+            });
+
+            calcularTotal();
+
+            document.getElementById('area-recetas').classList.add('d-none');
+            document.getElementById('area-despacho').classList.remove('d-none');
+        } catch(err) { App.showAlert('msg', err.message, true); }
+    }
+
+    function calcularTotal() {
+        let total = 0;
+        Array.from(document.querySelectorAll('.item-fila')).forEach(row => {
+            const index = parseInt(row.getAttribute('data-index'));
+            const cant = parseInt(row.querySelector('.c-cant').value) || 0;
+            const susId = row.querySelector('.c-sus').value;
+
+            let precio = 0;
+            if (susId) {
+                const med = medicamentosCatalogo.find(m => m.id == susId);
+                precio = med ? med.precio : 0;
+            } else {
+                precio = detalleRecetaActual[index].precioUnitario;
+            }
+
+            total += (cant * precio);
+        });
+        document.getElementById('lbl-total').textContent = total.toFixed(2);
+    }
+
+    document.getElementById('form-despacho').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const items = Array.from(document.querySelectorAll('.item-fila')).map(row => {
+            const sus = row.querySelector('.c-sus').value;
+            return {
+                detalleRecetaId: parseInt(row.getAttribute('data-id')),
+                cantidadDespachada: parseInt(row.querySelector('.c-cant').value),
+                medicamentoSustitutoId: sus ? parseInt(sus) : null,
+                razonSustitucion: sus ? row.querySelector('.c-razon').value : null
+            };
+        });
+
+        const itemsFiltrados = items.filter(i => i.cantidadDespachada > 0);
+        if (itemsFiltrados.length === 0) {
+            return App.showAlert('msg', 'Debe despachar al menos una unidad de algún medicamento.', true);
+        }
+
+        const payload = {
+            recetaId: parseInt(document.getElementById('hdn-receta-id').value),
+            items: itemsFiltrados
+        };
+
+        try {
+            const res = await App.apiFetch('/api/farmacia/despacho', 'POST', payload);
+            let alertMsg = res.mensaje;
+            if(res.alertasStock && res.alertasStock.length > 0) alertMsg += "\n\n" + res.alertasStock.join("\n");
+            App.showAlert('msg', alertMsg, false, res.alertasStock?.length > 0);
+            document.getElementById('area-despacho').classList.add('d-none');
+            document.getElementById('criterio').value = '';
+        } catch(err) { App.showAlert('msg', err.message, true); }
+    });
+
+    async function rechazar() {
+        const id = document.getElementById('hdn-receta-id').value;
+        if (await App.confirm("¿Confirmar que el paciente abandonó/rechazó la compra? La receta se marcará como procesada.", { titulo: '¿Confirmar abandono?', textoBoton: 'Confirmar' })) {
+            try {
+                const res = await App.apiFetch(`/api/farmacia/recetas/${id}/rechazar`, 'POST');
+                App.showAlert('msg', res.mensaje);
+                document.getElementById('area-despacho').classList.add('d-none');
+                document.getElementById('criterio').value = '';
+            } catch(err) { App.showAlert('msg', err.message, true); }
+        }
+    }
+
+    function toggleMobileSidebar() {
+        document.getElementById('sidebar').classList.toggle('mobile-open');
+        document.getElementById('backdrop').classList.toggle('show');
+    }
+    function toggleSidebarCollapse() {
+        document.getElementById('sidebar').classList.toggle('collapsed');
+        document.getElementById('collapse-icon').classList.toggle('fa-angles-left');
+        document.getElementById('collapse-icon').classList.toggle('fa-angles-right');
+    }
+</script>
+</body>
+</html>
