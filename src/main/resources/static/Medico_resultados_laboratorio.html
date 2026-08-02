@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Resultados de Laboratorio - Hospital El Milagro</title>
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div class="aurora aurora-a"></div>
+<div class="aurora aurora-b"></div>
+<div class="paper-grain"></div>
+
+<div class="app-container">
+    <div class="backdrop" id="backdrop" onclick="toggleMobileSidebar()"></div>
+    <button class="sidebar-toggle-mobile" onclick="toggleMobileSidebar()" aria-label="Abrir menú">
+        <i class="fa-solid fa-bars"></i>
+    </button>
+
+    <nav class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <h3>Hospital El Milagro</h3>
+            <button class="sidebar-collapse-btn" onclick="toggleSidebarCollapse()" aria-label="Colapsar menú">
+                <i class="fa-solid fa-angles-left" id="collapse-icon"></i>
+            </button>
+        </div>
+        <div class="user-badge">
+            <span id="user-name"></span>
+            <span id="user-role"></span>
+        </div>
+        <div class="nav-menu" id="sidebar-menu"></div>
+    </nav>
+
+    <main class="main-content">
+        <h2>Resultados de Laboratorio de mis Pacientes</h2>
+        <p class="text-muted mb-4">Consulta de solo lectura. Los exámenes sin la etiqueta "Publicado" aún están en proceso de validación por el laboratorio.</p>
+        <div id="msg" class="alert"></div>
+
+        <div class="card" id="area-lista">
+            <div class="d-flex" style="align-items: flex-end;">
+                <div class="form-group flex-1">
+                    <label>Filtrar por estado</label>
+                    <select id="filtro-estado" class="form-control" onchange="loadOrd()">
+                        <option value="COMPLETADA">Resultados publicados</option>
+                        <option value="EN_PROCESO">En proceso (pendientes de validar)</option>
+                        <option value="PENDIENTE">Pendientes de pago</option>
+                    </select>
+                </div>
+                <div class="form-group flex-1">
+                    <label>Paciente (nombre)</label>
+                    <input type="text" id="filtro-paciente" class="form-control" placeholder="Buscar..." onkeyup="renderTable()">
+                </div>
+                <div class="form-group">
+                    <button onclick="loadOrd()" class="btn btn-primary"><i class="fa-solid fa-rotate"></i></button>
+                </div>
+            </div>
+            <table class="table mt-4">
+                <thead><tr><th>No. orden</th><th>Paciente</th><th>Fecha emisión</th><th>Estado</th><th>Acción</th></tr></thead>
+                <tbody id="tb-ord"></tbody>
+            </table>
+        </div>
+
+        <div class="card d-none" id="area-res">
+            <div class="d-flex mb-4" style="justify-content: space-between; border-bottom: 1px solid var(--line); padding-bottom: 1rem;">
+                <div>
+                    <h3 class="text-primary">Expediente de orden #<span id="o-id"></span></h3>
+                    <p class="text-muted mt-4">Paciente: <strong id="o-pac"></strong></p>
+                    <p class="text-muted">Observaciones clínicas: <span id="o-not"></span></p>
+                </div>
+                <div id="badge-ext" class="d-none badge badge-brass" style="height: fit-content;">Muestra externa</div>
+            </div>
+
+            <div id="l-ex" style="display: flex; flex-direction: column; gap: 1rem;"></div>
+
+            <button class="btn mt-4" onclick="volver()"><i class="fa-solid fa-arrow-left"></i> Volver al listado</button>
+        </div>
+    </main>
+</div>
+<script src="js/app.js"></script>
+<script>
+    App.requireAuth();
+    document.getElementById('user-name').textContent = App.getName() || 'Usuario del Sistema';
+    document.getElementById('user-role').textContent = App.getRole() || '';
+
+    let ordenesCache = [];
+
+    // El backend ya filtra por el médico autenticado en /api/laboratorio/ordenes
+    // cuando el rol es MEDICO (ver LaboratorioResultadoController), así que aquí
+    // solo se listan las órdenes de los pacientes de este médico.
+    async function loadOrd() {
+        const est = document.getElementById('filtro-estado').value;
+        try {
+            ordenesCache = await App.apiFetch(`/api/laboratorio/ordenes?estado=${est}`);
+            renderTable();
+        } catch(e) { App.showAlert('msg', e.message, true); }
+    }
+
+    function renderTable() {
+        const txtPac = document.getElementById('filtro-paciente').value.toLowerCase();
+        const filtradas = ordenesCache.filter(o => o.pacienteNombre.toLowerCase().includes(txtPac));
+
+        document.getElementById('tb-ord').innerHTML = filtradas.length ? filtradas.map(o=>`
+            <tr>
+                <td>${o.id} ${o.esExterna ? '<span class="badge badge-brass">EXT</span>' : ''}</td>
+                <td class="font-bold">${o.pacienteNombre}</td>
+                <td>${o.fechaCreacion.substring(0,10)}</td>
+                <td>${o.estado}</td>
+                <td><button class="btn btn-primary" style="padding: 0.3rem 0.6rem; font-size:0.85rem;" onclick="ver(${o.id})">Ver detalle</button></td>
+            </tr>`).join('') : `<tr><td colspan="5" class="text-muted">No hay órdenes de laboratorio que coincidan con su búsqueda.</td></tr>`;
+    }
+
+    async function ver(id) {
+        document.getElementById('area-lista').classList.add('d-none');
+        document.getElementById('area-res').classList.remove('d-none');
+        App.hideAlert('msg');
+
+        try {
+            const data = await App.apiFetch('/api/laboratorio/ordenes/'+id);
+            document.getElementById('o-id').innerText = data.id;
+            document.getElementById('o-pac').innerText = data.pacienteNombre;
+            document.getElementById('o-not').innerText = data.notas || 'Ninguna';
+
+            if(data.esExterna) document.getElementById('badge-ext').classList.remove('d-none');
+            else document.getElementById('badge-ext').classList.add('d-none');
+
+            document.getElementById('l-ex').innerHTML = data.examenes.map(e=> {
+                if (!e.publicado) {
+                    return `
+                    <div class="well">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <h4 style="margin:0;">${e.examenNombre}</h4>
+                            <span class="badge badge-brass">Pendiente de validación</span>
+                        </div>
+                        <p class="text-muted mt-4" style="margin-bottom:0;">El laboratorio aún no ha publicado este resultado.</p>
+                    </div>`;
+                }
+
+                const alertaBadge = e.fueraDeRango
+                    ? '<span class="badge badge-danger ml-2">Fuera de rango de referencia</span>'
+                    : '';
+
+                return `
+                <div class="well">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                        <h4 style="margin:0;">${e.examenNombre}</h4>
+                        <div>
+                            <span class="badge badge-success">Publicado</span>
+                            ${alertaBadge}
+                        </div>
+                    </div>
+                    <div class="d-flex" style="margin-bottom: 1rem;">
+                        <div class="form-group flex-1">
+                            <label>Valor obtenido</label>
+                            <input type="text" class="form-control" value="${e.valorResultado||''}" disabled>
+                        </div>
+                        <div class="form-group flex-1">
+                            <label>Unidad de medida</label>
+                            <input type="text" class="form-control" value="${e.unidad||''}" disabled>
+                        </div>
+                        <div class="form-group flex-1">
+                            <label>Rango de referencia</label>
+                            <input type="text" class="form-control" value="${e.rangoReferencia||''}" disabled>
+                        </div>
+                    </div>
+                    ${e.notasResultado ? `<p class="text-muted" style="margin:0;">Observaciones de laboratorio: ${e.notasResultado}</p>` : ''}
+                    <p class="text-muted" style="margin-top:0.5rem; font-size:0.85rem;">Publicado el ${e.fechaResultado ? e.fechaResultado.substring(0,16).replace('T',' ') : ''}</p>
+                </div>`;
+            }).join('');
+        } catch(e) { App.showAlert('msg', e.message, true); }
+    }
+
+    function volver() {
+        document.getElementById('area-lista').classList.remove('d-none');
+        document.getElementById('area-res').classList.add('d-none');
+        loadOrd();
+    }
+
+    function toggleMobileSidebar() {
+        document.getElementById('sidebar').classList.toggle('mobile-open');
+        document.getElementById('backdrop').classList.toggle('show');
+    }
+    function toggleSidebarCollapse() {
+        document.getElementById('sidebar').classList.toggle('collapsed');
+        document.getElementById('collapse-icon').classList.toggle('fa-angles-left');
+        document.getElementById('collapse-icon').classList.toggle('fa-angles-right');
+    }
+
+    loadOrd();
+</script>
+</body>
+</html>

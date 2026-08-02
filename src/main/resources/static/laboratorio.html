@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Laboratorio Clínico - Hospital El Milagro</title>
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div class="aurora aurora-a"></div>
+<div class="aurora aurora-b"></div>
+<div class="paper-grain"></div>
+
+<div class="app-container">
+    <div class="backdrop" id="backdrop" onclick="toggleMobileSidebar()"></div>
+    <button class="sidebar-toggle-mobile" onclick="toggleMobileSidebar()" aria-label="Abrir menú">
+        <i class="fa-solid fa-bars"></i>
+    </button>
+
+    <nav class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <h3>Hospital El Milagro</h3>
+            <button class="sidebar-collapse-btn" onclick="toggleSidebarCollapse()" aria-label="Colapsar menú">
+                <i class="fa-solid fa-angles-left" id="collapse-icon"></i>
+            </button>
+        </div>
+        <div class="user-badge">
+            <span id="user-name"></span>
+            <span id="user-role"></span>
+        </div>
+        <div class="nav-menu" id="sidebar-menu"></div>
+    </nav>
+
+    <main class="main-content">
+        <h2>Gestión de Análisis de Laboratorio</h2>
+        <div id="msg" class="alert"></div>
+
+        <div class="card" id="area-lista">
+            <!-- Solución CU-09: Filtros por Médico y Paciente -->
+            <div class="d-flex" style="align-items: flex-end;">
+                <div class="form-group flex-1">
+                    <label>Filtrar por estado</label>
+                    <select id="filtro-estado" class="form-control" onchange="loadOrd()">
+                        <option value="EN_PROCESO">En proceso (pagadas)</option>
+                        <option value="PENDIENTE">Pendientes de pago</option>
+                        <option value="COMPLETADA">Resultados publicados</option>
+                    </select>
+                </div>
+                <div class="form-group flex-1">
+                    <label>Paciente (DPI o Nombre)</label>
+                    <input type="text" id="filtro-paciente" class="form-control" placeholder="Buscar..." onkeyup="renderTable()">
+                </div>
+                <div class="form-group flex-1">
+                    <label>Médico solicitante</label>
+                    <input type="text" id="filtro-medico" class="form-control" placeholder="Buscar..." onkeyup="renderTable()">
+                </div>
+                <div class="form-group">
+                    <button onclick="loadOrd()" class="btn btn-primary"><i class="fa-solid fa-rotate"></i></button>
+                </div>
+            </div>
+            <table class="table mt-4">
+                <thead><tr><th>No. orden</th><th>Paciente</th><th>Médico solicitante</th><th>Fecha emisión</th><th>Acción</th></tr></thead>
+                <tbody id="tb-ord"></tbody>
+            </table>
+        </div>
+
+        <div class="card d-none" id="area-res">
+            <div class="d-flex mb-4" style="justify-content: space-between; border-bottom: 1px solid var(--line); padding-bottom: 1rem;">
+                <div>
+                    <h3 class="text-primary">Expediente de orden #<span id="o-id"></span></h3>
+                    <!-- Solución CU-09: Mostrar total de la orden -->
+                    <p class="text-muted mt-4">Paciente: <strong id="o-pac"></strong> | Solicitado por: <span id="o-med"></span> | Total pagado: <strong>Q<span id="o-tot"></span></strong></p>
+                    <p class="text-muted">Observaciones clínicas: <span id="o-not"></span></p>
+                </div>
+                <div id="badge-ext" class="d-none badge badge-brass" style="height: fit-content;">Muestra externa</div>
+            </div>
+
+            <div id="l-ex" style="display: flex; flex-direction: column; gap: 1rem;"></div>
+
+            <button class="btn mt-4" onclick="volver()"><i class="fa-solid fa-arrow-left"></i> Volver al listado</button>
+        </div>
+    </main>
+</div>
+<script src="js/app.js"></script>
+<script>
+    App.requireAuth();
+    document.getElementById('user-name').textContent = App.getName() || 'Usuario del Sistema';
+    document.getElementById('user-role').textContent = App.getRole() || '';
+
+    let ordenesCache = [];
+
+    // FIX QA (punto 1/12/15 confirmado por Edy): sin el rol Supervisor de Laboratorio
+    // no se puede publicar ningún resultado (el backend ya lo bloquea con @PreAuthorize;
+    // esto solo evita que el laboratorista vea un botón habilitado que igual fallará).
+    const rolActual = (App.getRole() || '').toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    const puedePublicar = rolActual === 'SUPERVISORLABORATORIO' || rolActual === 'ADMINISTRADOR';
+
+    async function loadOrd() {
+        const est = document.getElementById('filtro-estado').value;
+        try {
+            ordenesCache = await App.apiFetch(`/api/laboratorio/ordenes?estado=${est}`);
+            renderTable();
+        } catch(e) { App.showAlert('msg', e.message, true); }
+    }
+
+    function renderTable() {
+        const est = document.getElementById('filtro-estado').value;
+        const txtPac = document.getElementById('filtro-paciente').value.toLowerCase();
+        const txtMed = document.getElementById('filtro-medico').value.toLowerCase();
+
+        const filtradas = ordenesCache.filter(o =>
+            (o.pacienteNombre.toLowerCase().includes(txtPac)) &&
+            (o.medicoNombre.toLowerCase().includes(txtMed))
+        );
+
+        document.getElementById('tb-ord').innerHTML = filtradas.length ? filtradas.map(o=>`
+            <tr>
+                <td>${o.id} ${o.esExterna ? '<span class="badge badge-brass">EXT</span>' : ''}</td>
+                <td class="font-bold">${o.pacienteNombre}</td>
+                <td>${o.medicoNombre}</td>
+                <td>${o.fechaCreacion.substring(0,10)}</td>
+                <td><button class="btn btn-primary" style="padding: 0.3rem 0.6rem; font-size:0.85rem;" onclick="ver(${o.id})">Abrir orden</button></td>
+            </tr>`).join('') : `<tr><td colspan="5" class="text-muted">No hay órdenes que coincidan con su búsqueda.</td></tr>`;
+    }
+
+    async function ver(id) {
+        document.getElementById('area-lista').classList.add('d-none');
+        document.getElementById('area-res').classList.remove('d-none');
+        App.hideAlert('msg');
+
+        try {
+            const data = await App.apiFetch('/api/laboratorio/ordenes/'+id);
+            document.getElementById('o-id').innerText = data.id;
+            document.getElementById('o-pac').innerText = data.pacienteNombre;
+            document.getElementById('o-med').innerText = data.medicoNombre;
+            document.getElementById('o-not').innerText = data.notas || 'Ninguna';
+            document.getElementById('o-tot').innerText = data.montoTotal; // Solución CU-09: Mostrar total
+
+            if(data.esExterna) document.getElementById('badge-ext').classList.remove('d-none');
+            else document.getElementById('badge-ext').classList.add('d-none');
+
+            document.getElementById('l-ex').innerHTML = data.examenes.map(e=> {
+
+                // Solución CU-09: Muestra monto por examen y badge de fuera de rango si ya está publicado
+                let alertaBadge = '';
+                let checkboxHTML = '';
+
+                if (e.publicado && e.fueraDeRango) {
+                    alertaBadge = '<span class="badge badge-danger ml-2">Fuera de rango (rango de referencia)</span>';
+                } else {
+                    checkboxHTML = `<div class="form-group" style="align-self: flex-end; padding-bottom: 0.5rem;">
+                        <label style="color: var(--danger); font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 0.5rem; text-transform:none; letter-spacing:normal;">
+                            <input type="checkbox" id="f-${e.id}" ${e.fueraDeRango?'checked':''} ${e.publicado?'disabled':''} style="width: 18px; height: 18px;">
+                            Marca de alerta (fuera de rango)
+                        </label>
+                    </div>`;
+                }
+
+                return `
+                <div class="well">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                        <h4 style="margin:0;">${e.examenNombre} <span style="font-size:0.85rem; color:var(--ink-soft); font-weight:normal;">(Q${e.monto})</span></h4>
+                        <div>
+                            ${e.publicado ? '<span class="badge badge-success">Publicado al médico</span>' : ''}
+                            ${alertaBadge}
+                        </div>
+                    </div>
+
+                    <div class="d-flex" style="margin-bottom: 1rem;">
+                        <div class="form-group flex-1">
+                            <label>Valor obtenido</label>
+                            <input type="text" id="v-${e.id}" class="form-control" value="${e.valorResultado||''}" ${e.publicado?'disabled':''}>
+                        </div>
+                        <div class="form-group flex-1">
+                            <!-- FIX QA (punto 11): unidad y rango de referencia vienen precargados
+                                 del catálogo de exámenes (RN-CU15-03) y solo sirven de referencia
+                                 para la alerta automática de "fuera de rango" (RN-CU09-02). No
+                                 deben poder editarse aquí, por eso quedan siempre en solo lectura. -->
+                            <label>Unidad de medida</label>
+                            <input type="text" id="u-${e.id}" class="form-control" value="${e.unidad||''}" disabled>
+                        </div>
+                        <div class="form-group flex-1">
+                            <label>Rango de referencia</label>
+                            <input type="text" id="r-${e.id}" class="form-control" value="${e.rangoReferencia||''}" disabled>
+                        </div>
+                    </div>
+
+                    <div class="d-flex" style="margin-bottom: 1rem;">
+                        <div class="form-group flex-1">
+                            <label>Observaciones de laboratorio</label>
+                            <input type="text" id="n-${e.id}" class="form-control" value="${e.notasResultado||''}" ${e.publicado?'disabled':''}>
+                        </div>
+                        ${checkboxHTML}
+                    </div>
+
+                    <div style="text-align: right; border-top: 1px dashed var(--line); padding-top: 1rem;">
+                        <button class="btn btn-success" onclick="save(${e.id})" ${e.publicado?'disabled':''}>Guardar borrador</button>
+                        ${puedePublicar
+                    ? `<button class="btn btn-primary" onclick="pub(${e.id})" ${e.publicado?'disabled':''}>Publicar definitivo</button>`
+                    : `<button class="btn btn-primary" disabled title="Solo el Supervisor de Laboratorio o el Administrador pueden publicar">Publicar definitivo</button>`}
+                    </div>
+                </div>`;
+            }).join('');
+        } catch(e) { App.showAlert('msg', e.message, true); }
+    }
+
+    async function save(id) {
+        // Fallback for checkbox since it might be hidden if already published (though it shouldn't happen)
+        const checkEl = document.getElementById('f-'+id);
+        const outOfRange = checkEl ? checkEl.checked : true;
+
+        try {
+            await App.apiFetch(`/api/laboratorio/examenes/${id}/resultado`, 'POST', {
+                valorResultado: document.getElementById('v-'+id).value,
+                unidad: document.getElementById('u-'+id).value,
+                rangoReferencia: document.getElementById('r-'+id).value,
+                notasResultado: document.getElementById('n-'+id).value,
+                fueraDeRango: outOfRange
+            });
+            // Solución CU-09: Texto de éxito exacto
+            App.showAlert('msg', 'Resultado guardado exitosamente.');
+        } catch(e) { App.showAlert('msg', e.message, true); }
+    }
+
+    async function pub(id) {
+        if (await App.confirm("¿Seguro que desea publicar? Esta acción es irreversible y el médico tomará decisiones basado en este resultado.", { titulo: '¿Publicar resultado?', textoBoton: 'Publicar' })) {
+            try {
+                await App.apiFetch(`/api/laboratorio/examenes/${id}/publicar`, 'POST');
+                // Solución CU-09: Texto de éxito exacto
+                App.showAlert('msg', 'Resultado publicado exitosamente.');
+                ver(document.getElementById('o-id').innerText);
+            } catch(e) { App.showAlert('msg', e.message, true); }
+        }
+    }
+
+    function volver() {
+        document.getElementById('area-lista').classList.remove('d-none');
+        document.getElementById('area-res').classList.add('d-none');
+        loadOrd();
+    }
+
+    function toggleMobileSidebar() {
+        document.getElementById('sidebar').classList.toggle('mobile-open');
+        document.getElementById('backdrop').classList.toggle('show');
+    }
+    function toggleSidebarCollapse() {
+        document.getElementById('sidebar').classList.toggle('collapsed');
+        document.getElementById('collapse-icon').classList.toggle('fa-angles-left');
+        document.getElementById('collapse-icon').classList.toggle('fa-angles-right');
+    }
+
+    loadOrd();
+</script>
+</body>
+</html>
