@@ -84,7 +84,8 @@ public class PdfContentValidationService {
     private boolean contieneJavaScript(PDDocument document) {
         COSName js = COSName.getPDFName("JS");
         COSName javaScript = COSName.getPDFName("JavaScript");
-        for (COSObject obj : document.getDocument().getObjects()) {
+        for (org.apache.pdfbox.cos.COSObjectKey key : document.getDocument().getXrefTable().keySet()) {
+            COSObject obj = document.getDocument().getObjectFromPool(key);
             COSBase base = obj.getObject();
             if (base instanceof COSDictionary dict) {
                 if (dict.containsKey(js) || dict.containsKey(javaScript)) {
