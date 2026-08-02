@@ -15,6 +15,11 @@ public interface CitaRepository extends JpaRepository<Cita, Integer> {
     List<Cita> findByMedicoIdAndFechaHoraBetweenAndEstado_NombreNot(
             Integer medicoId, LocalDateTime desde, LocalDateTime hasta, String estadoNombre);
 
+    List<Cita> findByMedicoIdAndFechaHoraBetweenAndEstado_NombreNotIn(
+            Integer medicoId, LocalDateTime desde, LocalDateTime hasta, List<String> estadosExcluidos);
+
+    List<Cita> findByPaciente_IdOrderByFechaHoraDesc(Integer pacienteId);
+
     List<Cita> findByPaciente_IdAndEstado_NombreNotOrderByFechaHoraAsc(Integer pacienteId, String estadoNombre);
 
     List<Cita> findByEstado_NombreAndCreadaPorPersonalInternoFalseAndFechaCreacionBefore(
@@ -25,4 +30,6 @@ public interface CitaRepository extends JpaRepository<Cita, Integer> {
     List<Cita> findByPaciente_IdAndEstado_NombreOrderByFechaHoraAsc(Integer pacienteId, String estadoNombre);
 
     List<Cita> findByMedicoIdAndEstado_NombreOrderByEmergenciaDescFechaHoraAsc(Integer medicoId, String estadoNombre);
+
+    List<Cita> findByEstado_NombreOrderByEmergenciaDescFechaHoraAsc(String estadoNombre);
 }
