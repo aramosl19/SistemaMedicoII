@@ -59,6 +59,7 @@ public class ExamenLaboratorioController {
         Laboratorio laboratorio = laboratorioRepository.findById(dto.getLaboratorioId())
                 .orElseThrow(() -> new ResourceNotFoundException("No se encontró el laboratorio con id " + dto.getLaboratorioId() + "."));
         examen.setLaboratorio(laboratorio);
+        if(dto.getActivo() != null) examen.setActivo(dto.getActivo());
 
         return examen;
     }

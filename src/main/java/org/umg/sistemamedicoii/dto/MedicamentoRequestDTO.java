@@ -32,4 +32,6 @@ public class MedicamentoRequestDTO {
     private boolean controlled;
 
     private Integer minimumStock;
+
+    private Boolean activo;
 }

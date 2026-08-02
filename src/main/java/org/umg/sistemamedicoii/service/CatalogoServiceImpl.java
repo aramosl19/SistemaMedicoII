@@ -1,5 +1,6 @@
 package org.umg.sistemamedicoii.service;
 
+import org.umg.sistemamedicoii.exception.ResourceNotFoundException;
 import org.umg.sistemamedicoii.models.Catalogo;
 import org.umg.sistemamedicoii.repository.CatalogoRepository;
 
@@ -17,7 +18,7 @@ public abstract class CatalogoServiceImpl<T extends Catalogo> implements Catalog
     @Override
     public T obtenerPorId(Integer id) {
         return getRepository().findById(id)
-                .orElseThrow(() -> new RuntimeException("Registro con id " + id + " no encontrado"));
+                .orElseThrow(() -> new ResourceNotFoundException("Registro con id " + id + " no encontrado"));
     }
 
     @Override

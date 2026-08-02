@@ -51,6 +51,7 @@ public class MedicamentoController {
         med.setUnidad(dto.getUnidad());
         med.setControlled(dto.isControlled());
         med.setMinimumStock(dto.getMinimumStock());
+        if(dto.getActivo() != null) med.setActivo(dto.getActivo());
         return med;
     }
 }

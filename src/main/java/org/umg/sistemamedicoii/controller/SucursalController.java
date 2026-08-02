@@ -48,6 +48,7 @@ public class SucursalController {
         sucursal.setDescripcion(dto.getDescripcion());
         sucursal.setTelefono(dto.getTelefono());
         sucursal.setDireccion(dto.getDireccion());
+        if(dto.getActivo() != null) sucursal.setActivo(dto.getActivo());
         return sucursal;
     }
 }

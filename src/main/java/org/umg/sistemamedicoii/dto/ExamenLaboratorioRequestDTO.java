@@ -33,4 +33,6 @@ public class ExamenLaboratorioRequestDTO {
 
     @Size(max = 50, message = "La unidad de medida no puede exceder los 50 caracteres.")
     private String unidadMedida;
+
+    private Boolean activo;
 }

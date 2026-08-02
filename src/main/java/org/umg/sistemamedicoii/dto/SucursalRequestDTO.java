@@ -22,4 +22,6 @@ public class SucursalRequestDTO {
 
     @Size(max = 500, message = "La dirección no puede exceder los 500 caracteres.")
     private String direccion;
+
+    private Boolean activo;
 }
