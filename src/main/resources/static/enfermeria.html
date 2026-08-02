@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Enfermería - Triage - Hospital El Milagro</title>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div class="aurora aurora-a"></div>
+<div class="aurora aurora-b"></div>
+<div class="paper-grain"></div>
+
+<div class="app-container">
+  <div class="backdrop" id="backdrop" onclick="toggleMobileSidebar()"></div>
+  <button class="sidebar-toggle-mobile" onclick="toggleMobileSidebar()" aria-label="Abrir menú">
+    <i class="fa-solid fa-bars"></i>
+  </button>
+
+  <nav class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <h3>Hospital El Milagro</h3>
+      <button class="sidebar-collapse-btn" onclick="toggleSidebarCollapse()" aria-label="Colapsar menú">
+        <i class="fa-solid fa-angles-left" id="collapse-icon"></i>
+      </button>
+    </div>
+    <div class="user-badge">
+      <span id="user-name"></span>
+      <span id="user-role"></span>
+    </div>
+    <div class="nav-menu" id="sidebar-menu"></div>
+  </nav>
+
+  <main class="main-content">
+    <h2>Toma de Signos Vitales y Triage</h2>
+    <div id="msg" class="alert"></div>
+
+    <div class="card">
+      <div class="d-flex" style="justify-content: space-between; align-items: center;">
+        <h3>Pacientes en sala de espera</h3>
+        <button onclick="cargarEnEspera()" class="btn"><i class="fa-solid fa-rotate"></i> Actualizar lista</button>
+      </div>
+      <table class="table mt-4">
+        <thead><tr><th>Paciente</th><th>Estado</th><th>Acción</th></tr></thead>
+        <tbody id="tb-espera"></tbody>
+      </table>
+    </div>
+
+    <div class="card d-none" id="form-area">
+      <!-- Solución CU-07: Agregar No. de cita al encabezado -->
+      <h3>Expediente de triage: <span id="nom-pac" class="text-primary"></span> | Cita #<span id="num-cita-text"></span></h3>
+
+      <!-- Solución CU-07: Panel de alertas en tiempo real -->
+      <div id="alertas-rt" class="d-none alert alert-warning mt-4">
+        <strong>Atención - Alertas Clínicas:</strong>
+        <ul id="lista-alertas-rt" style="margin: 0.5rem 0 0 1.2rem;"></ul>
+      </div>
+
+      <form id="form-signos" class="mt-4">
+        <input type="hidden" id="citaId">
+        <div class="d-flex">
+          <div class="form-group flex-1"><label>Presión sistólica (mmHg)</label><input type="number" id="s" class="form-control input-rt" min="60" max="250" required placeholder="Ej. 120"></div>
+          <div class="form-group flex-1"><label>Presión diastólica (mmHg)</label><input type="number" id="d" class="form-control input-rt" min="40" max="150" required placeholder="Ej. 80"></div>
+        </div>
+        <div class="d-flex">
+          <div class="form-group flex-1"><label>Temperatura (°C)</label><input type="number" step="0.1" id="t" class="form-control input-rt" min="34" max="42" required placeholder="Ej. 37.0"></div>
+          <div class="form-group flex-1"><label>Frecuencia cardíaca (lpm)</label><input type="number" id="fc" class="form-control input-rt" min="30" max="220" required placeholder="Ej. 75"></div>
+        </div>
+        <div class="d-flex">
+          <div class="form-group flex-1"><label>Peso (kg)</label><input type="number" step="0.01" id="p" class="form-control" min="0.5" max="300" required placeholder="Ej. 70.5"></div>
+          <div class="form-group flex-1"><label>Talla (cm)</label><input type="number" step="0.01" id="h" class="form-control" min="30" max="250" required placeholder="Ej. 175"></div>
+        </div>
+        <div class="well-danger mt-4">
+          <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; color: var(--danger); font-weight: 600;">
+            <input type="checkbox" id="em" style="width: 18px; height: 18px;">
+            Clasificar como emergencia (pasa directo a médico)
+          </label>
+        </div>
+        <div class="d-flex mt-4">
+          <button type="submit" class="btn btn-success">Registrar en expediente</button>
+          <button type="button" onclick="cancelar()" class="btn">Cancelar</button>
+        </div>
+      </form>
+    </div>
+  </main>
+</div>
+<script src="js/app.js"></script>
+<script>
+  App.requireAuth();
+  document.getElementById('user-name').textContent = App.getName() || 'Usuario del Sistema';
+  document.getElementById('user-role').textContent = App.getRole() || '';
+
+  async function cargarEnEspera() {
+    try {
+      const data = await App.apiFetch('/api/enfermeria/citas/en-espera');
+      document.getElementById('tb-espera').innerHTML = data.length ? data.map(c => {
+        // Solución CU-07: Distinguir el estado en la tabla
+        let badgeEstado = c.estadoNombre;
+        if (c.estadoNombre === 'Signos Vitales') {
+          badgeEstado = `<span class="badge badge-brass">En proceso (Triage)</span>`;
+        }
+        return `
+            <tr>
+                <td>${c.pacienteNombre} ${c.emergencia ? '<span class="badge badge-danger">URGENCIA</span>' : ''}</td>
+                <td>${badgeEstado}</td>
+                <td>
+                    <button class="btn btn-primary" onclick="llamar(${c.id})">
+                        ${c.estadoNombre === 'Signos Vitales' ? 'Retomar expediente' : 'Llamar paciente'}
+                    </button>
+                </td>
+            </tr>
+          `;
+      }).join('') : `<tr><td colspan="3" class="text-muted">No hay pacientes esperando triage en este momento.</td></tr>`;
+    } catch(e) { App.showAlert('msg', e.message, true); }
+  }
+
+  async function llamar(id) {
+    try {
+      const data = await App.apiFetch(`/api/enfermeria/citas/${id}/llamar`, 'POST');
+      App.showAlert('msg', data.mensaje);
+      document.getElementById('citaId').value = data.id;
+      document.getElementById('num-cita-text').innerText = data.id;
+      document.getElementById('nom-pac').innerText = data.pacienteNombre;
+      document.getElementById('em').checked = data.emergencia;
+      document.getElementById('form-area').classList.remove('d-none');
+      validarAlertasRT();
+
+      if ('speechSynthesis' in window) {
+        const utterance = new SpeechSynthesisUtterance(data.mensaje);
+        utterance.lang = 'es-ES';
+        window.speechSynthesis.speak(utterance);
+      }
+      cargarEnEspera();
+    } catch(e) { App.showAlert('msg', e.message, true); }
+  }
+
+  // Solución CU-07: Validar alertas en tiempo real
+  function validarAlertasRT() {
+    const s = parseInt(document.getElementById('s').value) || 0;
+    const d = parseInt(document.getElementById('d').value) || 0;
+    const t = parseFloat(document.getElementById('t').value) || 0;
+    const fc = parseInt(document.getElementById('fc').value) || 0;
+
+    let alertas = [];
+
+    if (s > 0 && d > 0 && (s < 90 || s > 140 || d < 60 || d > 90)) {
+      alertas.push("Presión arterial fuera de rango normal (90/60 - 140/90).");
+    }
+    if (t > 0 && (t < 36.0 || t > 37.5)) {
+      alertas.push("Temperatura corporal fuera de rango normal (36.0 - 37.5).");
+    }
+    if (fc > 0 && (fc < 60 || fc > 100)) {
+      alertas.push("Frecuencia cardíaca fuera de rango normal (60 - 100 lpm).");
+    }
+
+    const panelAlertas = document.getElementById('alertas-rt');
+    const listaAlertas = document.getElementById('lista-alertas-rt');
+
+    if (alertas.length > 0) {
+      listaAlertas.innerHTML = alertas.map(a => `<li>${a}</li>`).join('');
+      panelAlertas.classList.remove('d-none');
+    } else {
+      panelAlertas.classList.add('d-none');
+    }
+  }
+
+  // Escuchar cambios en los inputs en tiempo real
+  document.querySelectorAll('.input-rt').forEach(input => {
+    input.addEventListener('input', validarAlertasRT);
+  });
+
+  document.getElementById('form-signos').addEventListener('submit', async(e)=>{
+    e.preventDefault();
+    const payload = {
+      presionSistolica: document.getElementById('s').value, presionDiastolica: document.getElementById('d').value,
+      temperatura: document.getElementById('t').value, peso: document.getElementById('p').value,
+      talla: document.getElementById('h').value, frecuenciaCardiaca: document.getElementById('fc').value,
+      emergencia: document.getElementById('em').checked
+    };
+    try {
+      const data = await App.apiFetch(`/api/enfermeria/citas/${document.getElementById('citaId').value}/signos-vitales`, 'POST', payload);
+      let alertStr = data.mensaje;
+      const tieneAlertas = data.alertaPresion || data.alertaTemperatura || data.alertaFrecuencia;
+      if(tieneAlertas) alertStr += " (Atención: valores clínicos fuera de rango normal. Se notificará al médico).";
+
+      App.showAlert('msg', alertStr, false, tieneAlertas);
+      document.getElementById('form-area').classList.add('d-none');
+      document.getElementById('form-signos').reset();
+      validarAlertasRT();
+      cargarEnEspera();
+    } catch(err) { App.showAlert('msg', err.message, true); }
+  });
+
+  function cancelar() {
+    document.getElementById('form-area').classList.add('d-none');
+    document.getElementById('form-signos').reset();
+    validarAlertasRT();
+  }
+
+  function toggleMobileSidebar() {
+    document.getElementById('sidebar').classList.toggle('mobile-open');
+    document.getElementById('backdrop').classList.toggle('show');
+  }
+  function toggleSidebarCollapse() {
+    document.getElementById('sidebar').classList.toggle('collapsed');
+    document.getElementById('collapse-icon').classList.toggle('fa-angles-left');
+    document.getElementById('collapse-icon').classList.toggle('fa-angles-right');
+  }
+
+  cargarEnEspera();
+</script>
+</body>
+</html>
