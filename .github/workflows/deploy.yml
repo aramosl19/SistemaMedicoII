@@ -24,9 +24,9 @@ jobs:
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
       - name: Desplegar en Azure Container Apps
-        uses: azure/container-apps-deploy-action@v2
-        with:
-          resourceGroup: rg-sistemamedico
-          containerAppName: sistemamedico-backend
-          containerName: sistemamedico-backend
-          imageToDeploy: sistemamedicoacr.azurecr.io/sistemamedico-backend:${{ github.sha }}
+        run: |
+          az containerapp update \
+            --name sistemamedico-backend \
+            --resource-group rg-sistemamedico \
+            --container-name sistemamedico-backend \
+            --image sistemamedicoacr.azurecr.io/sistemamedico-backend:${{ github.sha }}
