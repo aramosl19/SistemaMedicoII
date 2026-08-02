@@ -19,6 +19,9 @@ public class ConsultaMedicaController {
     @Autowired
     private ConsultaMedicaService consultaMedicaService;
 
+    @Autowired
+    private org.umg.sistemamedicoii.repository.CitaRepository citaRepository;
+
     @GetMapping("/{medicoId}/panel")
     public PanelMedicoResponseDTO obtenerPanel(@PathVariable Integer medicoId) {
         return consultaMedicaService.obtenerPanel(medicoId);
@@ -57,9 +60,17 @@ public class ConsultaMedicaController {
     public org.umg.sistemamedicoii.dto.CitaResponseDTO agendarSeguimiento(
             @PathVariable Integer id,
             @RequestBody org.umg.sistemamedicoii.dto.CitaRequestDTO dto) {
-        // Inyectamos la ID de la cita padre automáticamente desde la URL
+
+        org.umg.sistemamedicoii.models.Cita citaPadre = citaRepository.findById(id)
+                .orElseThrow(() -> new org.umg.sistemamedicoii.exception.ResourceNotFoundException("Cita padre no encontrada"));
+
         dto.setCitaPadreId(id);
-        // true = fue creada por personal interno, así el Scheduler NO la cancela a los 10 mins.
+        dto.setPacienteId(citaPadre.getPaciente().getId());
+        dto.setMedicoId(citaPadre.getMedico().getId());
+        dto.setSucursalId(citaPadre.getSucursal().getId());
+        dto.setEspecialidadId(citaPadre.getEspecialidad().getId());
+        dto.setTipoCitaId(citaPadre.getTipoCita() != null ? citaPadre.getTipoCita().getId() : 1);
+
         return citaService.agendarCita(dto, true);
     }
 }
