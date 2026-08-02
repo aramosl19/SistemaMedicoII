@@ -1,37 +1,32 @@
 name: Build and Deploy Backend to Azure Container Apps
-
 on:
   push:
     branches:
       - main
-
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout del código
         uses: actions/checkout@v3
-
       - name: Iniciar sesión en Azure Container Registry
         uses: azure/docker-login@v1
         with:
           login-server: sistemamedicoacr.azurecr.io
           username: ${{ secrets.REGISTRY_USERNAME }}
           password: ${{ secrets.REGISTRY_PASSWORD }}
-
       - name: Construir y subir imagen a ACR
         run: |
           docker build -t sistemamedicoacr.azurecr.io/sistemamedico-backend:${{ github.sha }} .
           docker push sistemamedicoacr.azurecr.io/sistemamedico-backend:${{ github.sha }}
-
       - name: Iniciar sesión en Azure
         uses: azure/login@v1
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
-
       - name: Desplegar en Azure Container Apps
         uses: azure/container-apps-deploy-action@v2
         with:
           resourceGroup: rg-sistemamedico
           containerAppName: sistemamedico-backend
+          containerName: sistemamedico-backend
           imageToDeploy: sistemamedicoacr.azurecr.io/sistemamedico-backend:${{ github.sha }}
