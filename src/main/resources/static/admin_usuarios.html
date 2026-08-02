@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mantenimiento de Usuarios - Hospital El Milagro</title>
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<div class="aurora aurora-a"></div>
+<div class="aurora aurora-b"></div>
+<div class="paper-grain"></div>
+<div class="backdrop" id="backdrop" onclick="toggleMobileSidebar()"></div>
+
+<button class="sidebar-toggle-mobile" onclick="toggleMobileSidebar()" aria-label="Abrir menú">
+    <i class="fa-solid fa-bars"></i>
+</button>
+
+<div class="app-container">
+    <nav class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <h3>Hospital El Milagro</h3>
+            <button class="sidebar-collapse-btn" onclick="toggleSidebarCollapse()" aria-label="Colapsar menú">
+                <i class="fa-solid fa-angles-left" id="collapse-icon"></i>
+            </button>
+        </div>
+        <div class="user-badge">
+            <span id="user-name"></span>
+            <span id="user-role"></span>
+        </div>
+        <div class="nav-menu" id="sidebar-menu"></div>
+    </nav>
+    <main class="main-content">
+        <h2>Gestión de Cuentas de Usuario</h2>
+        <div id="msg" class="alert"></div>
+
+        <div class="card">
+            <div class="d-flex" style="align-items: flex-end;">
+                <div class="form-group flex-1">
+                    <label>Criterio de búsqueda</label>
+                    <select id="filtroCampo" class="form-control">
+                        <option value="id">ID</option>
+                        <option value="nombre">Nombre</option>
+                        <option value="dpi">DPI</option>
+                        <option value="correo">Correo Electrónico</option>
+                        <option value="usuario">Nombre de Usuario</option>
+                        <option value="rol">Rol</option>
+                    </select>
+                </div>
+                <div class="form-group flex-1">
+                    <label>Valor</label>
+                    <input type="text" id="filtroValor" class="form-control" maxlength="25" placeholder="Buscar...">
+                </div>
+                <div class="form-group flex-1">
+                    <label>Resultados por página</label>
+                    <select id="pageSize" class="form-control" onchange="buscarUsuarios(0)">
+                        <option value="10">10</option>
+                        <option value="25">25</option>
+                        <option value="50">50</option>
+                    </select>
+                </div>
+                <div class="form-group" style="align-self: flex-end;">
+                    <button onclick="buscarUsuarios(0)" class="btn btn-primary">Buscar</button>
+                    <button onclick="abrirCreacion()" class="btn btn-success">Crear Usuario</button>
+                </div>
+            </div>
+            <table class="table mt-4">
+                <thead>
+                <tr>
+                    <th>ID</th>
+                    <th class="th-sortable" onclick="ordenarPor('nombre')">Nombre <i class="fa-solid fa-sort" id="sort-icon-nombre"></i></th>
+                    <th>DPI</th>
+                    <th>Correo Electrónico</th>
+                    <th class="th-sortable" onclick="ordenarPor('usuario')">Usuario <i class="fa-solid fa-sort" id="sort-icon-usuario"></i></th>
+                    <th>Rol</th><th>Sede</th><th>Estado</th><th>Acciones</th>
+                </tr>
+                </thead>
+                <tbody id="tb-usuarios"></tbody>
+            </table>
+            <!-- Paginación -->
+            <div class="d-flex mt-4" style="justify-content: space-between; align-items: center;" id="paginacion">
+                <button class="btn" id="btn-prev" onclick="buscarUsuarios(currentPage - 1)">Anterior</button>
+                <span id="page-info" class="text-muted">Página 1 de 1</span>
+                <button class="btn" id="btn-next" onclick="buscarUsuarios(currentPage + 1)">Siguiente</button>
+            </div>
+        </div>
+
+        <!-- Modal de Formulario -->
+        <div class="modal-overlay d-none" id="modal-user">
+            <div class="modal-content" style="max-width: 800px; max-height: 90vh; overflow-y: auto;">
+                <h3 id="form-title">Registrar Nuevo Usuario</h3>
+                <form id="form-user">
+                    <input type="hidden" id="u-id">
+
+                    <div class="d-flex">
+                        <div class="form-group flex-1"><label>Nombre Completo</label><input type="text" id="u-nombre" class="form-control" required minlength="10" maxlength="100"></div>
+                        <div class="form-group flex-1"><label>Correo Electrónico</label><input type="email" id="u-correo" class="form-control" required></div>
+                    </div>
+
+                    <div class="d-flex">
+                        <div class="form-group flex-1"><label>DPI</label><input type="text" id="u-dpi" class="form-control" pattern="\d{13}"></div>
+                        <div class="form-group flex-1"><label>Teléfono</label><input type="text" id="u-tel" class="form-control" pattern="\d{8}"></div>
+                    </div>
+
+                    <div class="d-flex">
+                        <div class="form-group flex-1"><label>Nombre de Usuario</label><input type="text" id="u-username" class="form-control" required minlength="8" maxlength="9" pattern="^[a-zA-Z0-9]+$"></div>
+                        <div class="form-group flex-1"><label>Contraseña</label><input type="password" id="u-pass" class="form-control" minlength="12" placeholder="Dejar vacío si no desea cambiar"></div>
+                    </div>
+
+                    <div class="d-flex">
+                        <div class="form-group flex-1"><label>NIT</label><input type="text" id="u-nit" class="form-control" minlength="8" maxlength="9"></div>
+                        <div class="form-group flex-1"><label>No. Seguro Médico</label><input type="text" id="u-seguro" class="form-control" minlength="5" maxlength="50"></div>
+                    </div>
+
+                    <div class="d-flex">
+                        <div class="form-group flex-1"><label>Rol</label><select id="u-rol" class="form-control" required onchange="validarRol()"></select></div>
+                        <div class="form-group flex-1"><label>Sucursal</label><select id="u-suc" class="form-control"></select></div>
+                        <div class="form-group flex-1 d-none" id="div-esp"><label>Especialidad</label><select id="u-esp" class="form-control"></select></div>
+                    </div>
+
+                    <div class="form-group mt-4">
+                        <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; text-transform: none; letter-spacing: normal; font-size: 0.9rem; color: var(--ink);">
+                            <input type="checkbox" id="u-activo" style="width: 18px; height: 18px;" checked>
+                            Cuenta activa en el sistema
+                        </label>
+                    </div>
+
+                    <div class="d-flex mt-4" style="justify-content: flex-end;">
+                        <button type="button" onclick="cerrarModal()" class="btn">Cancelar</button>
+                        <button type="submit" class="btn btn-success">Guardar Información</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- FIX CU-01 FA05: Modal de confirmación de eliminación (reemplaza confirm() nativo) -->
+        <div class="modal-overlay d-none" id="modal-confirm-delete">
+            <div class="modal-content" style="max-width: 420px; text-align: center;">
+                <div class="badge-mark" style="margin: 0 auto 1rem; width: 46px; height: 46px; border-radius: 12px 0 12px 0; background: var(--danger-bg); border: 1px solid rgba(224,137,114,0.3); display:flex; align-items:center; justify-content:center;">
+                    <i class="fa-solid fa-triangle-exclamation" style="color: var(--danger);"></i>
+                </div>
+                <h3>¿Desactivar usuario?</h3>
+                <p class="text-muted">El usuario <strong id="confirm-delete-nombre"></strong> será desactivado y no podrá iniciar sesión hasta que un administrador lo reactive.</p>
+                <div class="d-flex mt-4" style="justify-content: center;">
+                    <button type="button" class="btn" onclick="cerrarModalConfirmacion()">Cancelar</button>
+                    <button type="button" class="btn btn-danger" onclick="confirmarInactivar()">Desactivar</button>
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+<script src="js/app.js"></script>
+<script>
+    App.requireAuth();
+
+    document.getElementById('user-name').textContent = App.getName() || 'Usuario del Sistema';
+    document.getElementById('user-role').textContent = App.getRole() || '';
+
+    let usuariosCache = [];
+    let currentPage = 0;
+    let totalPages = 1;
+    let sortCampo = null;   // 'nombre' | 'usuario'
+    let sortAsc = true;
+    let idAEliminar = null;
+    let nombreAEliminar = '';
+
+    async function init() {
+        try {
+            const [roles, sucursales, especialidades] = await Promise.all([
+                App.apiFetch('/api/roles'), App.apiFetch('/api/sucursales'), App.apiFetch('/api/especialidades')
+            ]);
+            llenarCombo('u-rol', roles); llenarCombo('u-suc', sucursales); llenarCombo('u-esp', especialidades);
+            buscarUsuarios(0);
+        } catch(e) { App.showAlert('msg', e.message, true); }
+    }
+
+    function llenarCombo(id, datos) {
+        const sel = document.getElementById(id);
+        sel.innerHTML = '<option value=""> Seleccione </option>';
+        datos.forEach(d => { if(d.activo) sel.innerHTML += `<option value="${d.id}">${d.nombre}</option>` });
+    }
+
+    function validarRol() {
+        const sel = document.getElementById('u-rol');
+        const isMedico = sel.options[sel.selectedIndex].text.toLowerCase() === 'médico' || sel.options[sel.selectedIndex].text.toLowerCase() === 'medico';
+        const divEsp = document.getElementById('div-esp');
+        const selEsp = document.getElementById('u-esp');
+        if (isMedico) {
+            divEsp.classList.remove('d-none');
+            selEsp.required = true;
+        } else {
+            divEsp.classList.add('d-none');
+            selEsp.required = false;
+            selEsp.value = '';
+        }
+    }
+
+    // NOTA DE DECISIÓN (RN-CU01-02 vs flujo narrativo): se mantiene el comportamiento
+    // ya implementado (tamaño de página 10/25/50 configurable + filtro por
+    // id/nombre/dpi/correo/usuario/rol) porque es el que el backend expone hoy
+    // (/api/usuarios/buscar?campo=&valor=). Si la tabla RN-CU01-02 (20 fijo,
+    // NIT/Sucursal) debe ser la fuente de verdad, avísame y ajustamos backend + UI.
+    async function buscarUsuarios(page = 0) {
+        if (page < 0 || (page >= totalPages && totalPages > 0)) return;
+
+        const campo = document.getElementById('filtroCampo').value;
+        const valor = document.getElementById('filtroValor').value;
+        const size = document.getElementById('pageSize').value || 10;
+        let url = `/api/usuarios/buscar?page=${page}&size=${size}`;
+        if(valor) url += `&campo=${campo}&valor=${valor}`;
+
+        try {
+            const data = await App.apiFetch(url);
+            usuariosCache = data.content || data;
+            currentPage = data.number !== undefined ? data.number : 0;
+            totalPages = data.totalPages !== undefined ? data.totalPages : 1;
+            // FIX CU-01: conteo total de registros
+            const totalRegistros = data.totalElements !== undefined ? data.totalElements : usuariosCache.length;
+
+            renderTabla();
+
+            document.getElementById('page-info').textContent =
+                `Página ${currentPage + 1} de ${totalPages === 0 ? 1 : totalPages} — ${totalRegistros} registro(s) en total`;
+            document.getElementById('btn-prev').disabled = currentPage === 0;
+            document.getElementById('btn-next').disabled = currentPage >= totalPages - 1;
+
+        } catch(e) { App.showAlert('msg', e.message, true); }
+    }
+
+    // FIX CU-01 RN-CU01-02: columnas Nombre y Usuario ordenables
+    function ordenarPor(campo) {
+        if (sortCampo === campo) { sortAsc = !sortAsc; } else { sortCampo = campo; sortAsc = true; }
+        renderTabla();
+    }
+
+    function renderTabla() {
+        let datos = [...usuariosCache];
+        if (sortCampo) {
+            const key = sortCampo === 'nombre' ? 'nombreCompleto' : 'nombreUsuario';
+            datos.sort((a, b) => (a[key] || '').localeCompare(b[key] || '') * (sortAsc ? 1 : -1));
+        }
+
+        const tb = document.getElementById('tb-usuarios');
+        tb.innerHTML = datos.map(u => `
+            <tr>
+                <td>${u.id}</td><td>${u.nombreCompleto}</td><td>${u.dpi||'-'}</td><td>${u.correo}</td><td>${u.nombreUsuario}</td>
+                <td>${u.rolNombre||'-'}</td><td>${u.sucursalNombre||'-'}</td>
+                <td><span style="color: ${u.activo ? 'var(--accent)' : 'var(--error)'}; font-weight: 500;">${u.activo ? 'Activo' : 'Inactivo'}</span></td>
+                <td>
+                    <button class="btn btn-primary" style="padding: 0.3rem 0.6rem; font-size: 0.8rem;" onclick="abrirEdicion(${u.id})">Editar</button>
+                    <button class="btn btn-danger" style="padding: 0.3rem 0.6rem; font-size: 0.8rem;" onclick="desactivarUsuario(${u.id}, '${u.nombreCompleto.replace(/'/g, "\\'")}')">Desactivar</button>
+                </td>
+            </tr>`).join('');
+        if(datos.length === 0) tb.innerHTML = '<tr><td colspan="9" class="text-muted">No se encontraron usuarios.</td></tr>';
+
+        ['nombre', 'usuario'].forEach(c => {
+            const icon = document.getElementById('sort-icon-' + c);
+            if (!icon) return;
+            icon.className = sortCampo === c ? (sortAsc ? 'fa-solid fa-sort-up' : 'fa-solid fa-sort-down') : 'fa-solid fa-sort';
+        });
+    }
+
+    // FIX CU-01 FA05: modal de confirmación en lugar de confirm() nativo
+    function desactivarUsuario(id, nombre) {
+        idAEliminar = id;
+        nombreAEliminar = nombre;
+        document.getElementById('confirm-delete-nombre').textContent = nombre;
+        document.getElementById('modal-confirm-delete').classList.remove('d-none');
+    }
+
+    function cerrarModalConfirmacion() {
+        idAEliminar = null;
+        document.getElementById('modal-confirm-delete').classList.add('d-none');
+    }
+
+    async function confirmarInactivar() {
+        if (!idAEliminar) return;
+        const id = idAEliminar, nombre = nombreAEliminar;
+        cerrarModalConfirmacion();
+        try {
+            await App.apiFetch(`/api/usuarios/${id}`, 'DELETE');
+            // FIX CU-01: texto alineado con el resto de mensajes ("correctamente")
+            App.showAlert('msg', `El usuario ${nombre} ha sido desactivado correctamente.`);
+            buscarUsuarios(currentPage);
+        } catch(e) {
+            App.showAlert('msg', e.message, true);
+        }
+    }
+
+    function abrirCreacion() {
+        document.getElementById('form-title').innerText = "Crear Nuevo Usuario";
+        document.getElementById('form-user').reset();
+        App.clearInvalidFields(document.getElementById('form-user'));
+        document.getElementById('u-id').value = '';
+        document.getElementById('u-pass').required = true;
+        document.getElementById('u-pass').placeholder = "Mínimo 12 caracteres";
+        document.getElementById('u-suc').required = true;
+        validarRol();
+        document.getElementById('modal-user').classList.remove('d-none');
+    }
+
+    function abrirEdicion(id) {
+        const u = usuariosCache.find(x => x.id === id);
+        if(!u) return;
+        App.clearInvalidFields(document.getElementById('form-user'));
+        document.getElementById('form-title').innerText = "Modificar Usuario";
+        document.getElementById('u-id').value = u.id;
+        document.getElementById('u-nombre').value = u.nombreCompleto || '';
+        document.getElementById('u-correo').value = u.correo || '';
+        document.getElementById('u-dpi').value = u.dpi || '';
+        document.getElementById('u-tel').value = u.telefono || '';
+        document.getElementById('u-username').value = u.nombreUsuario || '';
+        document.getElementById('u-nit').value = u.nit || '';
+        document.getElementById('u-seguro').value = u.numeroSeguro || '';
+        document.getElementById('u-pass').required = false;
+        document.getElementById('u-pass').placeholder = "Dejar vacío si no desea cambiar";
+        document.getElementById('u-suc').required = false;
+
+        if(u.rolId) document.getElementById('u-rol').value = u.rolId;
+        if(u.sucursalId) document.getElementById('u-suc').value = u.sucursalId;
+        if(u.especialidadId) document.getElementById('u-esp').value = u.especialidadId;
+
+        document.getElementById('u-activo').checked = u.activo;
+        validarRol();
+        document.getElementById('modal-user').classList.remove('d-none');
+    }
+
+    function cerrarModal() {
+        document.getElementById('modal-user').classList.add('d-none');
+    }
+
+    document.getElementById('form-user').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        App.hideAlert('msg');
+        const form = e.target;
+
+        // FIX CU-01 FA06: resaltado de campos en rojo campo por campo
+        App.clearInvalidFields(form);
+        if (!form.checkValidity()) {
+            App.markInvalidFields(form);
+            return App.showAlert('msg', 'Revise los campos marcados en rojo antes de continuar.', true);
+        }
+
+        const id = document.getElementById('u-id').value;
+        const payload = {
+            nombreCompleto: document.getElementById('u-nombre').value,
+            correo: document.getElementById('u-correo').value,
+            nombreUsuario: document.getElementById('u-username').value,
+            dpi: document.getElementById('u-dpi').value || null,
+            telefono: document.getElementById('u-tel').value || null,
+            nit: document.getElementById('u-nit').value || null,
+            numeroSeguro: document.getElementById('u-seguro').value || null,
+            rolId: document.getElementById('u-rol').value,
+            sucursalId: document.getElementById('u-suc').value || null,
+            especialidadId: document.getElementById('u-esp').value || null,
+            activo: document.getElementById('u-activo').checked
+        };
+        const pass = document.getElementById('u-pass').value;
+        if (pass) payload.password = pass;
+
+        try {
+            await App.apiFetch(id ? `/api/usuarios/${id}` : '/api/usuarios', id ? 'PUT' : 'POST', payload);
+            App.showAlert('msg', id ? 'Usuario actualizado correctamente.' : 'Usuario creado correctamente.');
+            cerrarModal();
+            buscarUsuarios(currentPage);
+        } catch(err) { App.showAlert('msg', err.message, true); }
+    });
+
+    function toggleMobileSidebar() {
+        document.getElementById('sidebar').classList.toggle('mobile-open');
+        document.getElementById('backdrop').classList.toggle('show');
+    }
+
+    function toggleSidebarCollapse() {
+        document.getElementById('sidebar').classList.toggle('collapsed');
+        const icon = document.getElementById('collapse-icon');
+        icon.classList.toggle('fa-angles-left');
+        icon.classList.toggle('fa-angles-right');
+    }
+
+    init();
+</script>
+</body>
+</html>
