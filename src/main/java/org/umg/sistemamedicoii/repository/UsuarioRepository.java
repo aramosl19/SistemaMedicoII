@@ -25,6 +25,8 @@ public interface UsuarioRepository extends JpaRepository<Usuario, Integer> {
 
     boolean existsByDpiAndIdNot(String dpi, Integer id);
 
+    @Query("SELECT u FROM Usuario u WHERE u.id = :id")
+    Page<Usuario> buscarPorId(@Param("id") Integer id, Pageable pageable);
 
     @Query(value = "SELECT * FROM usuario u WHERE unaccent(u.nombre_completo) ILIKE unaccent(CONCAT('%', :valor, '%'))",
             countQuery = "SELECT count(*) FROM usuario u WHERE unaccent(u.nombre_completo) ILIKE unaccent(CONCAT('%', :valor, '%'))",

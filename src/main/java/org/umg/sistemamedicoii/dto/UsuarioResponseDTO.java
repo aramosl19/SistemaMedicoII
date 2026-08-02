@@ -12,9 +12,14 @@ public class UsuarioResponseDTO {
     private String nombreUsuario;
     private String telefono;
     private String numeroSeguro;
+    private Integer rolId;
+    private Integer sucursalId;
+    private Integer especialidadId;
+
     private String rolNombre;
     private String sucursalNombre;
     private String especialidadNombre;
+
     private boolean activo;
-    // Se hizo esta clase para no poner password
+    // Se hizo esta clase para no exponer password
 }

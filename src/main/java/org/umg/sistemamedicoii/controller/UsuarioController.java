@@ -4,7 +4,9 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.Size;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+import org.umg.sistemamedicoii.config.security.UsuarioPrincipal;
 import org.umg.sistemamedicoii.dto.UsuarioRequestDTO;
 import org.umg.sistemamedicoii.dto.UsuarioResponseDTO;
 import org.umg.sistemamedicoii.service.UsuarioService;
@@ -21,6 +23,16 @@ public class UsuarioController {
     @GetMapping
     public List<UsuarioResponseDTO> listar() {
         return usuarioService.listar();
+    }
+
+    // FIX QA: cualquier usuario autenticado (Farmaceutico, Medico, Enfermero, etc.)
+    // necesita poder leer SU PROPIO registro para datos como su sucursalId, sin
+    // depender del rol ADMINISTRADOR/RECEPCIONISTA que exige GET /api/usuarios/{id}.
+    // Debe declararse antes que "/{id}" para que Spring no lo confunda con un id.
+    @GetMapping("/me")
+    public UsuarioResponseDTO obtenerPropio(Authentication authentication) {
+        UsuarioPrincipal principal = (UsuarioPrincipal) authentication.getPrincipal();
+        return usuarioService.obtenerPorId(principal.getUsuario().getId());
     }
 
     @GetMapping("/{id}")

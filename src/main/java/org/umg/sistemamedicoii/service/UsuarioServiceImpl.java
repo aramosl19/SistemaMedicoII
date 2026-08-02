@@ -43,7 +43,6 @@ public class UsuarioServiceImpl implements UsuarioService{
     @Autowired private EmailService emailService;
     @Autowired private org.umg.sistemamedicoii.config.security.JwtService jwtService;
 
-
     private void validarSucursalObligatoriaEnCreacion(UsuarioRequestDTO dto) {
         if (dto.getSucursalId() == null) {
             throw new IllegalArgumentException("Debe seleccionar una sucursal para el usuario.");
@@ -62,7 +61,6 @@ public class UsuarioServiceImpl implements UsuarioService{
             throw new IllegalArgumentException("El campo Contraseña es obligatorio.");
         }
     }
-
 
     @Override
     public List<UsuarioResponseDTO> listar() {
@@ -120,6 +118,10 @@ public class UsuarioServiceImpl implements UsuarioService{
         }
 
         Usuario guardado = usuarioRepository.save(usuario);
+
+        registrarAuditoria("USUARIO_CREADO", guardado.getId(),
+                "Usuario " + guardado.getNombreUsuario() + " creado con rol " + rol.getNombre());
+
         return toResponseDTO(guardado);
     }
 
@@ -140,7 +142,7 @@ public class UsuarioServiceImpl implements UsuarioService{
         }
 
         Rol rol = rolRepository.findById(dto.getRolId())
-                .orElseThrow(()-> new ResourceNotFoundException("Rol no encontrado"+dto.getRolId()));
+                .orElseThrow(() -> new ResourceNotFoundException("Rol no encontrado con id " + dto.getRolId()));
 
         validarEspecialidadSiEsMedico(rol, dto);
         usuario.setNombreCompleto(dto.getNombreCompleto());
@@ -169,7 +171,13 @@ public class UsuarioServiceImpl implements UsuarioService{
                     .orElseThrow(() -> new ResourceNotFoundException("Especialidad no encontrada con id " + dto.getEspecialidadId()));
             usuario.setEspecialidad(especialidad);
         }
-        return toResponseDTO(usuarioRepository.save(usuario));
+
+        Usuario actualizado = usuarioRepository.save(usuario);
+
+        registrarAuditoria("USUARIO_ACTUALIZADO", actualizado.getId(),
+                "Usuario " + actualizado.getNombreUsuario() + " actualizado");
+
+        return toResponseDTO(actualizado);
     }
 
     @Override
@@ -177,6 +185,9 @@ public class UsuarioServiceImpl implements UsuarioService{
         Usuario usuario = buscarUsuarioOlanzar(id);
         usuario.setActivo(false);
         usuarioRepository.save(usuario);
+
+        registrarAuditoria("USUARIO_ELIMINADO", usuario.getId(),
+                "Usuario " + usuario.getNombreUsuario() + " desactivado (eliminación lógica)");
     }
 
     @Override
@@ -188,6 +199,14 @@ public class UsuarioServiceImpl implements UsuarioService{
         }
 
         Page<Usuario> resultado = switch (campo.toLowerCase()) {
+            // Solución CU-01: Búsqueda por ID
+            case "id" -> {
+                try {
+                    yield usuarioRepository.buscarPorId(Integer.parseInt(valor), pageable);
+                } catch (NumberFormatException e) {
+                    throw new IllegalArgumentException("El ID debe ser un número entero.");
+                }
+            }
             case "nombre" -> usuarioRepository.buscarPorNombre(valor, pageable);
             case "correo" -> usuarioRepository.buscarPorCorreo(valor, pageable);
             case "usuario" -> usuarioRepository.buscarPorNombreUsuario(valor, pageable);
@@ -280,7 +299,7 @@ public class UsuarioServiceImpl implements UsuarioService{
 
             usuarioRepository.save(usuario);
             throw new InvalidCredentialsException(
-                    "Usuario o contraseña incorrectos. Intentos restantes: " + restantes + ".");
+                    "Contraseña incorrecta. Le quedan " + restantes + " intento(s) antes de la inactivación temporal de la cuenta.");
         }
 
         if (!usuario.isActivo()) {
@@ -314,12 +333,16 @@ public class UsuarioServiceImpl implements UsuarioService{
         dto.setNombreUsuario(u.getNombreUsuario());
         dto.setTelefono(u.getTelefono());
         dto.setNumeroSeguro(u.getNumeroSeguro());
+        dto.setRolId(u.getRol()!= null ? u.getRol().getId():null);
+        dto.setSucursalId(u.getSucursal()!=null? u.getSucursal().getId():null);
+        dto.setEspecialidadId(u.getEspecialidad()!=null? u.getEspecialidad().getId():null);
         dto.setRolNombre(u.getRol()!= null ? u.getRol().getNombre():null);
         dto.setSucursalNombre(u.getSucursal()!=null? u.getSucursal().getNombre():null);
         dto.setEspecialidadNombre(u.getEspecialidad()!=null? u.getEspecialidad().getNombre():null);
         dto.setActivo(u.isActivo());
         return dto;
     }
+
     private void registrarAuditoria(String accion, Integer entidadId, String detalle) {
         org.umg.sistemamedicoii.models.Auditoria log = new org.umg.sistemamedicoii.models.Auditoria();
         log.setAccion(accion);
