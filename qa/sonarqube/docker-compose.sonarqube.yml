@@ -1,0 +1,27 @@
+# SonarQube Community Edition local, para analizar SistemaMedicoII.
+# Uso:
+#   docker compose -f docker-compose.sonarqube.yml up -d
+#   Abrir http://localhost:9000  (usuario/clave inicial: admin / admin)
+#
+# La primera vez SonarQube pedirá cambiar la contraseña y luego crear
+# un token de análisis (My Account > Security > Generate Token).
+# Ese token es el que usarás en el comando "mvn ... sonar:sonar -Dsonar.token=...".
+
+services:
+  sonarqube:
+    image: sonarqube:community
+    container_name: sonarqube-sistemamedico
+    ports:
+      - "9000:9000"
+    environment:
+      # Evita que falle en Windows/WSL/Docker Desktop por límites del sistema operativo
+      - SONAR_ES_BOOTSTRAP_CHECKS_DISABLE=true
+    volumes:
+      - sonarqube_data:/opt/sonarqube/data
+      - sonarqube_extensions:/opt/sonarqube/extensions
+      - sonarqube_logs:/opt/sonarqube/logs
+
+volumes:
+  sonarqube_data:
+  sonarqube_extensions:
+  sonarqube_logs:

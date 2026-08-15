@@ -1,0 +1,13 @@
+{
+  "name": "sistemamedicoii-e2e",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Pruebas E2E con Cypress para el portal web de SistemaMedicoII",
+  "scripts": {
+    "cy:open": "cypress open",
+    "cy:run": "cypress run"
+  },
+  "devDependencies": {
+    "cypress": "^13.15.0"
+  }
+}
