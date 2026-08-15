@@ -213,8 +213,9 @@ public class SignosVitalesServiceImpl implements SignosVitalesService {
 
         String nombrePaciente = signos.getCita().getPaciente().getNombreCompleto();
         if (emergencia) {
-            respuesta.setMensaje("Signos vitales de emergencia registrados para el paciente " + nombrePaciente
-                    + ". Será atendido con prioridad.");
+            // CU-07, FA01, paso 5: texto exacto del documento.
+            respuesta.setMensaje("Signos vitales de emergencia registrados para paciente " + nombrePaciente
+                    + ". El paciente debe pasar directamente a consulta médica.");
         } else {
             respuesta.setMensaje("Signos vitales registrados correctamente para el paciente " + nombrePaciente + ".");
         }

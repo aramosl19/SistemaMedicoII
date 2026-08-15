@@ -30,7 +30,8 @@ public class PagoServiceImpl implements PagoService {
     @Value("${app.hospital.nombre}")
     private String nombreHospital;
 
-    private static final String TARJETA_FONDOS_INSUFICIENTES = "4000000000000200";
+    private static final String TARJETA_RECHAZO_BANCARIO = "4000000000000002";
+    private static final String TARJETA_ERROR_PROCESAMIENTO = "4000000000000101";
     private static final String TARJETA_ERROR_COMUNICACION = "4000000000000309";
     private static final DateTimeFormatter FORMATO_FECHA_HORA = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
 
@@ -57,7 +58,7 @@ public class PagoServiceImpl implements PagoService {
             cita.setEstado(estadoCache.getEstado(EstadoCitaEnum.CANCELADA));
             citaRepository.save(cita);
             throw new IllegalArgumentException(
-                    "El tiempo para confirmar su cita ha expirado. El horario seleccionado ha sido liberado. Por favor, seleccione un nuevo horario.");
+                    "El tiempo para confirmar su cita ha expirado. El horario seleccionado ha sido liberado. Por favor, seleccione un nuevo horario. Será redirigido en unos segundos...");
         }
 
         if (pagoTarjetaRepository.existsByTipoConceptoAndReferenciaId(TipoConceptoCobro.CITA, cita.getId())) {
@@ -75,10 +76,12 @@ public class PagoServiceImpl implements PagoService {
         }
 
         switch (dto.getNumeroTarjeta()) {
-            case TARJETA_FONDOS_INSUFICIENTES -> throw new PagoRechazadoException(
-                    "Su tarjeta fue rechazada por fondos insuficientes. Verifique su saldo e intente nuevamente.");
+            case TARJETA_RECHAZO_BANCARIO -> throw new PagoRechazadoException(
+                    "La transacción con tarjeta fue rechazada por el banco. Por favor, verifique los datos de su tarjeta o intente con una tarjeta diferente.");
+            case TARJETA_ERROR_PROCESAMIENTO -> throw new PagoRechazadoException(
+                    "El pago no pudo ser procesado. Por favor, intente nuevamente o utilice otra tarjeta.");
             case TARJETA_ERROR_COMUNICACION -> throw new PagoRechazadoException(
-                    "Error al procesar el pago. Por favor, intente nuevamente o contacte a su banco.");
+                    "Error de comunicación con la pasarela de pago. Intente nuevamente en unos minutos.");
         }
 
         cita.setEstado(estadoCache.getEstado(EstadoCitaEnum.CONFIRMADA));

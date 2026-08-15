@@ -8,6 +8,7 @@ import org.umg.sistemamedicoii.dto.BusquedaRecepcionResponseDTO;
 import org.umg.sistemamedicoii.dto.CitaRecepcionResponseDTO;
 import org.umg.sistemamedicoii.dto.CitaRequestDTO;
 import org.umg.sistemamedicoii.dto.CitaResponseDTO;
+import org.umg.sistemamedicoii.dto.EmergenciaAltaRequestDTO;
 import org.umg.sistemamedicoii.dto.EmergenciaRequestDTO;
 import org.umg.sistemamedicoii.dto.RegistrarLlegadaRequestDTO;
 import org.umg.sistemamedicoii.service.CitaService;
@@ -52,11 +53,24 @@ public class RecepcionController {
         return recepcionService.reasignarMedico(id, dto);
     }
 
+    // Se mantiene para no romper integraciones que ya elijan sucursal/especialidad/
+    // médico a mano. El flujo nuevo que usa recepcion.html es /emergencia (abajo).
     @PostMapping("/pacientes/{pacienteId}/emergencia")
     @ResponseStatus(HttpStatus.CREATED)
     public CitaRecepcionResponseDTO registrarEmergenciaDirecta(
             @PathVariable Integer pacienteId,
             @Valid @RequestBody EmergenciaRequestDTO dto) {
         return recepcionService.registrarEmergenciaDirecta(pacienteId, dto);
+    }
+
+    // FIX CU-05 FA01: un solo endpoint — recibe nombre+DPI, da de alta al
+    // paciente automáticamente si el DPI no existe (o usa la cuenta existente
+    // si sí existe), y crea la cita de emergencia ya resolviendo sede,
+    // especialidad y médico desde el propio Recepcionista autenticado.
+    @PostMapping("/emergencia")
+    @ResponseStatus(HttpStatus.CREATED)
+    public CitaRecepcionResponseDTO registrarEmergenciaConAlta(
+            @Valid @RequestBody EmergenciaAltaRequestDTO dto) {
+        return recepcionService.registrarEmergenciaConAlta(dto);
     }
 }

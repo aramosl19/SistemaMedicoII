@@ -183,11 +183,19 @@ public class UsuarioServiceImpl implements UsuarioService{
     @Override
     public void eliminar(Integer id) {
         Usuario usuario = buscarUsuarioOlanzar(id);
-        usuario.setActivo(false);
-        usuarioRepository.save(usuario);
+        Integer idUsuario = usuario.getId();
+        String nombreUsuario = usuario.getNombreUsuario();
 
-        registrarAuditoria("USUARIO_ELIMINADO", usuario.getId(),
-                "Usuario " + usuario.getNombreUsuario() + " desactivado (eliminación lógica)");
+        try {
+            usuarioRepository.delete(usuario);
+            usuarioRepository.flush(); // fuerza el DELETE ahora para capturar el error de FK aquí, no después
+        } catch (org.springframework.dao.DataIntegrityViolationException e) {
+            throw new IllegalArgumentException(
+                    "No se puede eliminar este usuario porque tiene información asociada en el sistema (citas, consultas, movimientos, etc.).");
+        }
+
+        registrarAuditoria("USUARIO_ELIMINADO", idUsuario,
+                "Usuario " + nombreUsuario + " eliminado permanentemente");
     }
 
     @Override
@@ -299,7 +307,7 @@ public class UsuarioServiceImpl implements UsuarioService{
 
             usuarioRepository.save(usuario);
             throw new InvalidCredentialsException(
-                    "Contraseña incorrecta. Le quedan " + restantes + " intento(s) antes de la inactivación temporal de la cuenta.");
+                    "Usuario o contraseña incorrectos. Intentos restantes: " + restantes);
         }
 
         if (!usuario.isActivo()) {

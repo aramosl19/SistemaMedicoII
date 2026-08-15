@@ -13,6 +13,7 @@ public class CitaRecepcionResponseDTO {
     private String estadoNombre;
     private String especialidadNombre;
     private String sucursalNombre;
+    private String medicoNombre;
     private LocalDateTime fechaHora;
     private String motivo;
     private boolean emergencia;
