@@ -38,7 +38,17 @@
         <div id="msg" class="alert"></div>
 
         <div class="card" id="area-busqueda">
-            <p class="text-muted">Busque la cita del paciente para registrar su llegada a la clínica.</p>
+            <div class="d-flex" style="justify-content: space-between; align-items: flex-start; gap: 1rem;">
+                <p class="text-muted" style="margin: 0;">Busque la cita del paciente para registrar su llegada a la clínica.</p>
+
+                <!-- FIX CU-05 FA01: el ingreso por emergencia no depende de haber buscado antes
+                     una cita/DPI. Solo el botón, sin cuadro anidado con título/descripción —
+                     vive en el mismo box que el resto del buscador (#area-busqueda).
+                     Ubicado en la esquina superior derecha despegado del borde. -->
+                <button id="btn-emergencia-directa" class="btn btn-danger" style="white-space: nowrap;" onclick="abrirModalEmergencia()">
+                    <i class="fa-solid fa-truck-medical"></i> Registrar Emergencia
+                </button>
+            </div>
 
             <!-- FIX CU-05 FA02: botones de alternancia en vez de dos campos simultáneos -->
             <div class="d-flex mt-4" style="gap: 0.5rem;">
@@ -62,14 +72,11 @@
 
             <div id="acciones-extra" class="mt-4 dashed-box d-none" style="text-align: center;">
                 <p id="txt-extra" class="mb-4 font-bold text-muted"></p>
-                <button id="btn-reg-pac" class="btn btn-success d-none" onclick="window.location.href='registro.html'">Registrar nuevo paciente</button>
-                <button id="btn-walkin" class="btn btn-primary d-none" onclick="irAWalkIn()">Agendar cita rápida (walk-in)</button>
+                <p id="txt-extra-sub" class="mb-4 text-muted"></p>
+                <button id="btn-reg-pac" class="btn btn-success d-none" onclick="irARegistrar()">Registrar Paciente</button>
+                <button id="btn-walkin" class="btn btn-primary d-none" onclick="irAWalkIn()">Nueva Cita (Walk-in)</button>
                 <!-- FIX CU-05 FA06 -->
                 <button id="btn-nueva-cita" class="btn btn-primary d-none" onclick="irANuevaCita()">Nueva Cita</button>
-                <!-- FIX CU-05 FA01: emergencia sin cita previa -->
-                <button id="btn-emergencia-directa" class="btn btn-danger d-none" onclick="abrirModalEmergencia()">
-                    <i class="fa-solid fa-truck-medical"></i> Registrar como Emergencia (sin cita)
-                </button>
             </div>
         </div>
 
@@ -84,8 +91,10 @@
                 <tr><th>Paciente</th><td id="d-pac" class="font-bold"></td><th>Estado actual</th><td id="d-est" class="font-bold text-primary"></td></tr>
                 <tr><th>Especialidad</th><td id="d-esp"></td><th>Hora cita</th><td id="d-fec"></td></tr>
                 <tr><th>Sede</th><td id="d-suc"></td><th>Motivo</th><td id="d-mot"></td></tr>
+                <tr><th>No. de cita</th><td id="d-num"></td><th>Hora de llegada</th><td id="d-hora-llegada" data-field="hora-llegada"></td></tr>
                 <tr><th>Prioridad (si aplica)</th><td colspan="3" id="d-prioridad" class="font-bold"></td></tr>
             </table>
+            <p id="d-indicador-llegada" class="font-bold text-primary d-none mt-4">Llegada registrada — esperando llamado de enfermería</p>
 
             <div class="well-danger mt-4">
                 <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; color: var(--danger); font-weight: 600;">
@@ -96,7 +105,7 @@
 
             <div class="d-flex mt-4">
                 <button id="btn-llegada" class="btn btn-success" onclick="registrarLlegada()">Registrar llegada a clínica</button>
-                <button id="btn-reasignar" class="btn" onclick="abrirReasignacion()">Reasignar médico</button>
+                <button id="btn-reasignar" class="btn" onclick="abrirReasignacion()">Reasignar Médico</button>
                 <button class="btn" onclick="limpiar()">Cerrar expediente</button>
                 <button id="btn-signos-urgente" class="btn btn-danger d-none" onclick="window.location.href='enfermeria.html'">
                     <i class="fa-solid fa-heart-pulse"></i> Signos Vitales (Urgente)
@@ -108,41 +117,63 @@
             <div class="modal-content">
                 <h3>Reasignación administrativa de médico</h3>
                 <p class="text-muted">Mostrando solo médicos disponibles de la misma sede y especialidad.</p>
+                <!-- FIX banners: los errores de este modal (ej. reasignación rechazada por el
+                     backend) se muestran AQUÍ, dentro del propio modal, en vez del #msg global
+                     que queda tapado detrás del overlay y el Empleado Interno nunca lo ve. -->
+                <div id="msg-reasignar" class="alert d-none"></div>
+                <div id="reasignar-resumen" class="dashed-box mt-4" style="padding: 0.75rem 1rem;">
+                    <p class="mb-0"><strong>Paciente:</strong> <span id="rr-paciente"></span></p>
+                    <p class="mb-0"><strong>Fecha:</strong> <span id="rr-fecha"></span></p>
+                    <p class="mb-0"><strong>Especialidad:</strong> <span id="rr-especialidad"></span></p>
+                    <p class="mb-0"><strong>Sede:</strong> <span id="rr-sede"></span></p>
+                    <!-- N2: médico actual, exigido por el documento (FA07 paso 3) -->
+                    <p class="mb-0"><strong>Médico actual:</strong> <span id="rr-medico"></span></p>
+                </div>
                 <form id="form-reasignar" class="mt-4" onsubmit="reasignar(event)">
                     <div class="form-group"><label>Nuevo médico disponible</label><select id="r-medico" class="form-control" required></select></div>
-                    <div class="form-group"><label>Motivo de la reasignación (auditoría)</label><input type="text" id="r-motivo" class="form-control" required minlength="5"></div>
+                    <div class="form-group"><label>Motivo de la reasignación (opcional, auditoría)</label><input type="text" id="r-motivo" class="form-control"></div>
                     <div class="d-flex mt-4" style="justify-content: flex-end;">
-                        <button type="button" onclick="document.getElementById('modal-reasignar').classList.add('d-none')" class="btn">Cancelar</button>
-                        <button type="submit" class="btn btn-primary">Confirmar reasignación</button>
+                        <button type="button" onclick="cerrarModalReasignar()" class="btn">Cancelar</button>
+                        <button type="submit" class="btn btn-primary">Confirmar Reasignación</button>
                     </div>
                 </form>
             </div>
         </div>
 
-        <!-- FIX CU-05 FA01: modal de ingreso directo por emergencia -->
+        <!-- FIX CU-05 FA01: modal de ingreso directo por emergencia.
+             Un solo formulario, con los mismos datos que pide el paso 2 de FA01
+             ("El Empleado Interno toma los datos básicos del paciente: nombre, DPI").
+             Sede, especialidad y médico ya NO se le piden a nadie: se resuelven
+             en el backend a partir de la sede del Recepcionista autenticado — el
+             documento no los menciona como dato de este paso.
+             Si el DPI ya existe, se usa esa cuenta. Si NO existe, el backend da
+             de alta una cuenta mínima (solo nombre + DPI) y la cita de emergencia
+             se crea de una vez — el resto de los datos del paciente (correo,
+             teléfono, NIT, credenciales de portal) quedan pendientes de
+             completarse después; pendiente de confirmar con el ingeniero quién
+             se encarga de llenarlos. -->
         <div class="modal-overlay d-none" id="modal-emergencia">
             <div class="modal-content">
                 <h3><i class="fa-solid fa-triangle-exclamation" style="color: var(--danger);"></i> Registrar Emergencia sin Cita Previa</h3>
-                <p class="text-muted">El paciente será admitido de inmediato con prioridad de EMERGENCIA, sin agendar horario.</p>
+                <p class="text-muted">El paciente será admitido de inmediato con prioridad de EMERGENCIA, sin agendar horario ni requerir pago previo.</p>
+
+                <!-- FIX banners: mismo motivo que en #modal-reasignar — los errores de
+                     confirmarEmergencia() (DPI no encontrado, sede sin especialidad, sin
+                     médicos disponibles, o el POST final rechazado) se muestran AQUÍ dentro
+                     del modal, nunca en el #msg global. -->
+                <div id="msg-emergencia" class="alert d-none"></div>
+
                 <form id="form-emergencia" class="mt-4" onsubmit="confirmarEmergencia(event)">
                     <div class="form-group">
-                        <label>Sede</label>
-                        <select id="em-suc" class="form-control" required onchange="cargarEspecialidadesEmergencia()"></select>
+                        <label>Nombre del paciente</label>
+                        <input type="text" id="em-nombre" class="form-control" required>
                     </div>
                     <div class="form-group">
-                        <label>Especialidad</label>
-                        <select id="em-esp" class="form-control" required onchange="cargarMedicosEmergencia()"></select>
-                    </div>
-                    <div class="form-group">
-                        <label>Médico que atenderá</label>
-                        <select id="em-med" class="form-control" required></select>
-                    </div>
-                    <div class="form-group">
-                        <label>Motivo (opcional)</label>
-                        <input type="text" id="em-motivo" class="form-control" maxlength="2000" placeholder="Ej. Dolor torácico agudo">
+                        <label>DPI del paciente</label>
+                        <input type="text" id="em-dpi" class="form-control" maxlength="13" placeholder="13 dígitos" required>
                     </div>
                     <div class="d-flex mt-4" style="justify-content: flex-end;">
-                        <button type="button" class="btn" onclick="document.getElementById('modal-emergencia').classList.add('d-none')">Cancelar</button>
+                        <button type="button" class="btn" onclick="cerrarModalEmergencia()">Cancelar</button>
                         <button type="submit" class="btn btn-danger">Confirmar ingreso de emergencia</button>
                     </div>
                 </form>
@@ -160,8 +191,12 @@
     let currentSede = '';
     let currentEsp = '';
     let currentPacienteId = null;
+    let currentPacienteNombre = '';
+    let currentFecha = '';
+    let currentMedicoId = null;
+    let currentMedicoNombre = '';
+    let currentDpiBuscado = '';
     let modoBusqueda = 'dpi';
-    let catEspSucEmergencia = [];
 
     function cambiarModoBusqueda(modo) {
         modoBusqueda = modo;
@@ -185,16 +220,19 @@
         const extra = document.getElementById('acciones-extra'), txtExtra = document.getElementById('txt-extra');
         const btnReg = document.getElementById('btn-reg-pac'), btnWalk = document.getElementById('btn-walkin');
         const btnNuevaCita = document.getElementById('btn-nueva-cita');
-        const btnEmergencia = document.getElementById('btn-emergencia-directa');
+        const txtExtraSub = document.getElementById('txt-extra-sub');
 
         extra.classList.add('d-none'); btnReg.classList.add('d-none'); btnWalk.classList.add('d-none');
-        btnNuevaCita.classList.add('d-none'); btnEmergencia.classList.add('d-none');
+        btnNuevaCita.classList.add('d-none'); txtExtraSub.textContent = '';
         document.getElementById('detalle').classList.add('d-none');
         document.getElementById('btn-signos-urgente').classList.add('d-none');
+        document.getElementById('d-indicador-llegada').classList.add('d-none');
         currentPacienteId = null;
         App.hideAlert('msg');
 
-        if(!num && !dpi) return App.showAlert('msg', 'Ingrese No. de cita o DPI del paciente.', true);
+        if(!num && !dpi) return App.showAlert('msg', 'Debe ingresar un número de cita o DPI para buscar.', true);
+
+        currentDpiBuscado = dpi || '';
 
         try {
             const data = await App.apiFetch(`/api/recepcion/citas/buscar?${num?`numeroCita=${num}`:`dpi=${dpi}`}`);
@@ -205,6 +243,15 @@
                 currentSede = c.sucursalNombre;
                 currentEsp = c.especialidadNombre;
                 currentPacienteId = c.pacienteId;
+                currentPacienteNombre = c.pacienteNombre;
+                currentFecha = c.fechaHora;
+                // N2: requiere que el backend mande el médico asignado a la
+                // cita (ej. c.medicoId / c.medicoNombre). Si no lo manda
+                // todavía, esto queda en null/vacío y el resumen de
+                // reasignación mostrará "Médico actual:" sin valor —
+                // confirmar el nombre real de estos campos con Edy Ramírez.
+                currentMedicoId = c.medicoId || null;
+                currentMedicoNombre = c.medicoNombre || '';
 
                 document.getElementById('d-pac').innerText = c.pacienteNombre;
 
@@ -216,6 +263,8 @@
                 document.getElementById('d-fec').innerText = c.fechaHora.replace('T',' ');
                 document.getElementById('d-suc').innerText = c.sucursalNombre;
                 document.getElementById('d-mot').innerText = c.motivo;
+                document.getElementById('d-num').innerText = c.numeroCita || c.id;
+                document.getElementById('d-hora-llegada').innerText = c.horaLlegada ? c.horaLlegada.replace('T', ' ') : '—';
                 document.getElementById('d-em').checked = c.emergencia;
                 actualizarPrioridadVisual();
 
@@ -224,7 +273,7 @@
                     extra.classList.remove('d-none');
                     btnNuevaCita.classList.remove('d-none');
                 } else if (c.estadoNombre === 'Pendiente de pago') {
-                    App.showAlert('msg', 'La cita tiene estado "Pendiente de pago". Debe realizar el pago en caja.', true);
+                    App.showAlert('msg', "La cita del paciente tiene estado 'Pendiente de pago'. Debe realizar el pago en caja antes de ser atendido.", true);
                 }
 
                 document.getElementById('btn-llegada').disabled = (c.estadoNombre !== 'Confirmada');
@@ -236,16 +285,25 @@
                 document.getElementById('detalle').classList.remove('d-none');
 
             } else if (data.resultado === 'PACIENTE_NO_REGISTRADO') {
-                txtExtra.textContent = "No se encontró ningún paciente con ese DPI en el sistema.";
+                txtExtra.textContent = "No se encontró ningún paciente con ese DPI.";
+                txtExtraSub.textContent = "Es necesario registrar al paciente antes de continuar.";
                 extra.classList.remove('d-none'); btnReg.classList.remove('d-none');
             } else if (data.resultado === 'SIN_CITAS_ACTIVAS') {
-                txtExtra.textContent = `El paciente ${data.pacienteNombre} está registrado pero no tiene citas activas para hoy.`;
+                txtExtra.textContent = `El paciente ${data.pacienteNombre} está registrado pero no tiene citas activas.`;
+                txtExtraSub.textContent = "Puede crear una nueva cita para este paciente.";
                 currentPacienteId = data.pacienteId;
                 extra.classList.remove('d-none'); btnWalk.classList.remove('d-none');
-                // FIX CU-05 FA01: ofrecer también el ingreso directo por emergencia
-                btnEmergencia.classList.remove('d-none');
+            } else if (data.resultado === 'CITA_NO_ENCONTRADA') {
+                App.showAlert('msg', 'No se encontró una cita asociada a los parámetros ingresados. Verifique los datos e intente nuevamente.', true);
             }
         } catch(e) { App.showAlert('msg', e.message, true); }
+    }
+
+    // FIX FA03 / N5: registro.html exige un DPI en la URL (?dpi=...) y se
+    // auto-redirige a index.html si no lo recibe — no es un problema de
+    // sesión ni de token, es que este botón navegaba sin pasarle el dato.
+    function irARegistrar() {
+        window.location.href = `registro.html?dpi=${encodeURIComponent(currentDpiBuscado)}`;
     }
 
     function irAWalkIn() {
@@ -258,50 +316,29 @@
         window.location.href = `paciente_agendar.html?pacienteId=${currentPacienteId}`;
     }
 
-    // FIX CU-05 FA01
-    async function abrirModalEmergencia() {
-        if (!currentPacienteId) return App.showAlert('msg', 'No se pudo identificar al paciente para el ingreso de emergencia.', true);
-        try {
-            const [suc, asignaciones] = await Promise.all([
-                App.apiFetch('/api/sucursales'),
-                App.apiFetch('/api/sucursal-especialidad')
-            ]);
-            const sucursalesActivas = suc.filter(s => s.activo);
-            catEspSucEmergencia = asignaciones.filter(a => a.activo);
-
-            document.getElementById('em-suc').innerHTML = '<option value="">Seleccione una sede</option>' +
-                sucursalesActivas.map(s => `<option value="${s.id}">${s.nombre}</option>`).join('');
-            document.getElementById('em-esp').innerHTML = '<option value="">Seleccione primero la sede</option>';
-            document.getElementById('em-med').innerHTML = '<option value="">Seleccione primero la especialidad</option>';
-
-            const form = document.getElementById('form-emergencia');
-            form.reset();
-            App.clearInvalidFields(form);
-            document.getElementById('modal-emergencia').classList.remove('d-none');
-        } catch (e) { App.showAlert('msg', e.message, true); }
+    // FIX CU-05 FA01: el ingreso por emergencia ya no depende de haber buscado antes
+    // una cita — se abre directo desde el botón siempre visible arriba del buscador.
+    function abrirModalEmergencia() {
+        const form = document.getElementById('form-emergencia');
+        form.reset();
+        App.clearInvalidFields(form);
+        // FIX banners: limpiar el banner local cada vez que se abre el modal, para
+        // que no quede pegado el error de un intento anterior.
+        App.hideAlert('msg-emergencia');
+        document.getElementById('modal-emergencia').classList.remove('d-none');
     }
 
-    function cargarEspecialidadesEmergencia() {
-        const sucId = parseInt(document.getElementById('em-suc').value);
-        const disponibles = catEspSucEmergencia.filter(a => a.sucursalId === sucId);
-        document.getElementById('em-esp').innerHTML = '<option value="">Seleccione una especialidad</option>' +
-            disponibles.map(d => `<option value="${d.especialidadId}">${d.especialidadNombre}</option>`).join('');
-        document.getElementById('em-med').innerHTML = '<option value="">Seleccione primero la especialidad</option>';
+    function cerrarModalEmergencia() {
+        document.getElementById('modal-emergencia').classList.add('d-none');
     }
 
-    async function cargarMedicosEmergencia() {
-        const sucId = document.getElementById('em-suc').value;
-        const espId = document.getElementById('em-esp').value;
-        if (!sucId || !espId) return;
-        document.getElementById('em-med').innerHTML = '<option value="">Buscando médicos...</option>';
-        try {
-            const data = await App.apiFetch(`/api/citas/medicos-disponibles?sucursalId=${sucId}&especialidadId=${espId}`);
-            document.getElementById('em-med').innerHTML = data.length
-                ? '<option value="">Seleccione un médico</option>' + data.map(m => `<option value="${m.id}">${m.nombreCompleto}</option>`).join('')
-                : '<option value="">Sin médicos disponibles para esta especialidad/sede</option>';
-        } catch (e) { App.showAlert('msg', e.message, true); }
-    }
-
+    // FIX CU-05 FA01: un solo POST a /api/recepcion/emergencia. El backend
+    // resuelve todo: si el DPI ya existe, usa esa cuenta; si no existe, la
+    // crea automáticamente con nombre+DPI (lo único que pide el documento en
+    // este paso). Sede, especialidad y médico se resuelven del lado del
+    // servidor a partir del Recepcionista autenticado — el frontend ya no
+    // necesita encadenar /usuarios/me, /sucursal-especialidad ni
+    // /citas/medicos-disponibles.
     async function confirmarEmergencia(e) {
         e.preventDefault();
         const form = e.target;
@@ -310,17 +347,30 @@
             App.markInvalidFields(form);
             return;
         }
+
         try {
-            const data = await App.apiFetch(`/api/recepcion/pacientes/${currentPacienteId}/emergencia`, 'POST', {
-                sucursalId: parseInt(document.getElementById('em-suc').value),
-                especialidadId: parseInt(document.getElementById('em-esp').value),
-                medicoId: parseInt(document.getElementById('em-med').value),
-                motivo: document.getElementById('em-motivo').value || null
+            const data = await App.apiFetch('/api/recepcion/emergencia', 'POST', {
+                nombrePaciente: document.getElementById('em-nombre').value,
+                dpi: document.getElementById('em-dpi').value,
+                motivo: null
             });
-            document.getElementById('modal-emergencia').classList.add('d-none');
+            cerrarModalEmergencia();
+            App.hideAlert('msg-emergencia');
             App.showAlert('msg', data.mensaje);
-            window.location.href = 'enfermeria.html';
-        } catch (err) { App.showAlert('msg', err.message, true); }
+            // FIX CU-05 FA01: el documento indica que el PACIENTE continúa
+            // directamente al proceso de toma de signos vitales (CU-07), es
+            // decir, la cita queda lista en la cola de espera para que
+            // CUALQUIER Enfermero la atienda desde enfermeria.html. No
+            // implica navegar la pantalla del propio Recepcionista hacia
+            // ese módulo — el Recepcionista se queda en recepción, igual
+            // que en FA08 (el botón "Signos Vitales (Urgente)" ahí es
+            // opcional, no automático).
+        } catch (err) {
+            // FIX banners: cualquier error (sede sin especialidad, sin
+            // médicos disponibles, DPI inválido, etc.) también se muestra
+            // dentro del modal, no en el #msg global.
+            App.showAlert('msg-emergencia', err.message, true);
+        }
     }
 
     async function registrarLlegada() {
@@ -336,23 +386,56 @@
             document.getElementById('d-est').innerHTML = `<span class="badge ${mapColorBadge[data.estadoNombre] || ''}">${data.estadoNombre}</span>`;
 
             document.getElementById('btn-signos-urgente').classList.toggle('d-none', !esEmergencia);
-        } catch(e) { App.showAlert('msg', e.message, true); }
+            document.getElementById('d-indicador-llegada').classList.remove('d-none');
+
+            // FIX N1: la hora de llegada se actualiza aquí mismo con la respuesta
+            // del POST, sin depender de un nuevo fetch ni de recargar la página.
+            // PENDIENTE de decidir el sábado: se mantiene el mismo formato
+            // "fecha hora" que usa el resto de la ficha — si el documento pide
+            // solo la hora, hay que recortar aquí a solo la parte de tiempo.
+            if (data.horaLlegada) {
+                document.getElementById('d-hora-llegada').innerText = data.horaLlegada.replace('T', ' ');
+            }
+        } catch(e) {
+            // FIX N6: cuando el backend no manda un mensaje propio,
+            // App.apiFetch arma su texto genérico interno ("Ha ocurrido un
+            // error en la operación."), que NO es el texto que exige el
+            // documento para este caso ("Error al registrar la llegada.").
+            const generico = 'Ha ocurrido un error en la operación.';
+            const texto = (e.message && e.message !== generico) ? e.message : 'Error al registrar la llegada.';
+            App.showAlert('msg', texto, true);
+        }
     }
 
     async function abrirReasignacion() {
         try {
             const medicos = await App.apiFetch('/api/usuarios').then(res =>
-                res.filter(u => u.rolNombre === 'Médico' && u.activo && u.sucursalNombre === currentSede && u.especialidadNombre === currentEsp)
+                res.filter(u => u.rolNombre === 'Médico' && u.activo && u.sucursalNombre === currentSede && u.especialidadNombre === currentEsp
+                    // N2: no se puede "reasignar" al médico que ya tiene la cita.
+                    && u.id !== currentMedicoId)
             );
 
             if (medicos.length === 0) {
                 return App.showAlert('msg', 'No existen otros médicos disponibles registrados con esta especialidad en esta sede.', true);
             }
 
+            document.getElementById('rr-paciente').textContent = currentPacienteNombre;
+            document.getElementById('rr-fecha').textContent = currentFecha ? currentFecha.replace('T', ' ') : '';
+            document.getElementById('rr-especialidad').textContent = currentEsp;
+            document.getElementById('rr-sede').textContent = currentSede;
+            // N2: médico actual, exigido por el documento (FA07 paso 3)
+            document.getElementById('rr-medico').textContent = currentMedicoNombre || '(sin médico asignado)';
+
             document.getElementById('r-medico').innerHTML = '<option value="">Seleccione un médico alterno</option>' + medicos.map(m=>`<option value="${m.id}">${m.nombreCompleto}</option>`).join('');
             document.getElementById('form-reasignar').reset();
+            // FIX banners: limpiar el banner local cada vez que se abre el modal.
+            App.hideAlert('msg-reasignar');
             document.getElementById('modal-reasignar').classList.remove('d-none');
         } catch(e) { App.showAlert('msg', "Error al cargar médicos: " + e.message, true); }
+    }
+
+    function cerrarModalReasignar() {
+        document.getElementById('modal-reasignar').classList.add('d-none');
     }
 
     async function reasignar(e) {
@@ -360,11 +443,22 @@
         try {
             const res = await App.apiFetch(`/api/recepcion/citas/${currentId}/reasignar`, 'POST', {
                 nuevoMedicoId: parseInt(document.getElementById('r-medico').value),
-                motivoReasignacion: document.getElementById('r-motivo').value
+                motivoReasignacion: document.getElementById('r-motivo').value || null
             });
-            App.showAlert('msg', res.mensaje);
+            App.hideAlert('msg-reasignar');
             document.getElementById('modal-reasignar').classList.add('d-none');
-        } catch(err) { App.showAlert('msg', err.message, true); }
+            App.showAlert('msg', res.mensaje);
+            // FIX FA07 NOTA GAP (G): tras reasignar, el documento exige redirigir
+            // a la lista de citas. El proyecto no tiene una página dedicada de
+            // listado de citas para recepción, así que se vuelve a la pantalla
+            // de recepción marcando la vista como "citas".
+            setTimeout(() => { window.location.href = 'recepcion.html?vista=citas'; }, 1200);
+        } catch(err) {
+            // FIX banners: el error de la reasignación se muestra DENTRO del
+            // modal (#msg-reasignar), no en el #msg global que queda tapado
+            // detrás del overlay. El modal permanece abierto para reintentar.
+            App.showAlert('msg-reasignar', err.message, true);
+        }
     }
 
     function limpiar() {

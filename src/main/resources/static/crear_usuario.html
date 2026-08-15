@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Crear Usuario - Hospital El Milagro</title>
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<div class="aurora aurora-a"></div>
+<div class="aurora aurora-b"></div>
+<div class="paper-grain"></div>
+<div class="backdrop" id="backdrop" onclick="toggleMobileSidebar()"></div>
+
+<button class="sidebar-toggle-mobile" onclick="toggleMobileSidebar()" aria-label="Abrir menú">
+    <i class="fa-solid fa-bars"></i>
+</button>
+
+<div class="app-container">
+    <nav class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <h3>Hospital El Milagro</h3>
+            <button class="sidebar-collapse-btn" onclick="toggleSidebarCollapse()" aria-label="Colapsar menú">
+                <i class="fa-solid fa-angles-left" id="collapse-icon"></i>
+            </button>
+        </div>
+        <div class="user-badge">
+            <span id="user-name"></span>
+            <span id="user-role"></span>
+        </div>
+        <div class="nav-menu" id="sidebar-menu"></div>
+    </nav>
+    <main class="main-content">
+        <h2>Crear Usuario</h2>
+        <div id="msg" class="alert"></div>
+
+        <div class="card" style="max-width: 800px;">
+            <form id="form-user" novalidate>
+                <div class="d-flex">
+                    <div class="form-group flex-1"><label>Nombre Completo</label><input type="text" id="u-nombre" class="form-control" required minlength="10" maxlength="100"></div>
+                    <div class="form-group flex-1"><label>Correo Electrónico</label><input type="email" id="u-correo" class="form-control" required oninput="validarCorreoEnVivo(this)"></div>
+                </div>
+
+                <div class="d-flex">
+                    <div class="form-group flex-1"><label>DPI</label><input type="text" id="u-dpi" class="form-control" pattern="\d{13}"></div>
+                    <div class="form-group flex-1"><label>Teléfono</label><input type="text" id="u-tel" class="form-control" pattern="\d{8}"></div>
+                </div>
+
+                <div class="d-flex">
+                    <div class="form-group flex-1"><label>Nombre de Usuario</label><input type="text" id="u-username" class="form-control" required minlength="8" maxlength="9" pattern="^[a-zA-Z0-9]+$"></div>
+                    <div class="form-group flex-1"><label>Contraseña</label><input type="password" id="u-pass" class="form-control" required minlength="12" placeholder="Mínimo 12 caracteres"></div>
+                </div>
+
+                <div class="d-flex">
+                    <div class="form-group flex-1"><label>NIT</label><input type="text" id="u-nit" class="form-control" minlength="8" maxlength="9"></div>
+                    <div class="form-group flex-1"><label>No. Seguro Médico</label><input type="text" id="u-seguro" class="form-control" minlength="5" maxlength="50"></div>
+                </div>
+
+                <div class="d-flex">
+                    <div class="form-group flex-1"><label>Rol</label><select id="u-rol" class="form-control" required onchange="validarRol()"></select></div>
+                    <div class="form-group flex-1"><label>Sucursal</label><select id="u-suc" class="form-control" required></select></div>
+                    <div class="form-group flex-1 d-none" id="div-esp"><label>Especialidad</label><select id="u-esp" class="form-control"></select></div>
+                </div>
+
+                <div class="form-group mt-4">
+                    <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; text-transform: none; letter-spacing: normal; font-size: 0.9rem; color: var(--ink);">
+                        <input type="checkbox" id="u-activo" style="width: 18px; height: 18px;" checked>
+                        Cuenta activa en el sistema
+                    </label>
+                </div>
+
+                <div class="d-flex mt-4" style="justify-content: flex-end;">
+                    <a href="admin_usuarios.html" class="btn">Cancelar</a>
+                    <button type="submit" class="btn btn-success">Registrar Usuario</button>
+                </div>
+            </form>
+        </div>
+    </main>
+</div>
+<script src="js/app.js"></script>
+<script>
+    App.requireAuth();
+
+    document.getElementById('user-name').textContent = App.getName() || 'Usuario del Sistema';
+    document.getElementById('user-role').textContent = App.getRole() || '';
+
+    async function init() {
+        try {
+            const [roles, sucursales, especialidades] = await Promise.all([
+                App.apiFetch('/api/roles'), App.apiFetch('/api/sucursales'), App.apiFetch('/api/especialidades')
+            ]);
+            llenarCombo('u-rol', roles); llenarCombo('u-suc', sucursales); llenarCombo('u-esp', especialidades);
+            validarRol();
+        } catch(e) { App.showAlert('msg', e.message, true); }
+    }
+
+    function llenarCombo(id, datos) {
+        const sel = document.getElementById(id);
+        sel.innerHTML = '<option value=""> Seleccione </option>';
+        datos.forEach(d => { if(d.activo) sel.innerHTML += `<option value="${d.id}">${d.nombre}</option>` });
+    }
+
+    function validarCorreoEnVivo(input) {
+        if (input.checkValidity()) {
+            input.classList.remove('is-invalid');
+        } else if (input.value.length > 0) {
+            input.classList.add('is-invalid');
+        }
+    }
+
+    function validarRol() {
+        const sel = document.getElementById('u-rol');
+        const isMedico = sel.options[sel.selectedIndex] && (sel.options[sel.selectedIndex].text.toLowerCase() === 'médico' || sel.options[sel.selectedIndex].text.toLowerCase() === 'medico');
+        const divEsp = document.getElementById('div-esp');
+        const selEsp = document.getElementById('u-esp');
+        if (isMedico) {
+            divEsp.classList.remove('d-none');
+            selEsp.required = true;
+        } else {
+            divEsp.classList.add('d-none');
+            selEsp.required = false;
+            selEsp.value = '';
+        }
+    }
+
+    document.getElementById('form-user').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        App.hideAlert('msg');
+        const form = e.target;
+
+        App.clearInvalidFields(form);
+        if (!form.checkValidity()) {
+            App.markInvalidFields(form);
+            return App.showAlert('msg', 'Revise los campos marcados en rojo antes de continuar.', true);
+        }
+
+        const payload = {
+            nombreCompleto: document.getElementById('u-nombre').value,
+            correo: document.getElementById('u-correo').value,
+            nombreUsuario: document.getElementById('u-username').value,
+            password: document.getElementById('u-pass').value,
+            dpi: document.getElementById('u-dpi').value || null,
+            telefono: document.getElementById('u-tel').value || null,
+            nit: document.getElementById('u-nit').value || null,
+            numeroSeguro: document.getElementById('u-seguro').value || null,
+            rolId: document.getElementById('u-rol').value,
+            sucursalId: document.getElementById('u-suc').value || null,
+            especialidadId: document.getElementById('u-esp').value || null,
+            activo: document.getElementById('u-activo').checked
+        };
+
+        try {
+            await App.apiFetch('/api/usuarios', 'POST', payload);
+            window.location.href = 'admin_usuarios.html?msg=creado';
+        } catch(err) {
+            const campo = App.markFieldByErrorMessage(form, err.message, {
+                'usuario': 'u-username',
+                'contraseña': 'u-pass',
+                'correo': 'u-correo',
+                'dpi': 'u-dpi',
+                'nit': 'u-nit',
+                'teléfono': 'u-tel',
+                'telefono': 'u-tel'
+            });
+            App.showAlert('msg', campo ? 'Revise los campos marcados en rojo antes de continuar.' : err.message, true);
+        }
+    });
+
+    function toggleMobileSidebar() {
+        document.getElementById('sidebar').classList.toggle('mobile-open');
+        document.getElementById('backdrop').classList.toggle('show');
+    }
+
+    function toggleSidebarCollapse() {
+        document.getElementById('sidebar').classList.toggle('collapsed');
+        const icon = document.getElementById('collapse-icon');
+        icon.classList.toggle('fa-angles-left');
+        icon.classList.toggle('fa-angles-right');
+    }
+
+    init();
+</script>
+</body>
+</html>

@@ -174,16 +174,28 @@
                             <input type="text" id="v-${e.id}" class="form-control" value="${e.valorResultado||''}" ${e.publicado?'disabled':''}>
                         </div>
                         <div class="form-group flex-1">
-                            <!-- FIX QA (punto 11): unidad y rango de referencia vienen precargados
-                                 del catálogo de exámenes (RN-CU15-03) y solo sirven de referencia
-                                 para la alerta automática de "fuera de rango" (RN-CU09-02). No
-                                 deben poder editarse aquí, por eso quedan siempre en solo lectura. -->
+                            <!-- CU-09, flujo principal paso 9 / RN-CU09-02: Unidad es un campo que
+                                 el personal de laboratorio completa al registrar el resultado. El
+                                 dato del catálogo (RN-CU15-03), si existe, se muestra solo como
+                                 placeholder informativo -- no ocupa el value, así que no hay que
+                                 borrarlo para poder escribir. -->
                             <label>Unidad de medida</label>
-                            <input type="text" id="u-${e.id}" class="form-control" value="${e.unidad||''}" disabled>
+                            <input type="text" id="u-${e.id}" class="form-control"
+                                   value="${e.publicado ? (e.unidad||'') : ''}"
+                                   placeholder="${e.unidad || 'Ej: mg/dL'}"
+                                   ${e.publicado?'disabled':''}>
                         </div>
                         <div class="form-group flex-1">
+                            <!-- RN-CU15-03: Rango de referencia viene del catálogo de exámenes y es
+                                 puramente informativo (guía para la marca manual de "Fuera de Rango"
+                                 y para el badge de alerta al médico, FA02). Se muestra como
+                                 placeholder para no obligar a borrarlo, pero no se envía como dato
+                                 editable por el laboratorista. -->
                             <label>Rango de referencia</label>
-                            <input type="text" id="r-${e.id}" class="form-control" value="${e.rangoReferencia||''}" disabled>
+                            <input type="text" id="r-${e.id}" class="form-control"
+                                   value="${e.publicado ? (e.rangoReferencia||'') : ''}"
+                                   placeholder="${e.rangoReferencia || 'N/A'}"
+                                   disabled>
                         </div>
                     </div>
 

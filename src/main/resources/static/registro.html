@@ -29,7 +29,7 @@
         </div>
         <div id="msg-reg" class="alert"></div>
 
-        <form id="form-reg" onsubmit="registrar(event)">
+        <form id="form-reg" onsubmit="registrar(event)" novalidate>
             <div class="form-group">
                 <label>Nombre completo (según documento)</label>
                 <input type="text" id="nombre" class="form-control" required minlength="10" maxlength="100">
@@ -78,7 +78,7 @@
 
             <button type="submit" id="btn-reg" class="btn btn-success mt-4" style="width: 100%; padding: 1rem; font-size: 1.05rem;">Completar registro oficial</button>
             <div style="margin-top: 1rem; text-align: center;">
-                <a href="index.html" class="text-muted" style="text-decoration: none;"><i class="fa-solid fa-arrow-left"></i> Descartar información y volver</a>
+                <a href="#" onclick="descartarRegistro(); return false;" class="text-muted" style="text-decoration: none;"><i class="fa-solid fa-arrow-left"></i> Volver al portal</a>
             </div>
         </form>
     </div>
@@ -92,6 +92,36 @@
         window.location.href = 'index.html';
     }
 
+    // FIX CU-02 FA01: antes navegaba siempre a index.html sin importar la
+    // respuesta del confirm(). Ahora solo navega si la persona confirma; si
+    // cancela, se queda en el formulario sin perder lo ya escrito.
+    function descartarRegistro() {
+        if (confirm('¿Está seguro que desea descartar la información ingresada y volver al portal principal? Los datos no guardados se perderán.')) {
+            window.location.href = 'index.html';
+        }
+    }
+
+    // FIX bug autorellenado: el navegador solo aplica minlength/maxlength
+    // cuando el valor fue tecleado por el usuario (dirty value flag). Si el
+    // valor llega por autorellenado, checkValidity() lo pasa por alto aunque
+    // no cumpla la longitud. Aquí se fuerza esa validación manualmente con
+    // setCustomValidity() para que se comporte igual que si se hubiera
+    // tecleado a mano.
+    function forzarValidezLongitud(form) {
+        form.querySelectorAll('[minlength], [maxlength]').forEach(el => {
+            const len = el.value.length;
+            const min = el.getAttribute('minlength');
+            const max = el.getAttribute('maxlength');
+            if (min && len > 0 && len < Number(min)) {
+                el.setCustomValidity(`Debe tener al menos ${min} caracteres.`);
+            } else if (max && len > Number(max)) {
+                el.setCustomValidity(`Debe tener máximo ${max} caracteres.`);
+            } else {
+                el.setCustomValidity('');
+            }
+        });
+    }
+
     async function registrar(e) {
         e.preventDefault();
         App.hideAlert('msg-reg');
@@ -99,6 +129,7 @@
         // FIX CU-02 FA04: resaltado de campos en rojo campo por campo
         const form = document.getElementById('form-reg');
         App.clearInvalidFields(form);
+        forzarValidezLongitud(form);
         if (!form.checkValidity()) {
             App.markInvalidFields(form);
             return App.showAlert('msg-reg', 'Revise los campos marcados en rojo antes de continuar.', true);
@@ -123,7 +154,28 @@
             App.showAlert('msg-reg', '¡Registro exitoso! Su cuenta ha sido creada. Ahora puede iniciar sesión con sus credenciales.');
             setTimeout(() => window.location.href = 'login.html', 3500);
         } catch(err) {
-            App.showAlert('msg-reg', err.message, true);
+            // FIX CU-02 FA04 (bug #3): el backend rechaza (400/409) por reglas
+            // que el frontend no siempre valida en el navegador (ej. username
+            // fuera de 8-9 caracteres, password menor a 12, DPI/correo ya
+            // registrado). Si logramos identificar el campo responsable, se
+            // marca en rojo y el mensaje literal del backend se muestra justo
+            // debajo de ese campo; el alert general queda genérico, igual
+            // que en el resto de validaciones del formulario. Si no se pudo
+            // identificar un campo puntual, se muestra el mensaje del backend
+            // tal cual en el alert (comportamiento anterior).
+            const campo = App.markFieldByErrorMessage(form, err.message, {
+                'usuario': 'username',
+                'contraseña': 'password',
+                'correo': 'correo',
+                'dpi': 'dpi',
+                'nit': 'nit',
+                'teléfono': 'telefono',
+                'telefono': 'telefono',
+                'seguro': 'seguro',
+                'nombre': 'nombre'
+            });
+            App.showAlert('msg-reg', campo ? 'Revise los campos marcados en rojo antes de continuar.' : err.message, true);
+
             document.getElementById('btn-reg').disabled = false;
             document.getElementById('btn-reg').textContent = "Completar registro oficial";
         }

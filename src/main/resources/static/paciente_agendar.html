@@ -89,6 +89,11 @@
                     <div class="well">
                         <p><strong>Médico:</strong> <span id="res-med"></span></p>
                         <p><strong>Sede:</strong> <span id="res-suc"></span></p>
+                        <!-- FIX doc 2.3 paso 5: faltaba mostrar la especialidad en
+                             el resumen (el documento pide sucursal, especialidad,
+                             médico, fecha y hora). Fecha y hora ya se mostraban
+                             juntas en res-fec, así que solo se agrega especialidad. -->
+                        <p><strong>Especialidad:</strong> <span id="res-esp"></span></p>
                         <p><strong>Fecha:</strong> <span id="res-fec"></span></p>
                     </div>
                     <div class="form-group mt-4">
@@ -104,7 +109,7 @@
 
                     <div class="d-flex mt-4" style="justify-content: space-between;">
                         <button type="button" class="btn" onclick="volver(5)"><i class="fa-solid fa-arrow-left"></i> Volver</button>
-                        <button type="submit" class="btn btn-success" id="btn-finalizar">Finalizar reservación</button>
+                        <button type="submit" class="btn btn-success" id="btn-finalizar">Confirmar Cita</button>
                     </div>
                 </div>
             </form>
@@ -153,7 +158,7 @@
 
                 if(disponibles.length === 0) {
                     window.scrollTo(0,0);
-                    return App.showAlert('msg', `No hay especialidades disponibles para la sucursal ${nombreSede}. Seleccione otra sede o contacte a administración.`, true);
+                    return App.showAlert('msg', `No hay especialidades disponibles para la sucursal ${nombreSede}. Seleccione otra sucursal.`, true);
                 }
                 document.getElementById('esp').innerHTML = `<option value="">Seleccione una especialidad</option>` + disponibles.map(d=>`<option value="${d.especialidadId}">${d.especialidadNombre}</option>`).join('');
 
@@ -177,7 +182,7 @@
                     const nombreEspecialidad = selectEsp.options[selectEsp.selectedIndex].text;
                     // -------------------------------
 
-                    return App.showAlert('msg', `No se encontraron medicos disponibles para la especialidad ${nombreEspecialidad} en la Sede ${nombreSede}. Por favor, seleccione otra especialidad o sede.`, true);
+                    return App.showAlert('msg', `No se encontraron horarios disponibles para la especialidad ${nombreEspecialidad} en la Sede ${nombreSede}. Por favor, seleccione otra especialidad o sede.`, true);
                 }
                 document.getElementById('med').innerHTML = `<option value="">Seleccione un médico</option>` + data.map(m=>`<option value="${m.id}">${m.nombreCompleto}</option>`).join('');
 
@@ -198,6 +203,8 @@
                 if (!selectHora.reportValidity()) return;
                 document.getElementById('res-med').textContent = document.getElementById('med').options[document.getElementById('med').selectedIndex].text;
                 document.getElementById('res-suc').textContent = document.getElementById('suc').options[document.getElementById('suc').selectedIndex].text;
+                // FIX doc 2.3 paso 5: faltaba pintar la especialidad en el resumen.
+                document.getElementById('res-esp').textContent = document.getElementById('esp').options[document.getElementById('esp').selectedIndex].text;
                 document.getElementById('res-fec').textContent = document.getElementById('hora').value.replace('T', ' a las ');
             }
 
@@ -212,17 +219,47 @@
         }
     }
 
-    // FIX CU-03 FA04: al volver, se limpian explícitamente las selecciones de los
-    // pasos posteriores para que no quede ningún residuo, aunque en la práctica
-    // los combos ya se recargaban al reingresar.
+    // FIX CU-03 FA04 (doc 2.4, punto 3): "las selecciones de los pasos
+    // posteriores se reinician" al presionar "Volver" en CUALQUIER paso del
+    // wizard, sin excepción. Antes solo se limpiaban #med y #hora (pasos 2, 3
+    // y 4); #motivo y el documento adjunto (#doc_ref), que pertenecen al
+    // paso 5, nunca se limpiaban -- ni siquiera al volver desde el propio
+    // paso 5. Ahora se limpian siempre, sea cual sea el paso desde el que se
+    // presione "Volver".
+    //
+    // FIX QA: además de los campos de los pasos posteriores, cada rama ahora
+    // limpia también los campos propios del paso que se está abandonando
+    // (antes solo se limpiaban los de pasos futuros y quedaban residuos del
+    // paso actual -- por ejemplo, "tipo" y "fecha" del paso 4 seguían
+    // mostrando el valor anterior al volver a entrar a ese paso).
     function volver(pasoActual) {
         App.hideAlert('msg');
         if (pasoActual === 2) {
+            // Se abandona el paso 2 (especialidad): limpiar su propio campo
+            // además de los posteriores (médico, horario)
+            document.getElementById('esp').innerHTML = '';
             document.getElementById('med').innerHTML = '';
             document.getElementById('hora').innerHTML = '<option value="">Seleccione una fecha</option>';
         } else if (pasoActual === 3) {
+            // Se abandona el paso 3 (médico): limpiar su propio campo
+            // además del posterior (horario)
+            document.getElementById('med').innerHTML = '';
+            document.getElementById('hora').innerHTML = '<option value="">Seleccione una fecha</option>';
+        } else if (pasoActual === 4) {
+            // Se abandona el paso 4 (tipo/fecha/horario): limpiar sus
+            // propios tres campos, no solo "hora" como antes.
+            document.getElementById('tipo').value = '';
+            document.getElementById('fecha').value = '';
             document.getElementById('hora').innerHTML = '<option value="">Seleccione una fecha</option>';
         }
+
+        // Se limpian siempre, sin importar el paso de origen: motivo y PDF
+        // adjunto son del paso 5, que siempre queda "posterior" a cualquier
+        // paso al que se regrese (incluido el propio paso 4 cuando se
+        // vuelve desde el 5).
+        document.getElementById('motivo').value = '';
+        document.getElementById('doc_ref').value = '';
+
         document.getElementById(`paso-${pasoActual}`).classList.add('d-none');
         document.getElementById(`paso-${pasoActual - 1}`).classList.remove('d-none');
         document.getElementById(`ind-${pasoActual}`).classList.remove('active');
@@ -245,9 +282,52 @@
         }
     }
 
+    // FIX RN-CU03-05: #motivo ya tenía minlength="10" maxlength="2000" en el
+    // HTML, pero el listener del submit nunca llamaba a checkValidity()/
+    // reportValidity() -- dependía por completo de que el navegador bloqueara
+    // el envío por su cuenta. En la práctica, la validación nativa de
+    // minlength/maxlength en <textarea> es menos confiable entre navegadores
+    // que en <input> (es un problema documentado del propio estándar HTML,
+    // no exclusivo de esta app), así que un motivo de 9 caracteres tecleado
+    // normalmente estaba pasando el submit sin bloquearse. Se agrega la
+    // misma validación explícita en JS que ya usamos en registro.html, que
+    // además cubre el caso de un valor puesto por script saltándose
+    // minlength/maxlength (igual que el bug de #username en CU-02).
+    function forzarValidezLongitud(form) {
+        form.querySelectorAll('[minlength], [maxlength]').forEach(el => {
+            const len = el.value.length;
+            const min = el.getAttribute('minlength');
+            const max = el.getAttribute('maxlength');
+            if (min && len > 0 && len < Number(min)) {
+                el.setCustomValidity(`Debe tener al menos ${min} caracteres.`);
+            } else if (max && len > Number(max)) {
+                el.setCustomValidity(`Debe tener máximo ${max} caracteres.`);
+            } else {
+                el.setCustomValidity('');
+            }
+        });
+    }
+
     document.getElementById('form-cita').addEventListener('submit', async(e)=>{
         e.preventDefault();
         App.hideAlert('msg');
+
+        // FIX RN-CU03-05: validación explícita antes de continuar. Los
+        // campos de pasos anteriores (#suc, #esp, #med, #tipo, #fecha,
+        // #hora) están ocultos con d-none en este punto, así que quedan
+        // fuera de la validación de restricciones del navegador (un
+        // elemento no renderizado no es candidato a "constraint
+        // validation") -- en la práctica esto solo termina evaluando
+        // #motivo, que es justamente el campo que queríamos cubrir.
+        const form = document.getElementById('form-cita');
+        App.clearInvalidFields(form);
+        forzarValidezLongitud(form);
+        if (!form.checkValidity()) {
+            App.markInvalidFields(form);
+            window.scrollTo(0,0);
+            return App.showAlert('msg', 'Revise los campos marcados en rojo antes de continuar.', true);
+        }
+
         const btnFinalizar = document.getElementById('btn-finalizar');
         // FIX QA: antes solo el min del date picker bloqueaba fechas pasadas, sin avisar
         const horaSeleccionada = document.getElementById('hora').value;

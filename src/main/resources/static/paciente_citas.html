@@ -66,7 +66,7 @@
         <p>Total a cargo: <span class="font-bold text-primary" style="font-size: 1.2rem;">Q<span id="p-monto"></span></span></p>
       </div>
 
-      <form id="form-pago" class="mt-4">
+      <form id="form-pago" class="mt-4" novalidate>
         <input type="hidden" id="p-citaId">
         <div class="form-group">
           <label>Número de tarjeta</label>
@@ -195,7 +195,7 @@
       if (--tiempo < 0) {
         clearInterval(intervalo);
         // FIX CU-04: aviso explícito de redirección, como pide el literal del spec
-        App.showAlert('msg', 'El tiempo para confirmar ha expirado. El horario fue liberado. Será redirigido en unos segundos...', true);
+        App.showAlert('msg', 'El tiempo para confirmar su cita ha expirado. El horario seleccionado ha sido liberado. Por favor, seleccione un nuevo horario. Será redirigido en unos segundos...', true);
         document.getElementById('btn-pagar').disabled = true;
         setTimeout(() => { cancelarPago(); }, 4000);
       }
@@ -244,27 +244,58 @@
     return expirationDate >= currentDate;
   }
 
+  // FIX CU-04 (mismo patrón que forzarValidezLongitud en registro.html):
+  // el oninput que pasa #p-titular a mayúsculas reescribe input.value en
+  // cada tecleo, lo que en varios navegadores apaga el "dirty value flag"
+  // del campo. minlength/maxlength solo se validan si ese flag está
+  // activo, así que checkValidity() ignora la longitud del titular aunque
+  // el usuario sí haya tecleado. Se fuerza la validación con
+  // setCustomValidity() para que se comporte igual que si el navegador
+  // sí la aplicara nativamente.
+  function forzarValidezLongitudPago(form) {
+    form.querySelectorAll('[minlength], [maxlength]').forEach(el => {
+      const len = el.value.length;
+      const min = el.getAttribute('minlength');
+      const max = el.getAttribute('maxlength');
+      if (min && len > 0 && len < Number(min)) {
+        el.setCustomValidity(`Debe tener al menos ${min} caracteres.`);
+      } else if (max && len > Number(max)) {
+        el.setCustomValidity(`Debe tener máximo ${max} caracteres.`);
+      } else {
+        el.setCustomValidity('');
+      }
+    });
+  }
+
   document.getElementById('form-pago').addEventListener('submit', async(e)=>{
     e.preventDefault();
     App.hideAlert('msg');
     const form = e.target;
     App.clearInvalidFields(form);
+    forzarValidezLongitudPago(form);
+
+    // FIX CU-04: faltaba validar patrón/longitud (tarjeta, titular, venc, cvv)
+    // igual que el resto de formularios del sistema, antes de llegar al backend.
+    const invalidos = App.markInvalidFields(form);
+    if (invalidos.length > 0) {
+      return App.showAlert('msg', 'Revise los campos marcados en rojo.', true);
+    }
 
     const numeroAProcesar = tarjetaReal || document.getElementById('p-tarjeta').value;
     if (!esLuhnValido(numeroAProcesar)) {
       // FIX CU-04 FA01: resaltar el campo específico, no solo alert general
       document.getElementById('p-tarjeta').classList.add('is-invalid');
-      return App.showAlert('msg', 'El número de tarjeta ingresado no es válido.', true);
+      return App.showAlert('msg', 'El número de tarjeta no es válido.', true);
     }
 
     const fechaVencimiento = document.getElementById('p-venc').value;
     if (!esTarjetaVigente(fechaVencimiento)) {
       document.getElementById('p-venc').classList.add('is-invalid');
-      return App.showAlert('msg', 'La tarjeta de crédito/débito se encuentra vencida.', true);
+      return App.showAlert('msg', 'La tarjeta está vencida.', true);
     }
 
     const btn = document.getElementById('btn-pagar');
-    btn.disabled = true; btn.innerText = "Autorizando con el banco...";
+    btn.disabled = true; btn.innerText = "Procesando pago...";
     try {
       const payload = {
         citaId: parseInt(document.getElementById('p-citaId').value),
@@ -276,6 +307,8 @@
 
       const data = await App.apiFetch('/api/pagos', 'POST', payload, { 'Idempotency-Key': crypto.randomUUID() });
       clearInterval(intervalo);
+
+      App.showAlert('msg', '¡Pago realizado exitosamente! Número de transacción: ' + data.numeroTransaccion + '. Su cita ha sido confirmada.', false);
 
       document.getElementById('area-pago').classList.add('d-none');
       document.getElementById('area-recibo').classList.remove('d-none');

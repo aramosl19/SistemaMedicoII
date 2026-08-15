@@ -265,7 +265,6 @@
                     </div>
                 </div>
 
-
                 <!-- Input Contraseña -->
                 <div class="field-group opacity-0 animate-fade-in-up delay-300">
                     <input type="password" id="password" class="field-input" placeholder=" " required autocomplete="current-password">
@@ -290,7 +289,7 @@
                 </a>
             </div>
         </div>
-        
+
     </div>
 </div>
 
@@ -323,6 +322,13 @@
         }
     }
 
+    function guardarSesion(data) {
+        localStorage.setItem('token', data.token);
+        localStorage.setItem('rol', data.rol);
+        localStorage.setItem('nombre', data.nombreCompleto);
+        localStorage.setItem('uid', data.id);
+    }
+
     async function procesarLogin(e) {
         e.preventDefault();
         App.hideAlert('msg-login');
@@ -336,10 +342,9 @@
                 password: passField.value
             });
 
-            localStorage.setItem('token', data.token);
-            localStorage.setItem('rol', data.rol);
-            localStorage.setItem('nombre', data.nombreCompleto);
-            localStorage.setItem('uid', data.id);
+            // Login directo sin importar el rol: se guarda la sesión y se
+            // redirige siempre al dashboard.
+            guardarSesion(data);
             window.location.href = 'dashboard.html';
 
         } catch (err) {

@@ -200,9 +200,7 @@
                     <td class="${item.activo?'text-success':'text-error'} font-bold">${item.activo ? 'Activo' : 'Inactivo'}</td>
                     <td>
                         <button class="btn btn-primary" style="padding: 0.3rem 0.6rem; font-size: 0.8rem;" onclick="abrirModal(${item.id})">Editar</button>
-                        <button class="btn" style="padding: 0.3rem 0.6rem; font-size: 0.8rem;" onclick="toggleEstado(${item.id}, ${item.activo}, '${item.nombre.replace(/'/g,"")}')">
-                            ${item.activo ? 'Inactivar' : 'Activar'}
-                        </button>
+                        ${item.activo ? `<button class="btn" style="padding: 0.3rem 0.6rem; font-size: 0.8rem;" onclick="toggleEstado(${item.id}, ${item.activo}, '${item.nombre.replace(/'/g,"")}')">Eliminar</button>` : ''}
                     </td>
                 </tr>`).join('');
         }
@@ -303,7 +301,7 @@
     }
 
     async function toggleEstado(id, estadoActual, nombre) {
-        if (await App.confirm(`¿Desea ${estadoActual ? 'inactivar' : 'activar'} el registro '${nombre}'?`, { titulo: estadoActual ? '¿Inactivar registro?' : '¿Activar registro?', textoBoton: estadoActual ? 'Inactivar' : 'Activar', peligro: estadoActual })) {
+        if (await App.confirm(`¿Está seguro que desea eliminar el registro '${nombre}'? Esta acción no se puede deshacer.`, { titulo: estadoActual ? 'Confirmar eliminación' : '¿Activar registro?', textoBoton: estadoActual ? 'Eliminar' : 'Activar', peligro: estadoActual })) {
             try {
                 if(estadoActual) { await App.apiFetch(`/api/${endpointActual}/${id}`, 'DELETE'); }
                 else {
