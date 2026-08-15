@@ -28,6 +28,15 @@
     </scm>
     <properties>
         <java.version>17</java.version>
+
+        <!-- ===== Configuración para el análisis de SonarQube ===== -->
+        <!-- Ajusta sonar.projectKey/projectName si ya creaste el proyecto con otro nombre en SonarQube -->
+        <sonar.projectKey>sistemamedicoii</sonar.projectKey>
+        <sonar.projectName>SistemaMedicoII</sonar.projectName>
+        <sonar.host.url>http://localhost:9000</sonar.host.url>
+        <sonar.coverage.jacoco.xmlReportPaths>${project.build.directory}/site/jacoco/jacoco.xml</sonar.coverage.jacoco.xmlReportPaths>
+        <!-- El frontend estático (HTML/JS con Tailwind por CDN) no aporta valor útil al análisis de Sonar -->
+        <sonar.exclusions>src/main/resources/static/**</sonar.exclusions>
     </properties>
     <dependencies>
         <dependency>
@@ -81,12 +90,7 @@
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-data-jpa-test</artifactId>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-validation-test</artifactId>
+            <artifactId>spring-boot-starter-test</artifactId>
             <scope>test</scope>
         </dependency>
         <dependency>
@@ -117,6 +121,7 @@
             <artifactId>pdfbox</artifactId>
             <version>3.0.3</version>
         </dependency>
+
     </dependencies>
 
     <build>
@@ -165,6 +170,52 @@
                                     <artifactId>lombok</artifactId>
                                 </path>
                             </annotationProcessorPaths>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <!-- ===== JaCoCo: genera el reporte de cobertura que luego lee SonarQube ===== -->
+            <plugin>
+                <groupId>org.jacoco</groupId>
+                <artifactId>jacoco-maven-plugin</artifactId>
+                <version>0.8.12</version>
+                <executions>
+                    <execution>
+                        <id>prepare-agent</id>
+                        <goals>
+                            <goal>prepare-agent</goal>
+                        </goals>
+                    </execution>
+                    <execution>
+                        <id>report</id>
+                        <phase>test</phase>
+                        <goals>
+                            <goal>report</goal>
+                        </goals>
+                    </execution>
+                    <!-- Quality gate local: falla "mvn verify" si la cobertura de línea
+                         baja de 50%. Es un piso inicial y conservador mientras se agregan
+                         más pruebas; súbelo a medida que cubran más casos de uso. -->
+                    <execution>
+                        <id>check</id>
+                        <phase>verify</phase>
+                        <goals>
+                            <goal>check</goal>
+                        </goals>
+                        <configuration>
+                            <rules>
+                                <rule>
+                                    <element>BUNDLE</element>
+                                    <limits>
+                                        <limit>
+                                            <counter>LINE</counter>
+                                            <value>COVEREDRATIO</value>
+                                            <minimum>0.50</minimum>
+                                        </limit>
+                                    </limits>
+                                </rule>
+                            </rules>
                         </configuration>
                     </execution>
                 </executions>
