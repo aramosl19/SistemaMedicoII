@@ -70,7 +70,7 @@
         <input type="hidden" id="p-citaId">
         <div class="form-group">
           <label>Número de tarjeta</label>
-          <input type="text" id="p-tarjeta" class="form-control" required pattern="^(\d{13,19}|\*{9,15}\d{4})$" placeholder="Sin espacios (ej. 4111222233334444)" onfocus="restaurarTarjeta(this)" onblur="enmascararTarjeta(this)" oninput="limpiarTarjetaSiVacio(this)" title="Ingrese de 13 a 19 dígitos">
+          <input type="text" id="p-tarjeta" class="form-control" required pattern="^([\d ]{13,23}|\*{9,15}\d{4})$" placeholder="Ej. 4111 2222 3333 4444" onfocus="restaurarTarjeta(this)" onblur="enmascararTarjeta(this)" oninput="formatearTarjeta(this)" title="Ingrese de 13 a 19 dígitos (los espacios se ignoran)">
         </div>
         <div class="form-group">
           <!-- Solución CU-04: Validación de longitud y patrón alfabético en el titular -->
@@ -217,19 +217,37 @@
     }, 1000);
   }
 
+  // Quita todo lo que no sea dígito (espacios, guiones, letras, etc.)
+  function limpiarNumeroTarjeta(valor) {
+    return (valor || '').replace(/\D/g, '');
+  }
+
+  // FIX: el usuario debe poder pegar/escribir el número de tarjeta con
+  // espacios (ej. "4444 4444 4444 4444") sin tener que borrarlos. Este
+  // handler limpia el valor a solo dígitos, lo recorta a 19 (máximo válido
+  // de tarjeta) y reinserta un espacio cada 4 dígitos automáticamente. El
+  // valor real (sin espacios) queda guardado en tarjetaReal, que es el que
+  // se usa para Luhn y para el payload enviado al backend.
+  function formatearTarjeta(input) {
+    const cursorAlFinal = input.selectionStart === input.value.length;
+    const soloDigitos = limpiarNumeroTarjeta(input.value).slice(0, 19);
+    input.value = soloDigitos.replace(/(\d{4})(?=\d)/g, '$1 ');
+    if (cursorAlFinal) input.setSelectionRange(input.value.length, input.value.length);
+    if (!input.value.includes('*')) tarjetaReal = soloDigitos;
+  }
+
   function enmascararTarjeta(input) {
-    if (input.value.length >= 13 && !input.value.includes('*')) {
-      tarjetaReal = input.value;
+    const limpio = limpiarNumeroTarjeta(input.value);
+    if (limpio.length >= 13 && !input.value.includes('*')) {
+      tarjetaReal = limpio;
       input.value = '*'.repeat(tarjetaReal.length - 4) + tarjetaReal.slice(-4);
     }
   }
 
   function restaurarTarjeta(input) {
-    if (tarjetaReal) input.value = tarjetaReal;
-  }
-
-  function limpiarTarjetaSiVacio(input) {
-    if (!input.value.includes('*')) tarjetaReal = input.value;
+    if (tarjetaReal) {
+      input.value = tarjetaReal.replace(/(\d{4})(?=\d)/g, '$1 ');
+    }
   }
 
   function formatearFecha(input) {
@@ -296,8 +314,8 @@
       return App.showAlert('msg', 'Revise los campos marcados en rojo.', true);
     }
 
-    const numeroAProcesar = tarjetaReal || document.getElementById('p-tarjeta').value;
-    if (!esLuhnValido(numeroAProcesar)) {
+    const numeroAProcesar = tarjetaReal || limpiarNumeroTarjeta(document.getElementById('p-tarjeta').value);
+    if (numeroAProcesar.length < 13 || numeroAProcesar.length > 19 || !esLuhnValido(numeroAProcesar)) {
       // FIX CU-04 FA01: resaltar el campo específico, no solo alert general
       document.getElementById('p-tarjeta').classList.add('is-invalid');
       return App.showAlert('msg', 'El número de tarjeta no es válido.', true);

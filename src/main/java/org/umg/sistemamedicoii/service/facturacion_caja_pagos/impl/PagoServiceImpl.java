@@ -35,6 +35,11 @@ public class PagoServiceImpl implements PagoService {
     private static final String TARJETA_RECHAZO_BANCARIO = "4000000000000002";
     private static final String TARJETA_ERROR_PROCESAMIENTO = "4000000000000101";
     private static final String TARJETA_ERROR_COMUNICACION = "4000000000000309";
+    // Casos de RN-CU04-06 que NO tienen equivalente en FA03 del flujo narrativo.
+    private static final String TARJETA_FONDOS_INSUFICIENTES = "4000000000000010";
+    private static final String TARJETA_INVALIDA_PASARELA = "4000000000000028";
+    private static final String TARJETA_VENCIDA_PASARELA = "4000000000000036";
+
     private static final DateTimeFormatter FORMATO_FECHA_HORA = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
 
     @Autowired private CitaRepository citaRepository;
@@ -78,12 +83,32 @@ public class PagoServiceImpl implements PagoService {
         }
 
         switch (dto.getNumeroTarjeta()) {
+            // Mencionados en FA03 (flujo narrativo) y también reflejados en el
+            // documento; se dejan como están, sin cambios.
             case TARJETA_RECHAZO_BANCARIO -> throw new PagoRechazadoException(
                     "La transacción con tarjeta fue rechazada por el banco. Por favor, verifique los datos de su tarjeta o intente con una tarjeta diferente.");
             case TARJETA_ERROR_PROCESAMIENTO -> throw new PagoRechazadoException(
                     "El pago no pudo ser procesado. Por favor, intente nuevamente o utilice otra tarjeta.");
             case TARJETA_ERROR_COMUNICACION -> throw new PagoRechazadoException(
                     "Error de comunicación con la pasarela de pago. Intente nuevamente en unos minutos.");
+
+            // RN-CU04-06 menciona este rechazo pero FA03 no lo contempla — se agrega
+            // como caso nuevo, separado, para no perder cobertura del documento.
+            case TARJETA_FONDOS_INSUFICIENTES -> throw new PagoRechazadoException(
+                    "Su tarjeta fue rechazada por fondos insuficientes. Verifique su saldo e intente nuevamente.");
+
+            // RN-CU04-06 menciona este rechazo pero FA03 no lo contempla. Ojo: esto es
+            // distinto del rechazo local por Luhn (esLuhnValido) — este simula que la
+            // PASARELA la rechaza como inválida, no que el propio formulario la marque
+            // inválida antes de enviarla.
+            case TARJETA_INVALIDA_PASARELA -> throw new PagoRechazadoException(
+                    "Su tarjeta fue rechazada. El número de tarjeta es inválido. Verifique los datos e intente nuevamente.");
+
+            // RN-CU04-06 menciona este rechazo pero FA03 no lo contempla. Ojo: esto es
+            // distinto del rechazo local por fecha de vencimiento (YearMonth) — este
+            // simula que la PASARELA la rechaza como vencida, no la validación local.
+            case TARJETA_VENCIDA_PASARELA -> throw new PagoRechazadoException(
+                    "Su tarjeta fue rechazada. La tarjeta está vencida. Utilice otra tarjeta de crédito o débito.");
         }
 
         cita.setEstado(estadoCache.getEstado(EstadoCitaEnum.CONFIRMADA));

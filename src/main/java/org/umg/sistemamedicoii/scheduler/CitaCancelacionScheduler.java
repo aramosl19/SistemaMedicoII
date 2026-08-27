@@ -14,7 +14,7 @@ import java.util.List;
 @Component
 public class CitaCancelacionScheduler {
 
-    private static final int MINUTOS_LIMITE = 10;
+    private static final int MINUTOS_LIMITE = 5;
 
     @Autowired private CitaRepository citaRepository;
     @Autowired private EstadoCitaCache estadoCache;
