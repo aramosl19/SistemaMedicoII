@@ -158,6 +158,7 @@
     if(!esPaciente && !dpi) return App.showAlert('msg', 'Ingrese su DPI para realizar la búsqueda.', true);
     try {
       const data = await App.apiFetch('/api/caja/citas/buscar' + (esPaciente ? '' : ('?dpi=' + dpi)));
+      citasCache = data;
       document.getElementById('tb-citas').innerHTML = data.length ? data.map(c=>`<tr>
                         <td>#${c.id}</td><td>${c.especialidadNombre}</td><td>${c.fechaHora.replace('T',' ')}</td><td class="font-bold">Q${c.monto}</td>
                         <td><button class="btn btn-success" onclick="abrirPago(${c.id}, ${c.monto})">Pagar</button></td>
@@ -177,7 +178,16 @@
     document.getElementById('form-pago').reset();
     App.clearInvalidFields(document.getElementById('form-pago'));
     tarjetaReal = '';
-    iniciarTemporizador(5 * 60);
+
+    // Se calcula el tiempo restante real contra reservadaHasta del backend,
+    // en vez de siempre reiniciar a 5:00 (eso era lo que se reseteaba al recargar).
+    const citaEncontrada = citasCache.find(c => c.id == id);
+    let segundosRestantes = 5 * 60; // fallback si no se encuentra el dato
+    if (citaEncontrada && citaEncontrada.reservadaHasta) {
+      const msRestantes = new Date(citaEncontrada.reservadaHasta) - new Date();
+      segundosRestantes = Math.max(0, Math.floor(msRestantes / 1000));
+    }
+    iniciarTemporizador(segundosRestantes);
   }
 
   function cancelarPago() {
