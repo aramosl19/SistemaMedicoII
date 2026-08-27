@@ -5,8 +5,8 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
-import org.umg.sistemamedicoii.models.Usuario;
-import org.umg.sistemamedicoii.repository.UsuarioRepository;
+import org.umg.sistemamedicoii.models.gestion_usuarios_accesos.Usuario;
+import org.umg.sistemamedicoii.repository.gestion_usuarios_accesos.UsuarioRepository;
 
 @Service
 public class CustomUserDetailsService implements UserDetailsService {

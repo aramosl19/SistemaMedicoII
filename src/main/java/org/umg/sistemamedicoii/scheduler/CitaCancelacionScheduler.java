@@ -3,10 +3,10 @@ package org.umg.sistemamedicoii.scheduler;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
-import org.umg.sistemamedicoii.config.EstadoCitaCache;
+import org.umg.sistemamedicoii.config.cache.EstadoCitaCache;
 import org.umg.sistemamedicoii.enums.EstadoCitaEnum;
-import org.umg.sistemamedicoii.models.Cita;
-import org.umg.sistemamedicoii.repository.CitaRepository;
+import org.umg.sistemamedicoii.models.gestion_citas_recepcion.Cita;
+import org.umg.sistemamedicoii.repository.gestion_cita_recepcion.CitaRepository;
 
 import java.time.LocalDateTime;
 import java.util.List;

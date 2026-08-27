@@ -1,0 +1,41 @@
+package org.umg.sistemamedicoii.models.facturacion_caja_pagos;
+
+import jakarta.persistence.*;
+import lombok.Getter;
+import lombok.Setter;
+import org.umg.sistemamedicoii.enums.TipoConceptoCobro;
+
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+
+@Getter @Setter
+@Entity
+@Table(name = "pago_tarjeta")
+public class PagoTarjeta {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Integer id;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    private TipoConceptoCobro tipoConcepto;
+
+    @Column(nullable = false)
+    private Integer referenciaId;
+
+    @Column(nullable = false, unique = true, length = 36)
+    private String numeroTransaccion;
+
+    @Column(nullable = false, precision = 10, scale = 2)
+    private BigDecimal monto;
+
+    @Column(nullable = false, length = 4)
+    private String ultimosCuatroDigitos;
+
+    @Column(nullable = false, length = 100)
+    private String nombreTitular;
+
+    @Column(nullable = false)
+    private LocalDateTime fechaPago;
+}

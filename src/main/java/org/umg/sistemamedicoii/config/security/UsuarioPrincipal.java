@@ -3,7 +3,7 @@ package org.umg.sistemamedicoii.config.security;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
-import org.umg.sistemamedicoii.models.Usuario;
+import org.umg.sistemamedicoii.models.gestion_usuarios_accesos.Usuario;
 
 import java.text.Normalizer;
 import java.time.LocalDateTime;

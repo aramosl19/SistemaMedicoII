@@ -1,0 +1,16 @@
+package org.umg.sistemamedicoii.dto.atencion_medica_enfermeria;
+
+import lombok.Getter;
+import lombok.Setter;
+
+@Getter
+@Setter
+public class CitaEnfermeriaResponseDTO {
+
+    private Integer id;
+    private String pacienteNombre;
+    private String estadoNombre;
+    private boolean emergencia;
+
+    private String mensaje;
+}
