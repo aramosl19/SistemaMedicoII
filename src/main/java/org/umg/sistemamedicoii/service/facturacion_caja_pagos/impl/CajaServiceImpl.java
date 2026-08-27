@@ -158,6 +158,7 @@ public class CajaServiceImpl implements CajaService {
         dto.setSucursalNombre(cita.getSucursal().getNombre());
         dto.setFechaHora(cita.getFechaHora());
         dto.setMonto(cita.getPrecio());
+        dto.setReservadaHasta(cita.getReservadaHasta());
         return dto;
     }
 }

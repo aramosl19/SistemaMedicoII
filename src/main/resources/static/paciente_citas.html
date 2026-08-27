@@ -119,17 +119,22 @@
 
   let intervalo;
   let tarjetaReal = '';
+  let citasCache = [];
 
-  const urlParams = new URLSearchParams(window.location.search);
-  if(urlParams.has('autoPay') && urlParams.has('monto')) {
-    abrirPago(urlParams.get('autoPay'), urlParams.get('monto'));
-  }
+  (async () => {
+    if (App.getRole() && App.getRole().toUpperCase() === 'PACIENTE') {
+      document.getElementById('buscador-dpi').classList.add('d-none');
+      await buscarCitas();
+      cargarHistorial();
+    }
 
-  if (App.getRole() && App.getRole().toUpperCase() === 'PACIENTE') {
-    document.getElementById('buscador-dpi').classList.add('d-none');
-    buscarCitas();
-    cargarHistorial();
-  }
+    // Se espera a que buscarCitas() llene citasCache antes de abrir el pago,
+    // así abrirPago puede leer el reservadaHasta real de la cita.
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.has('autoPay') && urlParams.has('monto')) {
+      abrirPago(urlParams.get('autoPay'), urlParams.get('monto'));
+    }
+  })();
 
   async function cargarHistorial() {
     try {

@@ -16,4 +16,5 @@ public class CitaCobroResponseDTO {
     private String sucursalNombre;
     private LocalDateTime fechaHora;
     private BigDecimal monto;
+    private LocalDateTime reservadaHasta;
 }
