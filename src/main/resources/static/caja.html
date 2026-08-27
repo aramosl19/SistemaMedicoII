@@ -69,6 +69,7 @@
         <div class="card d-none" id="cobro-area">
             <h3 class="text-error">Total a cobrar: Q<span id="c-monto"></span></h3>
             <p class="text-muted mt-4">Paciente: <span id="c-paciente" class="font-bold"></span> | Servicio: <span id="c-tipo-text"></span> #<span id="c-id-text"></span></p>
+            <p class="text-muted">Especialidad: <span id="c-especialidad"></span> | Médico: <span id="c-medico"></span> | Fecha: <span id="c-fecha"></span> | Hora: <span id="c-hora"></span></p>
             <hr style="margin: 1.5rem 0; border: 0; border-top: 1px solid var(--line);">
             <form id="form-cobro">
                 <input type="hidden" id="c-id">
@@ -84,7 +85,7 @@
                 </div>
                 <!-- Solución CU-10: Cálculo de cambio en tiempo real -->
                 <div class="form-group d-none" id="div-efectivo">
-                    <label>Monto entregado por paciente (Q)</label>
+                    <label>Monto Recibido</label>
                     <input type="number" step="0.01" id="montoRecibido" class="form-control" oninput="calcularCambioVivo()">
                     <small id="cambio-vivo" class="text-muted" style="display:block; margin-top: 0.5rem; font-weight: 600; color: var(--brass);"></small>
                 </div>
@@ -93,7 +94,7 @@
                     <input type="text" id="ultimos" class="form-control" maxlength="4" pattern="\d{4}">
                 </div>
                 <div class="d-flex mt-4">
-                    <button type="submit" class="btn btn-success">Registrar ingreso de caja</button>
+                    <button type="submit" class="btn btn-success">Registrar Pago</button>
                     <button type="button" onclick="cancelarCobro()" class="btn">Cancelar</button>
                 </div>
             </form>
@@ -117,7 +118,7 @@
 
             <div class="d-flex mt-4" style="justify-content: center;">
                 <button class="btn btn-primary" onclick="window.print()">Imprimir recibo</button>
-                <button class="btn btn-success" onclick="nuevoCobro()">Nuevo cobro</button>
+                <button class="btn btn-success" onclick="nuevoCobro()">Nuevo Cobro</button>
             </div>
         </div>
     </main>
@@ -142,7 +143,7 @@
         const monto = parseFloat(document.getElementById('c-monto').innerText) || 0;
         const recibido = parseFloat(document.getElementById('montoRecibido').value) || 0;
         const el = document.getElementById('cambio-vivo');
-        el.innerText = recibido >= monto ? `Cambio a devolver: Q${(recibido - monto).toFixed(2)}` : '';
+        el.innerText = recibido >= monto ? `Monto recibido: Q${recibido}. Cambio a devolver: Q${(recibido - monto).toFixed(2)}.` : '';
     }
 
     async function buscarCobro() {
@@ -185,6 +186,13 @@
         document.getElementById('c-id-text').innerText = d.id;
         document.getElementById('c-tipo-text').innerText = isCita ? 'Consulta' : 'Laboratorio';
         document.getElementById('c-id').value = d.id;
+
+        // FIX CU-06 GAP A: mostrar especialidad, médico, fecha y hora (paso 2 del documento)
+        const fechaHora = d.fechaHora ? new Date(d.fechaHora) : null;
+        document.getElementById('c-especialidad').innerText = d.especialidadNombre || '';
+        document.getElementById('c-medico').innerText = d.medicoNombre || '';
+        document.getElementById('c-fecha').innerText = fechaHora ? fechaHora.toLocaleDateString() : '';
+        document.getElementById('c-hora').innerText = fechaHora ? fechaHora.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
     }
 
     function cancelarCobro() {
@@ -222,7 +230,7 @@
             const monto = parseFloat(document.getElementById('c-monto').innerText);
             const recibido = parseFloat(document.getElementById('montoRecibido').value);
             if (isNaN(recibido) || recibido < monto) {
-                return App.showAlert('msg', `El monto recibido (Q${recibido || 0}) es menor al monto a cobrar (Q${monto}).`, true);
+                return App.showAlert('msg', `El monto recibido (Q${recibido || 0}) es menor al monto a cobrar (Q${monto})`, true);
             }
         }
 

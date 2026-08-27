@@ -75,11 +75,11 @@
         <div class="well-danger mt-4">
           <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; color: var(--danger); font-weight: 600;">
             <input type="checkbox" id="em" style="width: 18px; height: 18px;">
-            Clasificar como emergencia (pasa directo a médico)
+            Emergencia
           </label>
         </div>
         <div class="d-flex mt-4">
-          <button type="submit" class="btn btn-success">Registrar en expediente</button>
+          <button type="submit" class="btn btn-success">Registrar Signos Vitales</button>
           <button type="button" onclick="cancelar()" class="btn">Cancelar</button>
         </div>
       </form>
@@ -96,7 +96,6 @@
     try {
       const data = await App.apiFetch('/api/enfermeria/citas/en-espera');
       document.getElementById('tb-espera').innerHTML = data.length ? data.map(c => {
-        // Solución CU-07: Distinguir el estado en la tabla
         let badgeEstado = c.estadoNombre;
         if (c.estadoNombre === 'Signos Vitales') {
           badgeEstado = `<span class="badge badge-brass">En proceso (Triage)</span>`;
@@ -107,7 +106,7 @@
                 <td>${badgeEstado}</td>
                 <td>
                     <button class="btn btn-primary" onclick="llamar(${c.id})">
-                        ${c.estadoNombre === 'Signos Vitales' ? 'Retomar expediente' : 'Llamar paciente'}
+                        ${c.estadoNombre === 'Signos Vitales' ? 'Retomar expediente' : 'Llamar y Tomar Signos'}
                     </button>
                 </td>
             </tr>

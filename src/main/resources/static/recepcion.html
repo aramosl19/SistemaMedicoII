@@ -99,7 +99,7 @@
             <div class="well-danger mt-4">
                 <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; color: var(--danger); font-weight: 600;">
                     <input type="checkbox" id="d-em" style="width: 18px; height: 18px;" onchange="actualizarPrioridadVisual()">
-                    Paciente presenta cuadro de emergencia médica (prioridad en triage)
+                    Marcar Como Emergencia (Prioridad En Triage)
                 </label>
             </div>
 
@@ -264,7 +264,10 @@
                 document.getElementById('d-suc').innerText = c.sucursalNombre;
                 document.getElementById('d-mot').innerText = c.motivo;
                 document.getElementById('d-num').innerText = c.numeroCita || c.id;
-                document.getElementById('d-hora-llegada').innerText = c.horaLlegada ? c.horaLlegada.replace('T', ' ') : '—';
+                document.getElementById('d-hora-llegada').innerText = c.horaLlegada
+                    ? c.horaLlegada.split('.')[0].replace('T', ' ')
+                    : '—';
+
                 document.getElementById('d-em').checked = c.emergencia;
                 actualizarPrioridadVisual();
 

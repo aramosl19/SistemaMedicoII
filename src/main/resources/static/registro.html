@@ -11,6 +11,10 @@
         .registro-wrap { max-width: 720px; margin: 3rem auto; padding: 0 1.25rem 3rem; position: relative; z-index: 10; }
         .registro-header { display: flex; align-items: center; gap: 0.85rem; border-bottom: 1px solid var(--line); padding-bottom: 1.25rem; margin-bottom: 1.75rem; }
         .badge-mark { width: 46px; height: 46px; flex-shrink: 0; border-radius: 12px 0 12px 0; background: var(--well-bg); border: 1px solid rgba(215,161,122,0.2); color: var(--coffee); display: flex; align-items: center; justify-content: center; }
+        .password-wrap { position: relative; }
+        .password-wrap input { padding-right: 2.6rem; }
+        .toggle-password { position: absolute; right: 0.85rem; top: 50%; transform: translateY(-50%); cursor: pointer; color: var(--text-muted, #9a9a9a); background: none; border: none; padding: 0; font-size: 0.95rem; }
+        .toggle-password:hover { color: var(--coffee); }
     </style>
 </head>
 <body>
@@ -65,14 +69,29 @@
             <hr style="border: 0; border-top: 1px dashed var(--line); margin: 2rem 0;">
             <h4 class="text-primary mb-4">Credenciales de acceso al portal</h4>
 
-            <div class="d-flex">
-                <div class="form-group flex-1">
-                    <label>Nombre de usuario</label>
-                    <input type="text" id="username" class="form-control" required minlength="8" maxlength="9" pattern="^[a-zA-Z0-9]+$" placeholder="Ej. jperez123">
-                </div>
+            <div class="form-group">
+                <label>Nombre de usuario</label>
+                <input type="text" id="username" class="form-control" required minlength="8" maxlength="9" pattern="^[a-zA-Z0-9]+$" placeholder="Ej. jperez123">
+            </div>
+
+            <div class="d-flex mt-4">
                 <div class="form-group flex-1">
                     <label>Contraseña maestra</label>
-                    <input type="password" id="password" class="form-control" required minlength="12" placeholder="Mínimo 12 caracteres">
+                    <div class="password-wrap">
+                        <input type="password" id="password" class="form-control" required minlength="12" placeholder="Mínimo 12 caracteres">
+                        <button type="button" class="toggle-password" onclick="togglePassword('password', this)" aria-label="Mostrar contraseña" tabindex="-1">
+                            <i class="fa-solid fa-eye"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="form-group flex-1">
+                    <label>Confirmar contraseña</label>
+                    <div class="password-wrap">
+                        <input type="password" id="password-confirm" class="form-control" required minlength="12" placeholder="Repita la contraseña">
+                        <button type="button" class="toggle-password" onclick="togglePassword('password-confirm', this)" aria-label="Mostrar contraseña" tabindex="-1">
+                            <i class="fa-solid fa-eye"></i>
+                        </button>
+                    </div>
                 </div>
             </div>
 
@@ -101,6 +120,18 @@
         }
     }
 
+    // Mejora UX (no pedida por el documento): permite ver/ocultar el texto
+    // de la contraseña, tanto en el campo principal como en la confirmación.
+    function togglePassword(inputId, btn) {
+        const input = document.getElementById(inputId);
+        const icon = btn.querySelector('i');
+        const mostrar = input.type === 'password';
+        input.type = mostrar ? 'text' : 'password';
+        icon.classList.toggle('fa-eye', !mostrar);
+        icon.classList.toggle('fa-eye-slash', mostrar);
+        btn.setAttribute('aria-label', mostrar ? 'Ocultar contraseña' : 'Mostrar contraseña');
+    }
+
     // FIX bug autorellenado: el navegador solo aplica minlength/maxlength
     // cuando el valor fue tecleado por el usuario (dirty value flag). Si el
     // valor llega por autorellenado, checkValidity() lo pasa por alto aunque
@@ -122,6 +153,20 @@
         });
     }
 
+    // Mejora UX (no pedida por el documento): valida que la confirmación
+    // coincida con la contraseña, usando el mismo mecanismo de
+    // setCustomValidity() que ya usa forzarValidezLongitud, para que el
+    // campo se marque en rojo igual que el resto del formulario.
+    function forzarValidezConfirmacion(form) {
+        const pass = document.getElementById('password');
+        const confirmar = document.getElementById('password-confirm');
+        if (pass.value !== confirmar.value) {
+            confirmar.setCustomValidity('Las contraseñas no coinciden.');
+        } else {
+            confirmar.setCustomValidity('');
+        }
+    }
+
     async function registrar(e) {
         e.preventDefault();
         App.hideAlert('msg-reg');
@@ -130,6 +175,7 @@
         const form = document.getElementById('form-reg');
         App.clearInvalidFields(form);
         forzarValidezLongitud(form);
+        forzarValidezConfirmacion(form);
         if (!form.checkValidity()) {
             App.markInvalidFields(form);
             return App.showAlert('msg-reg', 'Revise los campos marcados en rojo antes de continuar.', true);

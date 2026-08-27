@@ -186,16 +186,11 @@
                                    ${e.publicado?'disabled':''}>
                         </div>
                         <div class="form-group flex-1">
-                            <!-- RN-CU15-03: Rango de referencia viene del catálogo de exámenes y es
-                                 puramente informativo (guía para la marca manual de "Fuera de Rango"
-                                 y para el badge de alerta al médico, FA02). Se muestra como
-                                 placeholder para no obligar a borrarlo, pero no se envía como dato
-                                 editable por el laboratorista. -->
                             <label>Rango de referencia</label>
                             <input type="text" id="r-${e.id}" class="form-control"
                                    value="${e.publicado ? (e.rangoReferencia||'') : ''}"
                                    placeholder="${e.rangoReferencia || 'N/A'}"
-                                   disabled>
+                                   ${e.publicado?'disabled':''}>
                         </div>
                     </div>
 
