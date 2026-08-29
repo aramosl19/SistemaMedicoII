@@ -43,3 +43,6 @@ cypress/screenshots/
 cypress/downloads/
 cypress/reports/
 cypress.env.json
+#Postman
+.postman/
+postman/

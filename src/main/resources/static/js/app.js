@@ -36,10 +36,6 @@ const App = {
                 data = { mensaje: "Operación completada." };
             }
 
-            // FIX: solo tratamos 401/403 como "sesión expirada" si la petición
-            // llevaba un token (es decir, era una llamada ya autenticada).
-            // Si no había token (ej. el propio login fallando), dejamos que
-            // el error real llegue al catch de quien llamó.
             if (response.status === 401 && token) {
                 localStorage.clear();
                 window.location.href = 'login.html?expired=true';
@@ -131,12 +127,6 @@ const App = {
         return invalidos;
     },
 
-    // Mensajes específicos por campo (id del <input>), calcados 1:1 de los
-    // mensajes reales de @NotBlank/@Size/@Pattern en los DTOs del backend
-    // (ej. RegistroExternoRequestDTO), para que la validación nativa del
-    // navegador y la del servidor digan siempre el mismo texto. Las claves
-    // son ids de <input>; si un id no tiene entrada acá, se cae al mensaje
-    // nativo del navegador (field.validationMessage) como respaldo.
     fieldMessages: {
         nombre: {
             required: 'El nombre debe contener entre 10 y 100 caracteres.',
@@ -180,13 +170,14 @@ const App = {
         'p-venc': {
             required: 'La fecha de vencimiento es obligatoria.',
             patternMismatch: 'Formato inválido. Use MM/AA'
+        },
+        diag: {
+            required: 'El diagnóstico es obligatorio para finalizar la consulta.',
+            tooShort: (len) => `El diagnóstico debe contener entre 10 y 5000 caracteres. Usted ingresó ${len} caracteres.`,
+            tooLong: (len) => `El diagnóstico debe contener entre 10 y 5000 caracteres. Usted ingresó ${len} caracteres.`
         }
     },
 
-    // Traduce el ValidityState nativo del campo a nuestro mensaje de negocio,
-    // usando fieldMessages[field.id]. Revisa las banderas en orden de
-    // prioridad (vacío > muy corto > muy largo > patrón > tipo). Si no hay
-    // mapeo para ese id o esa bandera, cae al mensaje nativo del navegador.
     getValidationMessage: (field) => {
         const v = field.validity;
         const len = field.value.length;
@@ -206,9 +197,6 @@ const App = {
         form.querySelectorAll('.invalid-feedback').forEach(f => f.textContent = '');
     },
 
-    // Escribe (o crea, si no existe todavía) el texto de error en rojo justo
-    // debajo del campo indicado. Reutilizable por validación nativa y por
-    // errores devueltos por el backend.
     setFieldFeedback: (campo, mensaje) => {
         let feedback = campo.parentElement.querySelector('.invalid-feedback');
         if (!feedback) {
@@ -219,29 +207,10 @@ const App = {
         feedback.textContent = mensaje || '';
     },
 
-    // FIX CU-01/CU-02 (bug #3): cuando el backend rechaza el guardado (400/409)
-    // por una regla que el frontend no valida de forma nativa (ej. longitud de
-    // username/password que sí cumple el pattern pero el backend igual rechaza,
-    // o un correo/DPI ya registrado), el mensaje de error se mostraba solo en
-    // el alert general y el campo correspondiente nunca quedaba marcado.
-    // Ahora el campo se marca en rojo Y el mensaje literal del backend
-    // aparece debajo de ese campo (igual que un caso de validación normal);
-    // el alert general se deja para el mensaje genérico "Revise los campos
-    // marcados en rojo", que es quien llama a esta función decide mostrar.
-    // mapaPalabraClave: { 'palabra a buscar en el mensaje': 'idDelCampo' }
-    // Se recorre en el orden en que se definen las claves, y se detiene en la
-    // primera coincidencia para no marcar más de un campo por error.
     markFieldByErrorMessage: (form, message, mapaPalabraClave) => {
         if (!message) return null;
         const msgLower = message.toLowerCase();
 
-        // FIX: errores de duplicado/conflicto (ej. "Ya existe una cuenta
-        // registrada con este DPI/correo...") NO deben resumirse en el
-        // mensaje genérico "Revise los campos marcados en rojo": son casos
-        // de negocio (409 Conflict) donde la persona necesita leer el texto
-        // completo tal cual lo envía el backend (ej. "...inicie sesión.").
-        // Solo los errores de formato/longitud (400) deben mapearse a un
-        // campo puntual.
         if (msgLower.includes('ya existe')) return null;
 
         for (const palabra in mapaPalabraClave) {
@@ -257,11 +226,10 @@ const App = {
         return null;
     },
 
-    // Modal de confirmación reutilizable en todo el sistema
     confirm: function(mensaje, opciones = {}) {
         const titulo = opciones.titulo || '¿Confirmar acción?';
         const textoBoton = opciones.textoBoton || 'Confirmar';
-        const peligro = opciones.peligro !== false; // rojo por defecto, pasa peligro:false para verde
+        const peligro = opciones.peligro !== false;
 
         return new Promise((resolve) => {
             let modal = document.getElementById('app-confirm-modal');
@@ -327,6 +295,7 @@ const App = {
             html += `<a href="crear_usuario.html"${location.pathname.includes('crear_usuario.html') ? ' class="active"' : ''}>Crear Usuario</a>`;
             html += `</div></div>`;
             html += `<a href="admin_catalogos.html">Mantenimiento de Catálogos</a>`;
+            html += `<a href="bitacora.html">Bitácora de Operación</a>`;
         }
         if (r === 'PACIENTE' || r === 'ADMINISTRADOR') {
             html += `<a href="paciente_agendar.html">Agendar Cita Médica</a>`;
@@ -379,5 +348,4 @@ document.addEventListener('DOMContentLoaded', () => {
         loaderDiv.innerHTML = '<div class="spinner"></div>';
         document.body.appendChild(loaderDiv);
     }
-
 });
