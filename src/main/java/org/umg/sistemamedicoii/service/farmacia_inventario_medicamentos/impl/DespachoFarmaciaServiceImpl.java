@@ -14,7 +14,6 @@ import org.umg.sistemamedicoii.models.farmacia_inventario_medicamentos.Inventari
 import org.umg.sistemamedicoii.models.farmacia_inventario_medicamentos.Medicamento;
 import org.umg.sistemamedicoii.models.atencion_medica_enfermeria.RecetaMedica;
 import org.umg.sistemamedicoii.models.farmacia_inventario_medicamentos.MovimientoInventario;
-import org.umg.sistemamedicoii.models.gestion_usuarios_accesos.Auditoria;
 import org.umg.sistemamedicoii.repository.farmacia_inventario_medicamentos.MedicamentoRepository;
 import org.umg.sistemamedicoii.repository.atencion_medica_enfermeria.RecetaMedicaRepository;
 import org.umg.sistemamedicoii.repository.farmacia_inventario_medicamentos.InventarioMedicamentoRepository;
@@ -45,7 +44,6 @@ public class DespachoFarmaciaServiceImpl implements DespachoFarmaciaService {
 
     @Override
     public List<RecetaVigenteResponseDTO> buscarRecetasVigentes(Integer recetaId, String dpi, Integer consultaId) {
-        // FIX CU-11: se agrega consultaId como tercer criterio válido de búsqueda
         if (recetaId == null && (dpi == null || dpi.isBlank()) && consultaId == null) {
             throw new IllegalArgumentException("Debe ingresar un ID de receta, ID de consulta o DPI para buscar.");
         }
@@ -62,7 +60,6 @@ public class DespachoFarmaciaServiceImpl implements DespachoFarmaciaService {
         }
 
         return recetas.stream()
-                .filter(this::esVigente)
                 .map(this::toVigenteDTO)
                 .collect(Collectors.toList());
     }
@@ -81,7 +78,6 @@ public class DespachoFarmaciaServiceImpl implements DespachoFarmaciaService {
 
         Integer sucursalId = receta.getCita().getSucursal().getId();
 
-        // 1. Validar Stock e Items (por sucursal)
         for (ItemDespachoRequestDTO itemReq : dto.getItems()) {
             DetalleReceta detalleOriginal = receta.getDetalles().stream()
                     .filter(d -> d.getId().equals(itemReq.getDetalleRecetaId()))
@@ -103,7 +99,6 @@ public class DespachoFarmaciaServiceImpl implements DespachoFarmaciaService {
                 medicamentoDespachar = detalleOriginal.getMedicamento();
             }
 
-            // Consultar inventario por sucursal
             InventarioMedicamento inv = inventarioRepo
                     .findByMedicamentoIdAndSucursalId(medicamentoDespachar.getId(), sucursalId)
                     .orElseThrow(() -> new IllegalArgumentException("Sin inventario registrado para " + medicamentoDespachar.getNombre() + " en esta sucursal."));
@@ -113,14 +108,10 @@ public class DespachoFarmaciaServiceImpl implements DespachoFarmaciaService {
             }
         }
 
-        // Solución CU-11: El Cobro queda totalmente fuera de esta capa.
-        String numeroTransaccion = UUID.randomUUID().toString(); // Referencia del despacho
-
-        // FIX CU-11: acumuladores para el mensaje de éxito con cantidad y monto (spec)
+        String numeroTransaccion = UUID.randomUUID().toString();
         int totalDespachado = 0;
         BigDecimal totalMonto = BigDecimal.ZERO;
 
-        // 3. Descontar Stock (por sucursal) y Auditoría real de controlados (RN-CU10-03 y RNF-017)
         for (ItemDespachoRequestDTO itemReq : dto.getItems()) {
             Medicamento med = itemReq.getMedicamentoSustitutoId() != null
                     ? medicamentoRepository.findById(itemReq.getMedicamentoSustitutoId()).get()
@@ -132,9 +123,6 @@ public class DespachoFarmaciaServiceImpl implements DespachoFarmaciaService {
             inv.setStockActual(stockAnterior - itemReq.getCantidadDespachada());
             inventarioRepo.save(inv);
 
-            // RN-CU13-01/CU-15: el tipo "Despacho (6)" es automático y lo genera este módulo;
-            // sin este registro, las ventas hechas en farmacia interna no quedaban reflejadas
-            // en la bitácora de movimientos ni en su resumen mensual.
             MovimientoInventario movimiento = new MovimientoInventario();
             movimiento.setTipoMovimiento(TIPO_MOVIMIENTO_DESPACHO);
             movimiento.setMedicamento(med);
@@ -152,43 +140,29 @@ public class DespachoFarmaciaServiceImpl implements DespachoFarmaciaService {
             }
             movimientoInventarioRepo.save(movimiento);
 
-            // FIX CU-11: acumular cantidad y monto de este item
             totalDespachado += itemReq.getCantidadDespachada();
             if (med.getPrecio() != null) {
                 totalMonto = totalMonto.add(med.getPrecio().multiply(BigDecimal.valueOf(itemReq.getCantidadDespachada())));
             }
 
             if (med.getMinimumStock() != null && inv.getStockActual() <= med.getMinimumStock()) {
-                alertasStock.add("ALERTA: El medicamento " + med.getNombre() + " alcanzó stock mínimo.");
+                alertasStock.add("ALERTA: El medicamento " + med.getNombre() + " ha alcanzado el nivel de stock mínimo ("
+                        + inv.getStockActual() + " unidades restantes). Se recomienda generar orden de reabastecimiento.");
             }
 
             if (med.isControlled()) {
-                Auditoria log = new Auditoria();
-                log.setAccion("DESPACHO_CONTROLADO");
-                log.setEntidadAfectada("MEDICAMENTO");
-                log.setEntidadId(med.getId());
-                log.setDetalle("Despachado al paciente DPI: " + receta.getCita().getPaciente().getDpi() + ", Cantidad: " + itemReq.getCantidadDespachada());
-
-                var auth = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
-                if (auth != null && auth.getPrincipal() instanceof org.umg.sistemamedicoii.config.security.UsuarioPrincipal principal) {
-                    log.setUsuarioEjecutorId(principal.getUsuario().getId());
-                } else {
-                    log.setUsuarioEjecutorId(null);
-                }
-
-                log.setFechaHora(LocalDateTime.now());
-                auditoriaRepo.save(log);
+                org.umg.sistemamedicoii.aop.AuditoriaHelper.registrar(auditoriaRepo, "DESPACHO_CONTROLADO", "MEDICAMENTO",
+                        med.getId(), "Despachado al paciente DPI: " + receta.getCita().getPaciente().getDpi() + ", Cantidad: " + itemReq.getCantidadDespachada());
             }
         }
 
-        receta.setActivo(false); // Cierra la receta
+        receta.setActivo(false);
         receta.setNotas(notasSustitucion.toString());
         recetaMedicaRepository.save(receta);
 
         DespachoFarmaciaResponseDTO respuesta = new DespachoFarmaciaResponseDTO();
         respuesta.setNumeroTransaccion(numeroTransaccion);
         respuesta.setAlertasStock(alertasStock);
-        // FIX CU-11: mensaje alineado al spec, con cantidad y monto total despachado
         respuesta.setMensaje("Despacho registrado exitosamente. " + totalDespachado
                 + " medicamento(s) despachado(s). Total: Q" + totalMonto.setScale(2, RoundingMode.HALF_UP) + ".");
 
@@ -219,8 +193,6 @@ public class DespachoFarmaciaServiceImpl implements DespachoFarmaciaService {
             throw new IllegalArgumentException("La receta ya fue procesada o anulada.");
         }
 
-        // FIX CU-11 FA03: el mensaje ahora se devuelve al controller en vez de
-        // quedar solo en las notas de auditoría (antes el usuario veía un texto genérico fijo)
         String mensaje = "Se ha registrado que el paciente " + receta.getCita().getPaciente().getNombreCompleto() +
                 " no adquirió los medicamentos recetados en farmacia interna. Receta: " + receta.getId();
 
@@ -268,11 +240,11 @@ public class DespachoFarmaciaServiceImpl implements DespachoFarmaciaService {
     private RecetaVigenteResponseDTO toVigenteDTO(RecetaMedica receta) {
         RecetaVigenteResponseDTO dto = new RecetaVigenteResponseDTO();
         dto.setId(receta.getId());
+        dto.setCitaId(receta.getCita().getId());
         dto.setPacienteNombre(receta.getCita().getPaciente().getNombreCompleto());
         dto.setMedicoNombre(receta.getMedico().getNombreCompleto());
         dto.setFechaEmision(receta.getFechaEmision());
         dto.setCantidadMedicamentos(receta.getDetalles().size());
         return dto;
-
     }
 }

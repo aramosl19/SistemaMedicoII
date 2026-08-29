@@ -8,9 +8,11 @@ public class InventarioMedicamentoResponseDTO {
     private Integer id;
     private Integer medicamentoId;
     private String medicamentoNombre;
+    private Integer sucursalId;
     private String sucursalNombre;
     private Integer stockActual;
     private Integer stockMinimo;
     private boolean alertaStockBajo;
     private boolean medicamentoControlado;
+    private boolean activo;
 }

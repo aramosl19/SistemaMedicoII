@@ -1,6 +1,7 @@
 package org.umg.sistemamedicoii.dto.farmacia_inventario_medicamentos;
 
 import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
@@ -20,7 +21,6 @@ public class MedicamentoRequestDTO {
     @Size(max = 500, message = "La descripción no puede exceder los 500 caracteres.")
     private String descripcion;
 
-    // RN-CU15-02: Precio mayor a 0
     @NotNull(message = "El precio es obligatorio.")
     @DecimalMin(value = "0.01", message = "El precio debe ser mayor a 0.")
     private BigDecimal precio;
@@ -31,6 +31,7 @@ public class MedicamentoRequestDTO {
 
     private boolean controlled;
 
+    @Min(value = 0, message = "El stock mínimo no puede ser negativo.")
     private Integer minimumStock;
 
     private Boolean activo;

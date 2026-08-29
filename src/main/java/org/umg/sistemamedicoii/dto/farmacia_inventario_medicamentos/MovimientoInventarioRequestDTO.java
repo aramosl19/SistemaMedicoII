@@ -19,7 +19,7 @@ public class MovimientoInventarioRequestDTO {
     @NotNull(message = "Debe seleccionar el tipo de movimiento.")
     private Integer tipoMovimiento;
 
-    @NotNull(message = "La cantidad es obligatoria.")
+    @NotNull(message = "La cantidad debe ser un número entero positivo.")
     @Min(value = 1, message = "La cantidad debe ser un número entero positivo.")
     private Integer cantidad;
 

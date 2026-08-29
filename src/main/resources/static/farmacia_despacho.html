@@ -62,7 +62,7 @@
             <h3>Recetas encontradas</h3>
             <!-- Solución CU-11: Columnas de Estado y Notas -->
             <table class="table mt-4">
-                <thead><tr><th>No. receta</th><th>Paciente</th><th>Consulta</th><th>Vigencia</th><th>Notas Médicas</th><th>Acciones</th></tr></thead>
+                <thead><tr><th>No. receta</th><th>Paciente</th><th>Consulta</th><th>Fecha de Emisión</th><th>Vigencia</th><th>Notas Médicas</th><th>Acciones</th></tr></thead>
                 <tbody id="tb-recetas"></tbody>
             </table>
         </div>
@@ -80,7 +80,7 @@
             <form id="form-despacho" class="mt-4">
                 <input type="hidden" id="hdn-receta-id">
                 <table class="table mb-4">
-                    <thead><tr><th>Medicamento</th><th>Dosis</th><th>Recetado</th><th>Stock (Sede)</th><th>A despachar</th><th>Sustituto (opcional)</th></tr></thead>
+                    <thead><tr><th>Medicamento</th><th>Dosis</th><th>Recetado</th><th>Precio Unitario</th><th>Stock (Sede)</th><th>A despachar</th><th>Subtotal</th><th>Sustituto (opcional)</th></tr></thead>
                     <tbody id="tb-detalle"></tbody>
                 </table>
 
@@ -113,7 +113,6 @@
 
         try {
             const data = await App.apiFetch(url);
-
             const hoy = new Date();
 
             document.getElementById('tb-recetas').innerHTML = data.length ? data.map(r => {
@@ -124,7 +123,8 @@
 
                 return `
                 <tr>
-                    <td>${r.id}</td><td>${r.pacienteNombre}</td><td>${r.medicoNombre}</td>
+                    <td>${r.id}</td><td>${r.pacienteNombre}</td><td>${r.citaId}</td>
+                    <td>${fEmision.toLocaleDateString('es-GT')}</td>
                     <td>
                         ${esVigente
                     ? `<span class="text-success font-bold">Vigente (${diffDays} días)</span>`
@@ -133,7 +133,7 @@
                     <td>${r.notas ? r.notas.substring(0, 30)+'...' : 'Ninguna'}</td>
                     <td><button class="btn btn-primary" ${!esVigente ? 'disabled' : ''} onclick="cargarDetalle(${r.id})">Seleccionar</button></td>
                 </tr>`;
-            }).join('') : `<tr><td colspan="6" class="text-muted">No se encontraron recetas.</td></tr>`;
+            }).join('') : `<tr><td colspan="7" class="text-muted">No se encontraron recetas.</td></tr>`;
 
             document.getElementById('area-recetas').classList.remove('d-none');
             document.getElementById('area-despacho').classList.add('d-none');
@@ -169,12 +169,14 @@
                     <td>${d.medicamentoNombre}</td>
                     <td>${d.dosis}</td>
                     <td>${d.cantidad}</td>
+                    <td id="pu-${index}">Q${d.precioUnitario.toFixed(2)}</td>
                     <td class="font-bold ${stock < d.cantidad ? 'text-error' : 'text-success'}">
                         ${stock} ud.
                         ${!invItem ? '<br><small class="text-error" style="font-weight:normal;">Sin inventario registrado</small>'
-                    : (stock <= (invItem.stockMinimo || 0) ? `<br><small class="text-error" style="font-weight:normal;">Stock bajo — disponible: ${stock} (mínimo: ${invItem.stockMinimo || 0})</small>` : '')}
+                    : (stock <= (invItem.stockMinimo || 0) ? `<br><small class="text-error" style="font-weight:normal;">${d.medicamentoNombre}: Stock bajo — disponible: ${stock} (mínimo: ${invItem.stockMinimo || 0})</small>` : '')}
                     </td>
                     <td><input type="number" class="form-control c-cant" value="${Math.min(d.cantidad, stock)}" min="0" max="${d.cantidad}" style="width: 80px;" oninput="calcularTotal()"></td>
+                    <td id="sub-${index}">Q0.00</td>
                     <td>
                         <select class="form-control c-sus" style="margin-bottom: 5px;">${opts}</select>
                         <input type="text" class="form-control c-razon d-none" placeholder="Razón de sustitución">
@@ -192,7 +194,7 @@
                         // Solución CU-11 FA02: Mostrar notificación visual al escoger sustituto
                         const nombreOriginal = ev.target.closest('tr').children[0].innerText;
                         const nombreSustituto = ev.target.options[ev.target.selectedIndex].text;
-                        App.showAlert('msg', `Medicamento ${nombreOriginal} sustituido por ${nombreSustituto}. El médico tratante será notificado.`);
+                        App.showAlert('msg', `Medicamento ${nombreOriginal} sustituido por ${nombreSustituto}. El médico tratante será notificado de la sustitución.`);
                     } else {
                         razon.classList.add('d-none');
                         razon.required = false;
@@ -225,7 +227,10 @@
                 precio = detalleRecetaActual[index].precioUnitario;
             }
 
-            total += (cant * precio);
+            const subtotal = cant * precio;
+            document.getElementById(`pu-${index}`).textContent = `Q${precio.toFixed(2)}`;
+            document.getElementById(`sub-${index}`).textContent = `Q${subtotal.toFixed(2)}`;
+            total += subtotal;
         });
         document.getElementById('lbl-total').textContent = total.toFixed(2);
     }

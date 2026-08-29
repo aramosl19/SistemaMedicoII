@@ -10,5 +10,7 @@ public interface MovimientoInventarioRepository extends JpaRepository<Movimiento
     List<MovimientoInventario> findAllByOrderByFechaHoraDesc();
 
     // Trae los movimientos para el resumen mensual en el orden cronológico adecuado
-    List<MovimientoInventario> findBySucursalIdAndFechaHoraBetweenOrderByFechaHoraAsc(Integer sucursalId, LocalDateTime desde, LocalDateTime hasta);
+    // Se cambia de Between a >= y < para evitar errores en el límite del mes
+    List<MovimientoInventario> findBySucursalIdAndFechaHoraGreaterThanEqualAndFechaHoraLessThanOrderByFechaHoraAsc(
+            Integer sucursalId, LocalDateTime desde, LocalDateTime hasta);
 }

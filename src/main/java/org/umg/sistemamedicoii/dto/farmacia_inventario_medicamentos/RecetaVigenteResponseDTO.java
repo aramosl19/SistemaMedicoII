@@ -7,6 +7,7 @@ import java.time.LocalDateTime;
 @Getter @Setter
 public class RecetaVigenteResponseDTO {
     private Integer id;
+    private Integer citaId;
     private String pacienteNombre;
     private String medicoNombre;
     private LocalDateTime fechaEmision;

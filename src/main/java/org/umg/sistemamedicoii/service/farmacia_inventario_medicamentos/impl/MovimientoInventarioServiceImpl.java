@@ -119,10 +119,10 @@ public class MovimientoInventarioServiceImpl implements MovimientoInventarioServ
         LocalDateTime hasta = desde.plusMonths(1);
 
         List<MovimientoInventario> movimientos = movimientoRepository
-                .findBySucursalIdAndFechaHoraBetweenOrderByFechaHoraAsc(sucursalId, desde, hasta)
-                .stream()
-                .filter(MovimientoInventario::isActivo) // FIX QA: excluir movimientos desactivados del resumen mensual
-                .collect(Collectors.toList());
+                .findBySucursalIdAndFechaHoraGreaterThanEqualAndFechaHoraLessThanOrderByFechaHoraAsc(sucursalId, desde, hasta);
+        // (ya no se filtra por isActivo: desactivar un movimiento es solo una bandera de
+        // auditoría, no revierte el stock, así que excluirlo del resumen hacía que el
+        // reporte no cuadrara con el inventario real)
 
         Map<Integer, List<MovimientoInventario>> agrupadosPorMedicamento = movimientos.stream()
                 .collect(Collectors.groupingBy(m -> m.getMedicamento().getId()));
@@ -184,14 +184,20 @@ public class MovimientoInventarioServiceImpl implements MovimientoInventarioServ
         }
 
         if (dto.getTipoMovimiento() == 0) {
-            if (dto.getCostoUnitario() == null || dto.getCostoUnitario().compareTo(BigDecimal.ZERO) <= 0) {
-                throw new IllegalArgumentException("El costo unitario es obligatorio para compras y debe ser mayor a 0.");
+            if (dto.getCostoUnitario() == null) {
+                throw new IllegalArgumentException("El costo unitario es obligatorio para compras");
+            }
+            if (dto.getCostoUnitario().compareTo(BigDecimal.ZERO) <= 0) {
+                throw new IllegalArgumentException("El costo unitario debe ser mayor a 0");
+            }
+            if (dto.getCostoUnitario().stripTrailingZeros().scale() > 2) {
+                throw new IllegalArgumentException("El costo unitario debe tener máximo 2 decimales");
             }
         }
 
         if (List.of(1, 3, 4, 5).contains(dto.getTipoMovimiento())) {
             if (dto.getMotivo() == null || dto.getMotivo().length() < 10 || dto.getMotivo().length() > 500) {
-                throw new IllegalArgumentException("El motivo debe contener entre 10 y 500 caracteres para este tipo de movimiento.");
+                throw new IllegalArgumentException("El motivo debe contener entre 10 y 500 caracteres.");
             }
         }
     }

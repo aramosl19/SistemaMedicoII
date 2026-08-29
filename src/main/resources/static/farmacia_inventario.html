@@ -40,7 +40,7 @@
         <div class="d-flex" style="gap: 1.5rem; align-items: flex-start;">
             <div class="card flex-1" style="min-width: 400px;">
                 <h3>Registrar movimiento manual</h3>
-                <form id="f-inv" class="mt-4">
+                <form id="f-inv" class="mt-4" novalidate>
                     <div class="d-flex">
                         <div class="form-group flex-1"><label>Sucursal (sede)</label><select id="s" class="form-control" required onchange="verificarStock()"></select></div>
                         <div class="form-group flex-1"><label>Medicamento</label><select id="m" class="form-control" required onchange="verificarStock()"></select></div>
@@ -52,20 +52,21 @@
                         <div class="form-group flex-1"><label>Tipo de operación</label>
                             <select id="t" class="form-control" required onchange="ajustarFormulario()">
                                 <option value="">Seleccione una operación</option>
-                                <option value="0">Ingreso por compra</option>
-                                <option value="1">Devolución a proveedor</option>
-                                <option value="2">Venta directa (mostrador)</option>
-                                <option value="3">Reclamo / mermas</option>
-                                <option value="4">Ajuste positivo (+)</option>
-                                <option value="5">Ajuste negativo (-)</option>
+                                <option value="0">Compra</option>
+                                <option value="1">Devolución</option>
+                                <option value="2">Venta</option>
+                                <option value="3">Reclamo</option>
+                                <option value="4">Ajuste+</option>
+                                <option value="5">Ajuste-</option>
                             </select>
                         </div>
                         <div class="form-group flex-1"><label>Cantidad</label><input type="number" id="c" class="form-control" required min="1" oninput="verificarStock()"></div>
                     </div>
 
                     <div class="d-flex">
-                        <div class="form-group flex-1 d-none" id="div-costo"><label>Costo unitario (Q)</label><input type="number" id="co" class="form-control" step="0.01" min="0.01"></div>
-                        <div class="form-group flex-1 d-none" id="div-ref"><label id="lbl-ref">Documento referencia</label><input type="text" id="ref" class="form-control"></div>
+                        <!-- El costo unitario delega su validación completamente al backend -->
+                        <div class="form-group flex-1 d-none" id="div-costo"><label>Costo unitario (Q)</label><input type="number" id="co" class="form-control" step="any"></div>
+                        <div class="form-group flex-1 d-none" id="div-ref"><label id="lbl-ref">Documento referencia</label><input type="text" id="ref" class="form-control" maxlength="100"></div>
                     </div>
 
                     <div class="form-group d-none" id="div-motivo">
@@ -73,7 +74,10 @@
                         <input type="text" id="mo" class="form-control" minlength="10" maxlength="500">
                     </div>
 
-                    <button type="submit" class="btn btn-primary mt-4" style="width: 100%;">Afectar kardex</button>
+                    <div class="d-flex mt-4" style="gap: 0.5rem;">
+                        <button type="submit" class="btn btn-primary" style="flex: 1;">Registrar Movimiento</button>
+                        <button type="button" class="btn" id="btn-cancelar" style="flex: 1;">Cancelar</button>
+                    </div>
                 </form>
             </div>
 
@@ -86,13 +90,12 @@
                     </div>
                 </div>
 
-                <!-- Solución CU-15: Filtros de la tabla -->
+                <!-- Filtros de la tabla -->
                 <div class="d-flex mb-4">
                     <div class="form-group flex-1"><input type="text" id="f-sucursal" class="form-control" placeholder="Buscar Sede..." onkeyup="renderTable()"></div>
                     <div class="form-group flex-1"><input type="text" id="f-medicamento" class="form-control" placeholder="Buscar Item..." onkeyup="renderTable()"></div>
                     <div class="form-group flex-1"><input type="text" id="f-tipo" class="form-control" placeholder="Buscar Operación..." onkeyup="renderTable()"></div>
                 </div>
-                <!-- Solución CU-15 (gap #3 del QA): filtros faltantes: Referencia, Usuario y rango de fechas -->
                 <div class="d-flex mb-4">
                     <div class="form-group flex-1"><input type="text" id="f-referencia" class="form-control" placeholder="Buscar Referencia..." onkeyup="renderTable()"></div>
                     <div class="form-group flex-1"><input type="text" id="f-usuario" class="form-control" placeholder="Buscar Usuario..." onkeyup="renderTable()"></div>
@@ -101,14 +104,14 @@
                 </div>
 
                 <table class="table">
-                    <thead><tr><th>Fecha</th><th>Operación</th><th>Sede</th><th>Item</th><th>Cant.</th><th>Stock Anterior</th><th>Stock final</th><th>Costo</th><th>Documento</th><th>Usuario</th><th>Acciones</th></tr></thead>
+                    <thead><tr><th>Fecha</th><th>Tipo</th><th>Sucursal</th><th>Medicamento</th><th>Cantidad</th><th>Stock Anterior</th><th>Stock Nuevo</th><th>Costo</th><th>Referencia</th><th>Usuario</th><th>Acciones</th></tr></thead>
                     <tbody id="tb"></tbody>
                 </table>
             </div>
         </div>
     </main>
 
-    <!-- Solución QA: modal para el reporte mensual (endpoint /api/inventario/movimientos/resumen ya existía en el backend pero no tenía UI). -->
+    <!-- Modal para el reporte mensual -->
     <div class="modal-overlay d-none" id="modal-reporte">
         <div class="modal-content" style="max-width: 700px;">
             <div class="d-flex" style="justify-content: space-between; align-items: center;">
@@ -122,7 +125,7 @@
         </div>
     </div>
 
-    <!-- Solución CU-15 (gap #2 del QA): modal de detalle para el botón "Ver" de cada fila -->
+    <!-- Modal de detalle para el botón "Ver" de cada fila -->
     <div class="modal-overlay d-none" id="modal-detalle">
         <div class="modal-content" style="max-width: 500px;">
             <div class="d-flex" style="justify-content: space-between; align-items: center;">
@@ -166,9 +169,6 @@
         } catch(e) {}
     }
 
-    // Solución QA: el backend ya tenía el endpoint de resumen mensual (Kardex) pero
-    // ningún archivo del frontend lo consumía; el personal de farmacia no tenía forma
-    // de ver el resumen que ya existía en el sistema.
     async function generarReporte() {
         const sede = document.getElementById('s').value;
         if (!sede) return App.showAlert('msg', 'Seleccione una sucursal en el formulario izquierdo para generar el reporte.', true);
@@ -194,8 +194,6 @@
 
     function cerrarReporte() { document.getElementById('modal-reporte').classList.add('d-none'); }
 
-    // Solución CU-15: Filtrado de tabla
-    // (gap #3 del QA: se agregan los filtros de Referencia, Usuario y rango de fechas que faltaban)
     function renderTable() {
         const tSuc = document.getElementById('f-sucursal').value.toLowerCase();
         const tMed = document.getElementById('f-medicamento').value.toLowerCase();
@@ -234,10 +232,9 @@
                     <button class="btn ${i.activo ? 'btn-danger' : ''}" style="padding: 0.3rem 0.6rem; font-size: 0.8rem;" onclick="toggleEstadoMovimiento(${i.id})">${i.activo ? 'Desactivar' : 'Activar'}</button>
                 </td>
             </tr>`;
-        }).join('') : `<tr><td colspan="11" class="text-muted text-center p-4">No hay movimientos que coincidan con la búsqueda.</td></tr>`;
+        }).join('') : `<tr><td colspan="11" class="text-muted text-center p-4">No se encontraron resultados.</td></tr>`;
     }
 
-    // Solución CU-15 (gap #2 del QA): detalle del movimiento (botón "Ver")
     function verDetalle(id) {
         const i = historialKardex.find(x => x.id === id);
         if (!i) return;
@@ -257,7 +254,6 @@
     }
     function cerrarDetalle() { document.getElementById('modal-detalle').classList.add('d-none'); }
 
-    // Solución CU-15 (gap #2 del QA): botón Desactivar/Activar
     async function toggleEstadoMovimiento(id) {
         try {
             await App.apiFetch(`/api/inventario/movimientos/${id}/estado`, 'PUT');
@@ -268,27 +264,27 @@
 
     function ajustarFormulario() {
         const t = document.getElementById('t').value;
-        const dCosto = document.getElementById('div-costo'), cCosto = document.getElementById('co');
-        const dRef = document.getElementById('div-ref'), cRef = document.getElementById('ref'), lRef = document.getElementById('lbl-ref');
+        const dCosto = document.getElementById('div-costo');
+        const dRef = document.getElementById('div-ref'), lRef = document.getElementById('lbl-ref');
         const dMot = document.getElementById('div-motivo'), cMot = document.getElementById('mo'), lMot = document.getElementById('lbl-mot');
 
-        dCosto.classList.add('d-none'); cCosto.required = false;
+        dCosto.classList.add('d-none');
         dRef.classList.add('d-none'); dMot.classList.add('d-none'); cMot.required = false;
 
         if (t === "0") {
-            dCosto.classList.remove('d-none'); cCosto.required = true;
-            dRef.classList.remove('d-none'); lRef.textContent = "No. de factura";
-            dMot.classList.remove('d-none'); lMot.textContent = "Notas adicionales (opcional)";
+            dCosto.classList.remove('d-none');
+            dRef.classList.remove('d-none'); lRef.textContent = "Factura";
+            dMot.classList.remove('d-none'); lMot.textContent = "Notas (opcional)";
         } else if (t === "1") {
-            dRef.classList.remove('d-none'); lRef.textContent = "No. documento devolución";
-            dMot.classList.remove('d-none'); lMot.textContent = "Motivo de devolución"; cMot.required = true;
+            dRef.classList.remove('d-none'); lRef.textContent = "Devolución";
+            dMot.classList.remove('d-none'); lMot.textContent = "Motivo de Devolución"; cMot.required = true;
         } else if (t === "2") {
-            dRef.classList.remove('d-none'); lRef.textContent = "No. recibo venta";
+            dRef.classList.remove('d-none'); lRef.textContent = "Venta";
         } else if (t === "3") {
-            dRef.classList.remove('d-none'); lRef.textContent = "ID reclamo";
-            dMot.classList.remove('d-none'); lMot.textContent = "Detalle del reclamo"; cMot.required = true;
+            dRef.classList.remove('d-none'); lRef.textContent = "Reclamo";
+            dMot.classList.remove('d-none'); lMot.textContent = "Motivo del Reclamo"; cMot.required = true;
         } else if (t === "4" || t === "5") {
-            dMot.classList.remove('d-none'); lMot.textContent = "Justificación del ajuste"; cMot.required = true;
+            dMot.classList.remove('d-none'); lMot.textContent = "Notas/Justificación"; cMot.required = true;
         }
     }
 
@@ -315,11 +311,9 @@
             }
 
             panel.classList.remove('d-none');
-            let html = `<strong>Stock actual:</strong> ${actual} ud. | <strong>Stock mínimo:</strong> ${minimo}<br>
+            let html = `<strong>Stock actual:</strong> ${actual} ud. | <strong>Stock mínimo:</strong> ${minimo} | <strong>Operación:</strong> ${operacion}<br>
                                <strong>Proyección (después de operación):</strong> <span class="${proyectado < 0 ? 'text-error font-bold' : ''}">${proyectado} ud.</span>`;
 
-            // Solución CU-15 (gap #4 del QA, FA05): mensaje textual de stock bajo cuando el
-            // proyectado cae por debajo del mínimo pero sigue siendo positivo
             const nombreMed = document.getElementById('m').options[document.getElementById('m').selectedIndex]?.text;
             if (typeof minimo === 'number' && proyectado >= 0 && proyectado < minimo) {
                 html += `<br><span class="text-error font-bold">${nombreMed}: Stock bajo — disponible: ${proyectado} (mínimo: ${minimo})</span>`;
@@ -330,10 +324,27 @@
         }
     }
 
+    document.getElementById('btn-cancelar').addEventListener('click', () => {
+        const form = document.getElementById('f-inv');
+        form.reset();
+        App.clearInvalidFields(form);
+        document.getElementById('panel-stock').classList.add('d-none');
+        document.getElementById('div-costo').classList.add('d-none');
+        document.getElementById('div-ref').classList.add('d-none');
+        document.getElementById('div-motivo').classList.add('d-none');
+    });
+
     document.getElementById('f-inv').addEventListener('submit', async(e)=>{
         e.preventDefault();
+        const form = e.target;
+        App.clearInvalidFields(form);
 
-        // Mantener seleccion de sucursal
+        if (!form.checkValidity()) {
+            App.markInvalidFields(form);
+            App.showAlert('msg', 'Revise los campos marcados en rojo.', true);
+            return;
+        }
+
         const lastSucursal = document.getElementById('s').value;
 
         try {
@@ -346,22 +357,22 @@
                 referencia: document.getElementById('ref').value || null,
                 motivo: document.getElementById('mo').value || null
             });
-            // Solución CU-15: Mensaje más detallado
-            // (gap #5 del QA: faltaba el segmento "Stock actualizado: [nuevo stock]."; el dato
-            // ya venía en la respuesta del backend, solo faltaba concatenarlo)
             const tipoNom = document.getElementById('t').options[document.getElementById('t').selectedIndex].text;
             const medNom = document.getElementById('m').options[document.getElementById('m').selectedIndex].text;
             const cant = document.getElementById('c').value;
 
             App.showAlert('msg', `Movimiento registrado exitosamente. Medicamento: ${medNom}. Tipo: ${tipoNom}. Cantidad: ${cant}. Stock actualizado: ${res.stockNuevo}.`);
 
-            document.getElementById('f-inv').reset();
-            document.getElementById('s').value = lastSucursal; // Retenemos sucursal para rapidez
-
+            form.reset();
+            document.getElementById('s').value = lastSucursal;
             ajustarFormulario();
             document.getElementById('panel-stock').classList.add('d-none');
             load();
-        } catch(err) { App.showAlert('msg', err.message, true); }
+        } catch(err) {
+            const mapa = { 'costo unitario': 'co', 'cantidad': 'c', 'motivo': 'mo', 'medicamento': 'm', 'sucursal': 's' };
+            const campoMarcado = App.markFieldByErrorMessage(form, err.message, mapa);
+            App.showAlert('msg', campoMarcado ? 'Revise los campos marcados en rojo.' : err.message, true);
+        }
     });
 
     function toggleMobileSidebar() {

@@ -3,6 +3,7 @@ package org.umg.sistemamedicoii.controller.farmacia_inventario_medicamentos;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
+import org.umg.sistemamedicoii.aop.Auditable;
 import org.umg.sistemamedicoii.dto.farmacia_inventario_medicamentos.MedicamentoRequestDTO;
 import org.umg.sistemamedicoii.models.farmacia_inventario_medicamentos.Medicamento;
 import org.umg.sistemamedicoii.service.configuracion_catalogos_sistema.CatalogoService;
@@ -26,24 +27,26 @@ public class MedicamentoController {
         return medicamentoService.obtenerPorId(id);
     }
 
+    @Auditable(value = "Creó Medicamento", entidad = "MEDICAMENTO")
     @PostMapping
     public Medicamento crear(@Valid @RequestBody MedicamentoRequestDTO dto) {
         Medicamento med = mapToEntity(new Medicamento(), dto);
         return medicamentoService.crear(med);
     }
 
+    @Auditable(value = "Actualizó Medicamento", entidad = "MEDICAMENTO")
     @PutMapping("/{id}")
     public Medicamento actualizar(@PathVariable Integer id, @Valid @RequestBody MedicamentoRequestDTO dto) {
         Medicamento med = mapToEntity(new Medicamento(), dto);
         return medicamentoService.actualizar(id, med);
     }
 
+    @Auditable(value = "Eliminó Medicamento", entidad = "MEDICAMENTO")
     @DeleteMapping("/{id}")
     public void eliminar(@PathVariable Integer id) {
         medicamentoService.eliminar(id);
     }
 
-    // Mapeo seguro en la capa REST para no romper el servicio genérico
     private Medicamento mapToEntity(Medicamento med, MedicamentoRequestDTO dto) {
         med.setNombre(dto.getNombre());
         med.setDescripcion(dto.getDescripcion());

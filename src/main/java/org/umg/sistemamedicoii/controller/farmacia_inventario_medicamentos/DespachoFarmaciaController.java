@@ -3,6 +3,7 @@ package org.umg.sistemamedicoii.controller.farmacia_inventario_medicamentos;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
+import org.umg.sistemamedicoii.aop.Auditable;
 import org.umg.sistemamedicoii.dto.farmacia_inventario_medicamentos.DespachoFarmaciaRequestDTO;
 import org.umg.sistemamedicoii.dto.farmacia_inventario_medicamentos.DespachoFarmaciaResponseDTO;
 import org.umg.sistemamedicoii.dto.atencion_medica_enfermeria.RecetaMedicaResponseDTO;
@@ -23,7 +24,6 @@ public class DespachoFarmaciaController {
             @RequestParam(required = false) Integer recetaId,
             @RequestParam(required = false) String dpi,
             @RequestParam(required = false) Integer consultaId) {
-        // FIX CU-11: soporte de búsqueda por ID de Consulta, como pide el flujo normal del spec
         return despachoFarmaciaService.buscarRecetasVigentes(recetaId, dpi, consultaId);
     }
 
@@ -32,15 +32,15 @@ public class DespachoFarmaciaController {
         return despachoFarmaciaService.obtenerDetalle(id);
     }
 
+    @Auditable(value = "Despachó medicamento(s)", entidad = "RECETA_MEDICA")
     @PostMapping("/despacho")
     public DespachoFarmaciaResponseDTO despachar(@Valid @RequestBody DespachoFarmaciaRequestDTO dto) {
         return despachoFarmaciaService.despachar(dto);
     }
 
+    @Auditable(value = "Rechazó receta médica", entidad = "RECETA_MEDICA")
     @PostMapping("/recetas/{id}/rechazar")
     public java.util.Map<String, String> rechazarReceta(@PathVariable Integer id) {
-        // FIX CU-11 FA03: se devuelve el mensaje real construido en el service
-        // (antes se descartaba y se mostraba un texto genérico fijo)
         String mensaje = despachoFarmaciaService.rechazarReceta(id);
         return java.util.Map.of("mensaje", mensaje);
     }
