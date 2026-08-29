@@ -50,6 +50,7 @@
                     <option value="laboratorios">Laboratorios</option>
                     <option value="examenes-laboratorio">Exámenes de Laboratorio</option>
                     <option value="medicamentos">Catálogo de Medicamentos</option>
+                    <option value="inventario">Inventario de Medicamentos</option>
                 </select>
             </div>
             <div class="form-group flex-1">
@@ -58,7 +59,7 @@
             </div>
             <div class="form-group">
                 <button onclick="cargarDatos()" class="btn">Refrescar Vista</button>
-                <button onclick="abrirModal()" class="btn btn-success">Crear / Asignar Registro</button>
+                <button id="btn-crear" onclick="abrirModal()" class="btn btn-success">Crear / Asignar Registro</button>
             </div>
         </div>
 
@@ -95,7 +96,7 @@
                     </div>
                     <div class="d-flex mt-4" style="justify-content: flex-end;">
                         <button type="button" onclick="cerrarModal()" class="btn">Cancelar</button>
-                        <button type="submit" class="btn btn-primary">Confirmar Guardado</button>
+                        <button id="btn-guardar" type="submit" class="btn btn-primary">Confirmar Guardado</button>
                     </div>
                 </form>
             </div>
@@ -121,6 +122,7 @@
         extrasCache.sedes = await App.apiFetch('/api/sucursales').catch(()=>[]);
         extrasCache.espe = await App.apiFetch('/api/especialidades').catch(()=>[]);
         extrasCache.lab = await App.apiFetch('/api/laboratorios').catch(()=>[]);
+        extrasCache.med = await App.apiFetch('/api/medicamentos').catch(()=>[]);
     }
 
     function cambiarCatalogo() {
@@ -128,8 +130,13 @@
         const th = document.getElementById('tb-head');
         if(endpointActual === 'sucursal-especialidad') {
             th.innerHTML = '<tr><th>ID</th><th>Sede</th><th>Especialidad</th><th>Estado</th><th>Acciones</th></tr>';
+            document.getElementById('btn-crear').textContent = 'Asignar Especialidad';
+        } else if (endpointActual === 'inventario') {
+            th.innerHTML = '<tr><th>ID</th><th>Sede</th><th>Medicamento</th><th>Stock</th><th>Estado</th><th>Acciones</th></tr>';
+            document.getElementById('btn-crear').textContent = 'Asignar Inventario';
         } else {
             th.innerHTML = '<tr><th>ID</th><th>Nombre</th><th>Estado</th><th>Acciones</th></tr>';
+            document.getElementById('btn-crear').textContent = 'Crear / Asignar Registro';
         }
 
         const nameInput = document.getElementById('cat-nombre');
@@ -169,6 +176,11 @@
                     item.sucursalNombre.toLowerCase().includes(textFilter) ||
                     item.especialidadNombre.toLowerCase().includes(textFilter);
             }
+            if (endpointActual === 'inventario') {
+                return item.id.toString().includes(textFilter) ||
+                    item.sucursalNombre.toLowerCase().includes(textFilter) ||
+                    item.medicamentoNombre.toLowerCase().includes(textFilter);
+            }
             return item.id.toString().includes(textFilter) || item.nombre.toLowerCase().includes(textFilter);
         });
 
@@ -182,7 +194,7 @@
         document.getElementById('btn-next').disabled = currentPage === totalPages;
 
         if(pagedData.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="5" class="text-muted">No se encontraron registros.</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="6" class="text-muted">No se encontraron resultados.</td></tr>`;
             return;
         }
 
@@ -191,7 +203,18 @@
                 <tr>
                     <td>${item.id}</td><td>${item.sucursalNombre}</td><td>${item.especialidadNombre}</td>
                     <td class="${item.activo?'text-success':'text-error'} font-bold">${item.activo ? 'Activo' : 'Inactivo'}</td>
-                    <td><button class="btn btn-danger" style="padding: 0.3rem 0.6rem; font-size: 0.8rem;" onclick="eliminarAsignacion(${item.id}, '${item.sucursalNombre}', '${item.especialidadNombre}')">Remover</button></td>
+                    <td><button class="btn btn-danger" style="padding: 0.3rem 0.6rem; font-size: 0.8rem;" onclick="eliminarAsignacion(${item.id}, '${item.sucursalNombre}', '${item.especialidadNombre}')">Eliminar</button></td>
+                </tr>`).join('');
+        } else if (endpointActual === 'inventario') {
+            tbody.innerHTML = pagedData.map(item => `
+                <tr>
+                    <td>${item.id}</td><td>${item.sucursalNombre}</td><td>${item.medicamentoNombre}</td>
+                    <td class="font-bold">${item.stockActual}</td>
+                    <td class="${item.activo?'text-success':'text-error'} font-bold">${item.activo ? 'Activo' : 'Inactivo'}</td>
+                    <td>
+                        <button class="btn btn-primary" style="padding: 0.3rem 0.6rem; font-size: 0.8rem;" onclick="abrirModal(${item.id})">Editar</button>
+                        ${item.activo ? `<button class="btn" style="padding: 0.3rem 0.6rem; font-size: 0.8rem;" onclick="toggleEstado(${item.id}, ${item.activo}, 'Asignación de Inventario #${item.id}')">Eliminar</button>` : ''}
+                    </td>
                 </tr>`).join('');
         } else {
             tbody.innerHTML = pagedData.map(item => `
@@ -222,43 +245,56 @@
         const normales = document.getElementById('campos-normales');
         extra.innerHTML = '';
         normales.classList.remove('d-none');
-        document.getElementById('cat-nombre').required = true;
         document.getElementById('div-activo').classList.remove('d-none');
 
+        // El texto del botón de guardado en modo edición (Gap 11)
+        document.getElementById('btn-guardar').textContent = esEdicion ? 'Actualizar Registro' : 'Crear Registro';
+
         if (endpointActual === 'sucursales') {
-            document.getElementById('cat-desc').required = false;
             extra.innerHTML = `<div class="d-flex"><div class="form-group flex-1"><label>Teléfono (8 dígitos)</label><input type="text" id="cat-tel" class="form-control" pattern="\\d{8}"></div>
             <div class="form-group flex-1"><label>Dirección</label><input type="text" id="cat-dir" class="form-control" maxlength="500"></div></div>`;
         } else if (endpointActual === 'medicamentos') {
-            document.getElementById('cat-desc').required = true;
-            extra.innerHTML = `<div class="d-flex"><div class="form-group flex-1"><label>Precio Venta (Q)</label><input type="number" step="0.01" min="0.01" id="cat-precio" class="form-control" required></div>
-            <div class="form-group flex-1"><label>Unidad Medida</label><input type="text" id="cat-unidad" class="form-control" maxlength="50" required></div></div>
+            extra.innerHTML = `<div class="d-flex"><div class="form-group flex-1"><label>Precio Venta (Q)</label><input type="number" step="0.01" min="0.01" id="cat-precio" class="form-control"></div>
+            <div class="form-group flex-1"><label>Unidad Medida</label><input type="text" id="cat-unidad" class="form-control" maxlength="50"></div></div>
             <div class="d-flex"><div class="form-group flex-1"><label>Stock Mínimo (Alerta)</label><input type="number" id="cat-min" class="form-control" min="0"></div>
             <div class="form-group flex-1 mt-4"><label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; color: var(--error); text-transform: none; letter-spacing: normal; font-size: 0.9rem;"><input type="checkbox" id="cat-controlado" style="width: 18px; height: 18px;"> Sustancia Controlada</label></div></div>`;
         } else if (endpointActual === 'tipos-cita') {
-            extra.innerHTML = `<div class="form-group"><label>Tarifa Base (Q)</label><input type="number" step="0.01" min="0.01" id="cat-precio" class="form-control" required></div>`;
+            extra.innerHTML = `<div class="form-group"><label>Tarifa Base (Q)</label><input type="number" step="0.01" min="0.01" id="cat-precio" class="form-control"></div>`;
         } else if (endpointActual === 'examenes-laboratorio') {
             const labOpts = extrasCache.lab.filter(l=>l.activo).map(l=>`<option value="${l.id}">${l.nombre}</option>`).join('');
-            extra.innerHTML = `<div class="d-flex"><div class="form-group flex-1"><label>Costo de Examen (Q)</label><input type="number" step="0.01" min="0.01" id="cat-precio" class="form-control" required></div>
-            <div class="form-group flex-1"><label>Laboratorio Asignado</label><select id="cat-lab" class="form-control" required><option value="">Seleccione</option>${labOpts}</select></div></div>
+            extra.innerHTML = `<div class="d-flex"><div class="form-group flex-1"><label>Costo de Examen (Q)</label><input type="number" step="0.01" min="0.01" id="cat-precio" class="form-control"></div>
+            <div class="form-group flex-1"><label>Laboratorio Asignado</label><select id="cat-lab" class="form-control"><option value="">Seleccione</option>${labOpts}</select></div></div>
             <div class="d-flex"><div class="form-group flex-1"><label>Rango Clínico de Referencia</label><input type="text" id="cat-rango" class="form-control"></div>
             <div class="form-group flex-1"><label>Unidad de Medida (Lab)</label><input type="text" id="cat-unidad" class="form-control"></div></div>`;
         } else if (endpointActual === 'sucursal-especialidad') {
-            normales.classList.add('d-none'); document.getElementById('cat-nombre').required = false; document.getElementById('div-activo').classList.add('d-none');
+            normales.classList.add('d-none'); document.getElementById('div-activo').classList.add('d-none');
             const sucOpts = extrasCache.sedes.filter(l=>l.activo).map(l=>`<option value="${l.id}">${l.nombre}</option>`).join('');
             const espOpts = extrasCache.espe.filter(l=>l.activo).map(l=>`<option value="${l.id}">${l.nombre}</option>`).join('');
-            extra.innerHTML = `<div class="form-group"><label>Sede / Sucursal</label><select id="cat-suc" class="form-control" required><option value="">-- Seleccione Sede --</option>${sucOpts}</select></div>
-            <div class="form-group"><label>Especialidad a habilitar</label><select id="cat-esp" class="form-control" required><option value="">-- Seleccione Especialidad --</option>${espOpts}</select></div>`;
-        } else {
-            document.getElementById('cat-desc').required = (endpointActual === 'especialidades');
+            extra.innerHTML = `<div class="form-group"><label>Sede / Sucursal</label><select id="cat-suc" class="form-control"><option value="">-- Seleccione Sede --</option>${sucOpts}</select></div>
+            <div class="form-group"><label>Especialidad a habilitar</label><select id="cat-esp" class="form-control"><option value="">-- Seleccione Especialidad --</option>${espOpts}</select></div>`;
+            document.getElementById('btn-guardar').textContent = 'Asignar';
+        } else if (endpointActual === 'inventario') {
+            normales.classList.add('d-none'); document.getElementById('div-activo').classList.add('d-none');
+            const medOpts = extrasCache.med ? extrasCache.med.filter(m=>m.activo).map(m=>`<option value="${m.id}">${m.nombre}</option>`).join('') : '';
+            const sucOpts = extrasCache.sedes ? extrasCache.sedes.filter(l=>l.activo).map(l=>`<option value="${l.id}">${l.nombre}</option>`).join('') : '';
+            // El campo está bloqueado para edición porque la combinación Medicamento+Sede es la PK de negocio
+            extra.innerHTML = `
+                <div class="form-group"><label>Medicamento</label><select id="cat-med" class="form-control" ${esEdicion?'disabled':''}><option value="">-- Seleccione Medicamento --</option>${medOpts}</select></div>
+                <div class="form-group"><label>Sede / Sucursal</label><select id="cat-suc-inv" class="form-control" ${esEdicion?'disabled':''}><option value="">-- Seleccione Sede --</option>${sucOpts}</select></div>
+                <div class="form-group"><label>Stock Actual</label><input type="number" id="cat-stock" class="form-control" min="0" value="0"></div>`;
+            document.getElementById('btn-guardar').textContent = esEdicion ? 'Actualizar Inventario' : 'Asignar Inventario';
         }
 
         if(esEdicion) {
             const item = dataCache.find(x => x.id === id);
-            document.getElementById('form-title').innerText = `Modificar: ${item.nombre}`;
-            document.getElementById('cat-nombre').value = item.nombre;
-            document.getElementById('cat-desc').value = item.descripcion || '';
-            document.getElementById('cat-activo').checked = item.activo;
+            document.getElementById('form-title').innerText = `Modificar: ${item.nombre || 'Asignación'}`;
+            if (endpointActual !== 'sucursal-especialidad' && endpointActual !== 'inventario') {
+                document.getElementById('cat-nombre').value = item.nombre;
+                document.getElementById('cat-desc').value = item.descripcion || '';
+            }
+            if (document.getElementById('cat-activo')) {
+                document.getElementById('cat-activo').checked = item.activo;
+            }
 
             if(document.getElementById('cat-precio')) document.getElementById('cat-precio').value = item.precio;
             if(endpointActual === 'sucursales') {
@@ -272,6 +308,11 @@
                 document.getElementById('cat-lab').value = item.laboratorio.id;
                 document.getElementById('cat-rango').value = item.rangoReferencia || ''; document.getElementById('cat-unidad').value = item.unidadMedida || '';
             }
+            if (endpointActual === 'inventario') {
+                document.getElementById('cat-suc-inv').value = item.sucursalId;
+                document.getElementById('cat-med').value = item.medicamentoId;
+                document.getElementById('cat-stock').value = item.stockActual;
+            }
         }
     }
 
@@ -284,6 +325,15 @@
 
         if (endpointActual === 'sucursal-especialidad') {
             payload = { sucursalId: parseInt(document.getElementById('cat-suc').value), especialidadId: parseInt(document.getElementById('cat-esp').value) };
+        } else if (endpointActual === 'inventario') {
+            payload = {
+                sucursalId: parseInt(document.getElementById('cat-suc-inv').value),
+                medicamentoId: parseInt(document.getElementById('cat-med').value),
+                stockActual: parseInt(document.getElementById('cat-stock').value)
+            };
+            if (document.getElementById('cat-activo')) {
+                payload.activo = document.getElementById('cat-activo').checked;
+            }
         } else {
             payload = { nombre: document.getElementById('cat-nombre').value, descripcion: document.getElementById('cat-desc').value || null, activo: document.getElementById('cat-activo').checked };
             if (document.getElementById('cat-precio')) payload.precio = parseFloat(document.getElementById('cat-precio').value);
@@ -293,9 +343,17 @@
         }
 
         try {
-            await App.apiFetch(id ? `/api/${endpointActual}/${id}` : `/api/${endpointActual}`, id ? 'PUT' : 'POST', payload);
-            let nomGuardado = endpointActual === 'sucursal-especialidad' ? 'Asignación' : payload.nombre;
-            App.showAlert('msg', `El registro '${nomGuardado}' ha sido ${id ? 'actualizado' : 'creado'} exitosamente.`);
+            const respuesta = await App.apiFetch(id ? `/api/${endpointActual}/${id}` : `/api/${endpointActual}`, id ? 'PUT' : 'POST', payload);
+
+            let nomGuardado = payload.nombre;
+            if (endpointActual === 'sucursal-especialidad') nomGuardado = 'Asignación';
+            if (endpointActual === 'inventario') nomGuardado = 'Inventario';
+
+            const mensajeExito = (respuesta && respuesta.mensaje)
+                ? respuesta.mensaje
+                : `El registro '${nomGuardado}' ha sido ${id ? 'actualizado correctamente' : 'creado exitosamente'}.`;
+
+            App.showAlert('msg', mensajeExito);
             cerrarModal(); cargarDatos(); precargarCombos();
         } catch(err) { App.showAlert('msg', err.message, true); }
     }
@@ -316,7 +374,7 @@
     }
 
     async function eliminarAsignacion(id, nomSede, nomEsp) {
-        if (await App.confirm(`¿Confirmar eliminación de la especialidad '${nomEsp}' de la sede '${nomSede}'?`, { titulo: '¿Eliminar asignación?', textoBoton: 'Eliminar' })) {
+        if (await App.confirm(`¿Confirmar eliminación de la especialidad '${nomEsp}' de la sede '${nomSede}'?`, { titulo: '¿Confirmar eliminación?', textoBoton: 'Eliminar' })) {
             try {
                 await App.apiFetch(`/api/sucursal-especialidad/${id}`, 'DELETE');
                 App.showAlert('msg', `La especialidad '${nomEsp}' fue removida de la sede '${nomSede}' correctamente.`);

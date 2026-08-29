@@ -5,7 +5,13 @@ import lombok.Getter;
 import lombok.Setter;
 
 @Entity
-@Table(name = "sucursal_especialidad")
+@Table(
+        name = "sucursal_especialidad",
+        uniqueConstraints = @UniqueConstraint(
+                name = "uk_sucursal_especialidad",
+                columnNames = {"sucursal_id", "especialidad_id"}
+        )
+)
 @Getter @Setter
 public class SucursalEspecialidad {
 

@@ -3,6 +3,7 @@ package org.umg.sistemamedicoii.controller.configuracion_catalogos_sistema;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
+import org.umg.sistemamedicoii.aop.Auditable;
 import org.umg.sistemamedicoii.dto.configuracion_catalogos_sistema.SucursalRequestDTO;
 import org.umg.sistemamedicoii.models.configuracion_catalogos_sistema.Sucursal;
 import org.umg.sistemamedicoii.service.configuracion_catalogos_sistema.CatalogoService;
@@ -26,18 +27,21 @@ public class SucursalController {
         return sucursalService.obtenerPorId(id);
     }
 
+    @Auditable(value = "Creó Sucursal", entidad = "SUCURSAL")
     @PostMapping
     public Sucursal crear(@Valid @RequestBody SucursalRequestDTO dto) {
         Sucursal sucursal = mapToEntity(new Sucursal(), dto);
         return sucursalService.crear(sucursal);
     }
 
+    @Auditable(value = "Actualizó Sucursal", entidad = "SUCURSAL")
     @PutMapping("/{id}")
     public Sucursal actualizar(@PathVariable Integer id, @Valid @RequestBody SucursalRequestDTO dto){
         Sucursal sucursal = mapToEntity(new Sucursal(), dto);
         return sucursalService.actualizar(id, sucursal);
     }
 
+    @Auditable(value = "Eliminó Sucursal", entidad = "SUCURSAL")
     @DeleteMapping("/{id}")
     public void eliminar(@PathVariable Integer id) {
         sucursalService.eliminar(id);

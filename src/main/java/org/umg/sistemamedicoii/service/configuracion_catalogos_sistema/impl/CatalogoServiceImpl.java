@@ -31,7 +31,7 @@ public abstract class CatalogoServiceImpl<T extends Catalogo> implements Catalog
     public T crear(T entidad) {
         if (!getRepository().findByNombreIgnoreCaseAndActivoTrue(entidad.getNombre()).isEmpty()) {
             throw new IllegalArgumentException(
-                    "Ya existe un registro con el nombre " + entidad.getNombre() + " en este catálogo.");
+                    "Ya existe un registro con el nombre " + entidad.getNombre() + ".");
         }
         return getRepository().save(entidad);
     }
@@ -48,7 +48,7 @@ public abstract class CatalogoServiceImpl<T extends Catalogo> implements Catalog
 
         if (nombreDuplicado) {
             throw new IllegalArgumentException(
-                    "Ya existe un registro con el nombre " + entidad.getNombre() + " en este catálogo.");
+                    "Ya existe un registro con el nombre " + entidad.getNombre() + ".");
         }
 
         entidad.setId(id);
