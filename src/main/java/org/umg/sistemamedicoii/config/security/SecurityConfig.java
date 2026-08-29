@@ -27,7 +27,7 @@ import java.util.List;
 public class SecurityConfig {
 
     @Autowired private CustomUserDetailsService userDetailsService;
-    @Autowired private PasswordEncoder passwordEncoder; // ya existe en SecurityBeansConfig, se reutiliza
+    @Autowired private PasswordEncoder passwordEncoder;
     @Autowired private JwtAuthenticationFilter jwtAuthenticationFilter;
     @Autowired private RestAuthEntryPoint restAuthEntryPoint;
     @Autowired private RestAccessDeniedHandler restAccessDeniedHandler;
@@ -71,63 +71,41 @@ public class SecurityConfig {
                         .authenticationEntryPoint(restAuthEntryPoint)
                         .accessDeniedHandler(restAccessDeniedHandler))
                 .authorizeHttpRequests(auth -> auth
-                        // ---- Archivos estáticos (Frontend) ----
                         .requestMatchers("/", "/*.html", "/favicon.ico", "/css/**", "/js/**").permitAll()
-
-                        // ---- Publico: portal del paciente ----
                         .requestMatchers("/api/portal/registro", "/api/portal/verificar-dpi", "/api/portal/login").permitAll()
-
-                        // ---- FIX QA: cualquier usuario autenticado puede leer SU PROPIO perfil
-                        // (antes GET /api/usuarios/** era solo ADMIN/RECEPCIONISTA, y varias
-                        // pantallas -farmacia_despacho.html, farmacia_inventario.html- necesitan
-                        // consultar su propia sede llamando a /api/usuarios/{miId}). Debe ir
-                        // ANTES de la regla general de /api/usuarios/** para que gane esta.
                         .requestMatchers(HttpMethod.GET, "/api/usuarios/me").authenticated()
-
-                        // ---- CU-01: administracion de usuarios y roles ----
                         .requestMatchers(HttpMethod.GET, "/api/usuarios/**").hasAnyRole("ADMINISTRADOR", "RECEPCIONISTA")
                         .requestMatchers("/api/usuarios/**").hasRole("ADMINISTRADOR")
                         .requestMatchers("/api/roles/**").hasRole("ADMINISTRADOR")
 
-                        // ---- Catalogos: lectura para cualquier autenticado, escritura solo Admin ----
+                        // ---- Bitácora de Operación ----
+                        .requestMatchers("/api/bitacora/**").hasRole("ADMINISTRADOR")
+
                         .requestMatchers(HttpMethod.GET, "/api/sucursales/**", "/api/especialidades/**",
                                 "/api/sucursal-especialidad/**", "/api/tipos-cita/**", "/api/estados-cita/**").authenticated()
                         .requestMatchers("/api/sucursales/**", "/api/especialidades/**",
                                 "/api/sucursal-especialidad/**", "/api/tipos-cita/**", "/api/estados-cita/**").hasRole("ADMINISTRADOR")
 
-                        // ---- CU-03 citas / CU-05 recepcion ----
-                        // FIX QA: faltaba MEDICO. Sin este rol, medico_agenda.html (calendario)
-                        // y el flujo de "agendar cita de seguimiento" en medico_panel.html
-                        // recibian 403 al llamar /api/citas/medico/{id} y
-                        // /api/citas/horarios-disponibles respectivamente.
                         .requestMatchers("/api/citas/**").hasAnyRole("PACIENTE", "RECEPCIONISTA", "MEDICO", "ADMINISTRADOR")
                         .requestMatchers("/api/recepcion/**").hasAnyRole("RECEPCIONISTA", "ADMINISTRADOR")
 
-                        // ---- CU-04/CU-06 caja y pagos (rutas especificas ANTES que las generales) ----
                         .requestMatchers(HttpMethod.GET, "/api/caja/citas/buscar").hasAnyRole("PACIENTE", "CAJERO", "ADMINISTRADOR")
                         .requestMatchers("/api/caja/laboratorio/**").hasAnyRole("CAJERO", "ADMINISTRADOR")
                         .requestMatchers("/api/caja/**").hasAnyRole("CAJERO", "ADMINISTRADOR")
                         .requestMatchers("/api/pagos/**").hasAnyRole("PACIENTE", "CAJERO", "ADMINISTRADOR")
 
-                        // ---- Consulta medica, ordenes de laboratorio y agenda del medico ----
                         .requestMatchers("/api/medico/**").hasAnyRole("MEDICO", "ADMINISTRADOR")
                         .requestMatchers("/api/agenda/**").hasAnyRole("MEDICO", "ADMINISTRADOR")
+                        .requestMatchers("/api/enfermeria/**").hasAnyRole("ENFERMERO", "ADMINISTRADOR")
 
-                        // ---- Enfermeria (signos vitales) ----
-                        // RECEPCIONISTA incluido porque el botón "Signos Vitales (Urgente)" de recepción
-                        // (FA08 de CU-05, cita con prioridad de emergencia) navega a este flujo directamente.
-                        .requestMatchers("/api/enfermeria/**").hasAnyRole("ENFERMERO", "MEDICO", "RECEPCIONISTA", "ADMINISTRADOR")
-
-                        // ---- Laboratorio ----
-                        .requestMatchers("/api/laboratorios/**", "/api/laboratorio/**", "/api/examenes-laboratorio/**")
+                        .requestMatchers(HttpMethod.GET, "/api/laboratorios/**", "/api/examenes-laboratorio/**")
                         .hasAnyRole("LABORATORISTA", "SUPERVISORLABORATORIO", "MEDICO", "ADMINISTRADOR")
+                        .requestMatchers("/api/laboratorios/**", "/api/examenes-laboratorio/**").hasRole("ADMINISTRADOR")
+                        .requestMatchers("/api/laboratorio/**").hasAnyRole("LABORATORISTA", "SUPERVISORLABORATORIO", "MEDICO", "ADMINISTRADOR")
 
-                        // ---- Farmacia / inventario ----
                         .requestMatchers(HttpMethod.GET, "/api/medicamentos/**").hasAnyRole("FARMACEUTICO", "MEDICO", "ADMINISTRADOR")
-                        .requestMatchers("/api/farmacia/**", "/api/medicamentos/**",
-                                "/api/inventario/**").hasAnyRole("FARMACEUTICO", "ADMINISTRADOR")
+                        .requestMatchers("/api/farmacia/**", "/api/medicamentos/**", "/api/inventario/**").hasAnyRole("FARMACEUTICO", "ADMINISTRADOR")
 
-                        // Cualquier otra ruta no listada: requiere estar logueado
                         .anyRequest().authenticated())
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 

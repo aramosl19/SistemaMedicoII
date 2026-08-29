@@ -143,6 +143,13 @@ public class ConsultaMedicaServiceImpl implements ConsultaMedicaService {
     }
 
     @Override
+    public ConsultaMedicaResponseDTO obtenerBorrador(Integer citaId) {
+        return consultaMedicaRepository.findByCitaId(citaId)
+                .map(consulta -> toConsultaResponseDTO(consulta, null))
+                .orElse(null);
+    }
+
+    @Override
     public CitaConsultaResponseDTO finalizarAtencion(Integer citaId) {
         Cita cita = buscarCita(citaId);
         String estadoActual = cita.getEstado().getNombre();

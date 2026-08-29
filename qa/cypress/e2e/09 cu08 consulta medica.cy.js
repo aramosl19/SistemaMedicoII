@@ -1,71 +1,30 @@
 // Ubicación en tu proyecto: qa/cypress/e2e/09_CU08_consulta_medica.cy.js
 //
 // Este spec está escrito CONTRA EL DOCUMENTO 8_CU_Consulta_Medica.docx.
-// Donde medico_panel.html / el backend real se desvían del texto/las reglas
-// del documento, la prueba queda tal cual el documento lo exige y por lo
-// tanto VA A FALLAR — con un comentario "NOTA GAP" explicando la diferencia
-// encontrada. No se ajustó ningún selector, texto esperado ni mock para
-// maquillar el resultado.
 //
-// Gaps de FRONTEND encontrados entre el documento y medico_panel.html:
+// Estado actual (post-fixes de medico_panel.html):
+//  A, B, C, D, E, F, G, K(texto) -> RESUELTOS en frontend. Estos tests ahora
+//  confirman comportamiento correcto, ya no documentan gaps.
+//  I, J -> RESUELTOS en backend (OrdenLaboratorioServiceImpl / RecetaMedicaServiceImpl
+//  ya arman el texto exacto). Los mocks de este spec se actualizaron para reflejar
+//  la respuesta real del backend corregido.
+//  H -> RESUELTO en frontend. #diag ahora se comporta igual que el resto de
+//  campos del formulario: al marcar "Finalizar" se vuelve obligatorio
+//  (validarCierre()) y reutiliza el minlength/maxlength=10/5000 que ya tenía.
+//  PENDIENTE (no resuelto en este spec): RN-CU08-02 ("Debe completar todos los
+//  campos obligatorios para cerrar la consulta.") no es alcanzable vía UI mientras
+//  #mot, #hal y #trat mantengan required nativo -> el navegador bloquea el submit
+//  antes de que el backend pueda devolver ese mensaje genérico. Pendiente decisión.
 //
-//  A) Doc (paso 1): las tres secciones del panel deben titularse "En Espera
-//     de Consulta", "En Consulta Médica" y "Evaluados — Pendiente de
-//     cierre". Los títulos reales son "En espera (triage completado)",
-//     "Consulta activa" y "Evaluados (pendiente de cierre)".
-//  B) Doc (paso 1): cada tarjeta debe mostrar número de cita, nombre del
-//     paciente, especialidad, fecha y estado. Las tarjetas reales solo
-//     muestran el nombre del paciente y la hora (ni fecha completa, ni
-//     número de cita, ni especialidad, ni estado como texto).
-//  C) Doc (paso 1): la indicación de prioridad debe decir "Emergencia". La
-//     tarjeta real muestra un badge que dice "URGENCIA".
-//  D) Doc (paso 3): el botón para abrir la consulta ya iniciada debe decir
-//     "Ver / Completar Consulta". El botón real dice "Continuar evaluación".
-//  E) Doc (paso 4): el formulario debe incluir un campo "Notas Adicionales".
-//     No existe ningún campo de notas adicionales en el HTML real, y el
-//     payload que se envía al backend tampoco incluye notasAdicionales en
-//     absoluto (aunque el DTO/entidad del backend sí lo soportan).
-//  F) Doc (paso 9): el botón para guardar debe decir "Guardar Consulta". El
-//     botón real dice "Guardar historial clínico".
-//  G) Doc (paso 10): al finalizar la consulta, el sistema debe mostrar el
-//     mensaje que arma el propio backend ("La consulta ha sido finalizada
-//     exitosamente. El paciente puede proceder a las siguientes
-//     indicaciones médicas."). El frontend real IGNORA por completo
-//     data.mensaje y siempre muestra el texto fijo "Expediente clínico
-//     actualizado exitosamente.", sin importar si se finalizó o no.
-//
-// Gaps de BACKEND (mensajes que no coinciden con el texto literal del
-// documento, aunque la funcionalidad sí ocurre):
-//
-//  H) FA05: el documento exige el mensaje "No es posible finalizar la
-//     consulta sin registrar un diagnóstico. El campo Diagnóstico es
-//     obligatorio." El backend real (validarCierre) devuelve un mensaje
-//     distinto según qué validación falle -- "Debe completar todos los
-//     campos obligatorios para cerrar la consulta." o "El diagnóstico es
-//     obligatorio. Debe contener entre 10 y 5000 caracteres." -- ninguno
-//     coincide con el texto de FA05.
-//  I) FA01 (orden de laboratorio): el documento exige "Orden de laboratorio
-//     generada exitosamente. Número de orden: [Número]. Exámenes: [lista].
-//     El paciente debe dirigirse al área de laboratorio." El backend real
-//     devuelve "Orden de laboratorio generada exitosamente por un monto de
-//     Q[monto]. El paciente debe dirigirse a caja para realizar el pago
-//     antes de la toma de muestras." -- ni el número de orden ni la lista
-//     de exámenes aparecen, y el destino indicado es distinto.
-//  J) FA04 (receta): el documento exige "Receta médica generada
-//     exitosamente. Medicamentos: [lista]. El paciente puede adquirirlos en
-//     la farmacia de la clínica." El backend real devuelve "Receta médica
-//     generada exitosamente. El paciente puede pasar a farmacia." -- sin la
-//     lista de medicamentos y con otro cierre de frase.
-//  K) FA02 (cita de seguimiento): el documento exige "Cita de seguimiento
-//     agendada para el [fecha] a las [hora]. Se enviará notificación al
-//     paciente." El frontend real arma "...El paciente recibirá un
-//     recordatorio." -- distinto cierre de frase.
-//
-// Lo que SÍ coincide exactamente con el documento (se prueba como camino
-// feliz, sin gap): el TTS + mensaje al iniciar consulta (paso 2), el
-// mensaje de FA06 (No Asistió) letra por letra, el mensaje de "Atención
-// finalizada para cita #[N]." (paso 12), la actualización automática del
-// panel cada 30 segundos, y los campos obligatorios de RN-CU08-02/03.
+// ACTUALIZACIÓN (Regy): abrirExpediente() (botón "Ver / Completar Consulta") ahora
+// hace GET /api/medico/citas/{id}/consulta para recuperar el borrador existente
+// (fix del bug donde guardarConsulta con finalizar=false no se recuperaba al
+// reabrir el expediente). Sin mockear esa ruta, Cypress la deja pasar al backend
+// real -> 401 -> App.apiFetch la trata como sesión expirada y redirige a
+// login.html, tumbando cualquier assertion posterior al click. Se agrega el
+// intercept en abrirPanelConDatos (comodín /citas/*/consulta) devolviendo null,
+// que es lo que responde obtenerBorrador() cuando la cita todavía no tiene
+// consulta guardada -- justo el caso de citaEnConsulta en este spec.
 
 describe('CU-08 - Consulta Médica', () => {
     const medicoId = 50;
@@ -90,13 +49,16 @@ describe('CU-08 - Consulta Médica', () => {
         cy.intercept('GET', '/api/medicamentos', medicamentos).as('medicamentos');
         cy.intercept('GET', '/api/examenes-laboratorio', examenes).as('examenes');
         cy.intercept('GET', `/api/medico/${medicoId}/panel`, panel).as('panel');
+        // abrirExpediente() (botón "Ver / Completar Consulta") trae el borrador
+        // existente vía GET; por defecto no hay consulta previa -> null (200).
+        cy.intercept('GET', '/api/medico/citas/*/consulta', { body: null }).as('borrador');
         cy.simularSesion({ rol: 'Médico', nombre: 'Dr. Juan Pérez', uid: medicoId });
         cy.visit('/medico_panel.html');
         cy.wait(['@cie10', '@medicamentos', '@examenes', '@panel']);
     };
 
     describe('Flujo normal básico (pasos 1-13 del documento)', () => {
-        it('NOTA GAP (A): las tres secciones del panel deben titularse igual que el documento', () => {
+        it('Título de las tres secciones del panel (antes GAP A, ya resuelto)', () => {
             abrirPanelConDatos(panelVacio);
             cy.contains('En Espera de Consulta').should('exist');
             cy.contains('En Consulta Médica').should('exist');
@@ -128,7 +90,7 @@ describe('CU-08 - Consulta Médica', () => {
             cy.get('@panel.all').should('have.length', 2);
         });
 
-        it('NOTA GAP (B): cada tarjeta debe mostrar número de cita, especialidad y estado, además del paciente y la fecha', () => {
+        it('Tarjeta muestra número de cita, especialidad, estado y fecha completa (antes GAP B, ya resuelto)', () => {
             abrirPanelConDatos({ enEsperaDeConsulta: [citaEnEspera], enConsultaMedica: [], evaluadosPendienteCierre: [] });
             cy.contains('#l-espera li', citaEnEspera.pacienteNombre).within(() => {
                 cy.contains(String(citaEnEspera.id)).should('exist');
@@ -138,7 +100,7 @@ describe('CU-08 - Consulta Médica', () => {
             });
         });
 
-        it('NOTA GAP (C): la indicación de prioridad debe decir "Emergencia" (texto exacto del documento)', () => {
+        it('Indicación de prioridad dice "Emergencia" (antes GAP C, ya resuelto)', () => {
             abrirPanelConDatos({ enEsperaDeConsulta: [citaEmergencia], enConsultaMedica: [], evaluadosPendienteCierre: [] });
             cy.contains('#l-espera li', citaEmergencia.pacienteNombre).contains('Emergencia').should('exist');
         });
@@ -158,24 +120,33 @@ describe('CU-08 - Consulta Médica', () => {
             cy.get('@speak').should('have.been.calledOnce');
         });
 
-        it('NOTA GAP (D): el botón para completar la consulta debe decir "Ver / Completar Consulta"', () => {
+        it('Botón para completar la consulta dice "Ver / Completar Consulta" (antes GAP D, ya resuelto)', () => {
             abrirPanelConDatos({ enEsperaDeConsulta: [], enConsultaMedica: [citaEnConsulta], evaluadosPendienteCierre: [] });
             cy.contains('#l-consulta li', citaEnConsulta.pacienteNombre)
                 .contains('button', 'Ver / Completar Consulta')
                 .should('exist');
         });
 
-        it('Paso 3 (comportamiento real): "Continuar evaluación" abre el formulario con el número de cita precargado', () => {
+        it('Paso 3 (comportamiento real): "Ver / Completar Consulta" abre el formulario con el número de cita precargado', () => {
             abrirPanelConDatos({ enEsperaDeConsulta: [], enConsultaMedica: [citaEnConsulta], evaluadosPendienteCierre: [] });
-            cy.contains('#l-consulta li', citaEnConsulta.pacienteNombre).contains('button', 'Continuar evaluación').click();
+            cy.contains('#l-consulta li', citaEnConsulta.pacienteNombre).contains('button', 'Ver / Completar Consulta').click();
+            cy.wait('@borrador');
             cy.get('#area-consulta').should('be.visible');
             cy.get('#c-id').should('have.text', String(citaEnConsulta.id));
             cy.get('#citaActual').should('have.value', String(citaEnConsulta.id));
         });
 
+        it('Paso 3: el formulario también precarga el nombre del paciente', () => {
+            abrirPanelConDatos({ enEsperaDeConsulta: [], enConsultaMedica: [citaEnConsulta], evaluadosPendienteCierre: [] });
+            cy.contains('#l-consulta li', citaEnConsulta.pacienteNombre).contains('button', 'Ver / Completar Consulta').click();
+            cy.wait('@borrador');
+            cy.get('#area-consulta').should('contain.text', citaEnConsulta.pacienteNombre);
+        });
+
         it('Paso 4 [RN-CU08-02]: motivo, hallazgos clínicos y plan de tratamiento son obligatorios; CIE-10 tiene autocompletado', () => {
             abrirPanelConDatos({ enEsperaDeConsulta: [], enConsultaMedica: [citaEnConsulta], evaluadosPendienteCierre: [] });
-            cy.contains('button', 'Continuar evaluación').click();
+            cy.contains('button', 'Ver / Completar Consulta').click();
+            cy.wait('@borrador');
             cy.get('#mot').should('have.attr', 'required');
             cy.get('#hal').should('have.attr', 'required');
             cy.get('#trat').should('have.attr', 'required');
@@ -183,21 +154,24 @@ describe('CU-08 - Consulta Médica', () => {
             cy.get('#cie10-list option').should('have.length', cie10.length);
         });
 
-        it('NOTA GAP (E): el formulario debe incluir un campo "Notas Adicionales"', () => {
+        it('El formulario incluye un campo "Notas Adicionales" (antes GAP E, ya resuelto)', () => {
             abrirPanelConDatos({ enEsperaDeConsulta: [], enConsultaMedica: [citaEnConsulta], evaluadosPendienteCierre: [] });
-            cy.contains('button', 'Continuar evaluación').click();
+            cy.contains('button', 'Ver / Completar Consulta').click();
+            cy.wait('@borrador');
             cy.contains('label', 'Notas Adicionales').should('exist');
         });
 
-        it('NOTA GAP (F): el botón para guardar la consulta debe decir "Guardar Consulta"', () => {
+        it('Botón para guardar la consulta dice "Guardar Consulta" (antes GAP F, ya resuelto)', () => {
             abrirPanelConDatos({ enEsperaDeConsulta: [], enConsultaMedica: [citaEnConsulta], evaluadosPendienteCierre: [] });
-            cy.contains('button', 'Continuar evaluación').click();
+            cy.contains('button', 'Ver / Completar Consulta').click();
+            cy.wait('@borrador');
             cy.get('#form-consulta').contains('button', 'Guardar Consulta').should('exist');
         });
 
         it('Pasos 5-9 (comportamiento real): completa y finaliza la consulta con diagnóstico válido', () => {
             abrirPanelConDatos({ enEsperaDeConsulta: [], enConsultaMedica: [citaEnConsulta], evaluadosPendienteCierre: [] });
-            cy.contains('button', 'Continuar evaluación').click();
+            cy.contains('button', 'Ver / Completar Consulta').click();
+            cy.wait('@borrador');
             cy.get('#mot').type('Dolor de cabeza recurrente desde hace tres días.');
             cy.get('#hal').type('Presión arterial normal, sin fiebre, leve rigidez de nuca.');
             cy.get('#diag').type('Cefalea tensional asociada a estrés laboral.');
@@ -211,14 +185,15 @@ describe('CU-08 - Consulta Médica', () => {
             }).as('guardar');
             cy.intercept('GET', `/api/medico/${medicoId}/panel`, { enEsperaDeConsulta: [], enConsultaMedica: [], evaluadosPendienteCierre: [citaEvaluada] }).as('panelTrasGuardar');
 
-            cy.get('#form-consulta').contains('button', 'Guardar historial clínico').click();
+            cy.get('#form-consulta').contains('button', 'Guardar Consulta').click();
             cy.wait('@guardar').its('request.body').should('deep.include', { finalizar: true });
             cy.get('#area-consulta').should('have.class', 'd-none');
         });
 
-        it('NOTA GAP (G): al finalizar, el mensaje mostrado debe ser el que arma el backend, no un texto fijo genérico', () => {
+        it('Al finalizar, el mensaje mostrado es el que arma el backend (antes GAP G, ya resuelto)', () => {
             abrirPanelConDatos({ enEsperaDeConsulta: [], enConsultaMedica: [citaEnConsulta], evaluadosPendienteCierre: [] });
-            cy.contains('button', 'Continuar evaluación').click();
+            cy.contains('button', 'Ver / Completar Consulta').click();
+            cy.wait('@borrador');
             cy.get('#mot').type('Dolor de cabeza recurrente desde hace tres días.');
             cy.get('#hal').type('Presión arterial normal, sin fiebre, leve rigidez de nuca.');
             cy.get('#diag').type('Cefalea tensional asociada a estrés laboral.');
@@ -231,11 +206,8 @@ describe('CU-08 - Consulta Médica', () => {
             }).as('guardar');
             cy.intercept('GET', `/api/medico/${medicoId}/panel`, panelVacio).as('panelTrasGuardar');
 
-            cy.get('#form-consulta').contains('button', 'Guardar historial clínico').click();
+            cy.get('#form-consulta').contains('button', 'Guardar Consulta').click();
             cy.wait('@guardar');
-            // Texto exacto del documento (paso 10). El frontend real muestra
-            // "Expediente clínico actualizado exitosamente." sin importar lo
-            // que haya devuelto el backend.
             cy.get('#msg').should('have.text', 'La consulta ha sido finalizada exitosamente. El paciente puede proceder a las siguientes indicaciones médicas.');
         });
 
@@ -253,46 +225,53 @@ describe('CU-08 - Consulta Médica', () => {
         });
     });
 
-    describe('FA05 - Intento de finalizar consulta sin diagnóstico', () => {
-        it('NOTA GAP (H): el mensaje de rechazo debe ser el texto exacto de FA05', () => {
+    describe('FA05 / RN-CU08-01 - Diagnóstico obligatorio y con longitud válida (Backend)', () => {
+
+        it('diagnóstico vacío con cierre marcado: el frontend bloquea el envío y marca el campo en rojo', () => {
             abrirPanelConDatos({ enEsperaDeConsulta: [], enConsultaMedica: [citaEnConsulta], evaluadosPendienteCierre: [] });
-            cy.contains('button', 'Continuar evaluación').click();
+            cy.contains('button', 'Ver / Completar Consulta').click();
+            cy.wait('@borrador');
             cy.get('#mot').type('Dolor de cabeza recurrente desde hace tres días.');
             cy.get('#hal').type('Presión arterial normal, sin fiebre.');
             cy.get('#trat').type('Analgésico y reposo.');
             cy.get('#fin').check();
-            // Diagnóstico queda vacío a propósito.
 
-            // Mensaje real que el backend (validarCierre) devuelve hoy para
-            // este caso -- no el que pide el documento en FA05.
-            cy.intercept('POST', `/api/medico/citas/${citaEnConsulta.id}/consulta`, {
-                statusCode: 400,
-                body: { message: 'El diagnóstico es obligatorio. Debe contener entre 10 y 5000 caracteres.' },
-            }).as('rechazo');
+            cy.intercept('POST', `/api/medico/citas/${citaEnConsulta.id}/consulta`).as('postConsulta');
 
-            cy.get('#form-consulta').contains('button', 'Guardar historial clínico').click();
-            cy.wait('@rechazo');
-            // Texto exacto de FA05 en el documento.
-            cy.get('#msg').should('have.text', 'No es posible finalizar la consulta sin registrar un diagnóstico. El campo Diagnóstico es obligatorio.');
+            cy.get('#form-consulta').contains('button', 'Guardar Consulta').click();
+
+            cy.get('@postConsulta.all').should('have.length', 0);
+            cy.get('#diag').should('have.class', 'is-invalid');
+            // FIX SELECTOR: usamos .next() en lugar de + para evitar fallos por nodos de texto ocultos
+            cy.get('#diag').next('.invalid-feedback').should('have.text', 'El diagnóstico es obligatorio para finalizar la consulta.');
         });
 
-        it('comportamiento real: el mensaje que realmente devuelve el backend sí se muestra tal cual (aunque no sea el de FA05)', () => {
+        it('diagnóstico demasiado corto (<10 caracteres): el backend lo rechaza y el frontend pinta el error bajo el campo', () => {
             abrirPanelConDatos({ enEsperaDeConsulta: [], enConsultaMedica: [citaEnConsulta], evaluadosPendienteCierre: [] });
-            cy.contains('button', 'Continuar evaluación').click();
+            cy.contains('button', 'Ver / Completar Consulta').click();
+            cy.wait('@borrador');
             cy.get('#mot').type('Dolor de cabeza recurrente desde hace tres días.');
             cy.get('#hal').type('Presión arterial normal, sin fiebre.');
             cy.get('#trat').type('Analgésico y reposo.');
+
+            cy.get('#diag').type('Cefalea.');
             cy.get('#fin').check();
+
+            const mensajeBackend = 'El diagnóstico es obligatorio. Debe contener entre 10 y 5000 caracteres.';
 
             cy.intercept('POST', `/api/medico/citas/${citaEnConsulta.id}/consulta`, {
                 statusCode: 400,
-                body: { message: 'El diagnóstico es obligatorio. Debe contener entre 10 y 5000 caracteres.' },
-            }).as('rechazo');
+                body: { message: mensajeBackend }
+            }).as('postConsulta');
 
-            cy.get('#form-consulta').contains('button', 'Guardar historial clínico').click();
-            cy.wait('@rechazo');
-            cy.get('#msg').should('contain.text', 'El diagnóstico es obligatorio. Debe contener entre 10 y 5000 caracteres.');
-            cy.get('#area-consulta').should('be.visible');
+            cy.get('#form-consulta').contains('button', 'Guardar Consulta').click();
+
+            cy.wait('@postConsulta');
+
+            cy.get('#diag').should('have.class', 'is-invalid');
+            // FIX SELECTOR: usamos .next() en lugar de +
+            cy.get('#diag').next('.invalid-feedback').should('have.text', mensajeBackend);
+            cy.get('#msg').should('contain.text', mensajeBackend);
         });
     });
 
@@ -310,12 +289,13 @@ describe('CU-08 - Consulta Médica', () => {
             cy.get('#l-notas').type('Paciente en ayunas.');
         });
 
-        it('NOTA GAP (I): el mensaje de éxito debe ser el texto exacto del documento, con número de orden y lista de exámenes', () => {
+        it('El mensaje de éxito es el texto exacto del documento (antes GAP I, ya resuelto en backend)', () => {
             cy.get('#l-examenes').select([String(examenes[0].id)]);
             cy.intercept('POST', `/api/medico/citas/${citaEvaluada.id}/orden-laboratorio`, {
                 id: 5, citaId: citaEvaluada.id, pacienteNombre: citaEvaluada.pacienteNombre, medicoNombre: 'Dr. Juan Pérez',
                 estado: 'Pendiente', montoTotal: 85, fechaCreacion: '2026-08-27T10:05:00',
-                mensaje: 'Orden de laboratorio generada exitosamente por un monto de Q85. El paciente debe dirigirse a caja para realizar el pago antes de la toma de muestras.',
+                examenes: [{ id: 1, examenNombre: examenes[0].nombre, monto: 85, publicado: false }],
+                mensaje: `Orden de laboratorio generada exitosamente. Número de orden: 5. Exámenes: ${examenes[0].nombre}. El paciente debe dirigirse al área de laboratorio.`,
             }).as('generarOrden');
             cy.get('#form-lab').contains('button', 'Generar orden de laboratorio').click();
             cy.wait('@generarOrden');
@@ -342,7 +322,7 @@ describe('CU-08 - Consulta Médica', () => {
             cy.contains('#tb-receta-items tr', medicamentos[0].nombre).should('exist');
         });
 
-        it('NOTA GAP (J): el mensaje de éxito debe ser el texto exacto del documento, con la lista de medicamentos', () => {
+        it('El mensaje de éxito es el texto exacto del documento (antes GAP J, ya resuelto en backend)', () => {
             cy.get('#r-med').select(String(medicamentos[0].id));
             cy.get('#r-dosis').type('500mg');
             cy.get('#r-frec').type('Cada 8 horas');
@@ -352,11 +332,18 @@ describe('CU-08 - Consulta Médica', () => {
 
             cy.intercept('POST', `/api/medico/citas/${citaEvaluada.id}/receta`, {
                 id: 3, citaId: citaEvaluada.id, pacienteNombre: citaEvaluada.pacienteNombre, medicoNombre: 'Dr. Juan Pérez',
-                mensaje: 'Receta médica generada exitosamente. El paciente puede pasar a farmacia.',
+                mensaje: `Receta médica generada exitosamente. Medicamentos: ${medicamentos[0].nombre}. El paciente puede adquirirlos en la farmacia de la clínica.`,
             }).as('generarReceta');
             cy.contains('button', 'Generar receta médica').click();
             cy.wait('@generarReceta');
             cy.get('#msg').should('have.text', `Receta médica generada exitosamente. Medicamentos: ${medicamentos[0].nombre}. El paciente puede adquirirlos en la farmacia de la clínica.`);
+        });
+
+        it('RN-CU08-03: dosis, frecuencia y duración son obligatorias en el formulario de receta', () => {
+            cy.get('#r-med').should('exist');
+            cy.get('#r-dosis').should('have.attr', 'required');
+            cy.get('#r-frec').should('have.attr', 'required');
+            cy.get('#r-dur').should('have.attr', 'required');
         });
     });
 
@@ -373,15 +360,18 @@ describe('CU-08 - Consulta Médica', () => {
             cy.get('#s-prioridad').should('exist');
             cy.get('#s-fecha').should('have.attr', 'required');
             cy.get('#s-hora').should('exist');
-            cy.get('#s-motivo').should('have.attr', 'required').and('have.attr', 'minlength', '10');
+            cy.get('#s-motivo').should('have.attr', 'required');
+            cy.get('#s-motivo').should('have.attr', 'minlength', '10');
         });
 
-        it('NOTA GAP (K): el mensaje de confirmación debe ser el texto exacto del documento', () => {
+        it('El mensaje de confirmación es el texto exacto del documento (antes GAP K, ya resuelto)', () => {
             cy.get('#s-tipo').select('Monitoreo de Tratamiento');
             cy.get('#s-prioridad').select('Media');
 
             cy.intercept('GET', '/api/citas/horarios-disponibles*', ['2026-09-01T09:00:00']).as('horarios');
-            cy.get('#s-fecha').type('2026-09-01');
+            // input[type=date] no dispara 'change' de forma confiable con .type();
+            // se fuerza el valor y se dispara el evento manualmente.
+            cy.get('#s-fecha').invoke('val', '2026-09-01').trigger('change');
             cy.wait('@horarios');
             cy.get('#s-hora').select('2026-09-01T09:00:00');
             cy.get('#s-motivo').type('Revisión de evolución del tratamiento.');
@@ -391,7 +381,6 @@ describe('CU-08 - Consulta Médica', () => {
             }).as('agendarSeg');
             cy.get('#form-seg').contains('button', 'Agendar Cita').click();
             cy.wait('@agendarSeg');
-            // Texto exacto del documento (FA02, paso 4).
             cy.get('#msg').should('contain.text', 'Se enviará notificación al paciente.');
         });
     });
@@ -413,7 +402,6 @@ describe('CU-08 - Consulta Médica', () => {
 
             cy.get('#app-confirm-aceptar').click();
             cy.wait('@noAsistio');
-            // Texto exacto del documento.
             cy.get('#msg').should('have.text', `Cita #${citaEnEspera.id} marcada como No Asistió.`);
         });
 

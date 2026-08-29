@@ -14,6 +14,8 @@ public interface ConsultaMedicaService {
     CitaConsultaResponseDTO marcarNoAsistio(Integer citaId);
 
     ConsultaMedicaResponseDTO guardarConsulta(Integer citaId, ConsultaMedicaRequestDTO dto);
+    
+    ConsultaMedicaResponseDTO obtenerBorrador(Integer citaId);
 
     CitaConsultaResponseDTO finalizarAtencion(Integer citaId);
 }

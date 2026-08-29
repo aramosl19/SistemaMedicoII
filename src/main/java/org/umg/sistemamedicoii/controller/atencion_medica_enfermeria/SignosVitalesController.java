@@ -2,6 +2,7 @@ package org.umg.sistemamedicoii.controller.atencion_medica_enfermeria;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
+import org.umg.sistemamedicoii.aop.Auditable;
 import org.umg.sistemamedicoii.dto.atencion_medica_enfermeria.CitaEnfermeriaResponseDTO;
 import org.umg.sistemamedicoii.dto.atencion_medica_enfermeria.SignosVitalesRequestDTO;
 import org.umg.sistemamedicoii.dto.atencion_medica_enfermeria.SignosVitalesResponseDTO;
@@ -21,11 +22,13 @@ public class SignosVitalesController {
         return signosVitalesService.listarCitasPresentes();
     }
 
+    @Auditable(value = "Llamó al paciente a consulta", entidad = "CITA")
     @PostMapping("/citas/{id}/llamar")
     public CitaEnfermeriaResponseDTO llamarPaciente(@PathVariable Integer id) {
         return signosVitalesService.llamarPaciente(id);
     }
 
+    @Auditable(value = "Registró signos vitales", entidad = "SIGNOS_VITALES")
     @PostMapping("/citas/{id}/signos-vitales")
     public SignosVitalesResponseDTO registrarSignosVitales(
             @PathVariable Integer id,

@@ -2,6 +2,7 @@ package org.umg.sistemamedicoii.controller.atencion_medica_enfermeria;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
+import org.umg.sistemamedicoii.aop.Auditable;
 import org.umg.sistemamedicoii.dto.atencion_medica_enfermeria.*;
 import org.umg.sistemamedicoii.dto.gestion_citas_recepcion.CitaRequestDTO;
 import org.umg.sistemamedicoii.dto.gestion_citas_recepcion.CitaResponseDTO;
@@ -32,16 +33,19 @@ public class ConsultaMedicaController {
         return consultaMedicaService.obtenerPanel(medicoId);
     }
 
+    @Auditable(value = "Inició consulta médica", entidad = "CITA")
     @PostMapping("/citas/{id}/iniciar-consulta")
     public CitaConsultaResponseDTO iniciarConsulta(@PathVariable Integer id) {
         return consultaMedicaService.iniciarConsulta(id);
     }
 
+    @Auditable(value = "Marcó cita como No Asistió", entidad = "CITA")
     @PostMapping("/citas/{id}/no-asistio")
     public CitaConsultaResponseDTO marcarNoAsistio(@PathVariable Integer id) {
         return consultaMedicaService.marcarNoAsistio(id);
     }
 
+    @Auditable(value = "Registró consulta médica", entidad = "CONSULTA_MEDICA")
     @PostMapping("/citas/{id}/consulta")
     public ConsultaMedicaResponseDTO guardarConsulta(
             @PathVariable Integer id,
@@ -49,11 +53,18 @@ public class ConsultaMedicaController {
         return consultaMedicaService.guardarConsulta(id, dto);
     }
 
+    @GetMapping("/citas/{id}/consulta")
+    public ConsultaMedicaResponseDTO obtenerBorrador(@PathVariable Integer id) {
+        return consultaMedicaService.obtenerBorrador(id);
+    }
+
+    @Auditable(value = "Finalizó atención médica", entidad = "CITA")
     @PostMapping("/citas/{id}/finalizar-atencion")
     public CitaConsultaResponseDTO finalizarAtencion(@PathVariable Integer id) {
         return consultaMedicaService.finalizarAtencion(id);
     }
 
+    @Auditable(value = "Generó receta médica", entidad = "RECETA_MEDICA")
     @PostMapping("/citas/{id}/receta")
     public RecetaMedicaResponseDTO generarReceta(
             @PathVariable Integer id,
@@ -61,6 +72,7 @@ public class ConsultaMedicaController {
         return recetaMedicaService.generarReceta(id, dto);
     }
 
+    @Auditable(value = "Agendó cita de seguimiento", entidad = "CITA")
     @PostMapping("/citas/{id}/seguimiento")
     public CitaResponseDTO agendarSeguimiento(
             @PathVariable Integer id,

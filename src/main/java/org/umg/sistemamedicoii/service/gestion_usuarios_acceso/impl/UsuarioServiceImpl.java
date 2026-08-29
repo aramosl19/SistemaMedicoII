@@ -20,7 +20,6 @@ import org.umg.sistemamedicoii.models.configuracion_catalogos_sistema.Especialid
 import org.umg.sistemamedicoii.models.gestion_usuarios_accesos.Rol;
 import org.umg.sistemamedicoii.models.configuracion_catalogos_sistema.Sucursal;
 import org.umg.sistemamedicoii.models.gestion_usuarios_accesos.Usuario;
-import org.umg.sistemamedicoii.models.gestion_usuarios_accesos.Auditoria;
 import org.umg.sistemamedicoii.repository.configuracion_catalogos_sistema.EspecialidadRepository;
 import org.umg.sistemamedicoii.repository.gestion_usuarios_accesos.AuditoriaRepository;
 import org.umg.sistemamedicoii.repository.gestion_usuarios_accesos.RolRepository;
@@ -192,7 +191,7 @@ public class UsuarioServiceImpl implements UsuarioService {
 
         try {
             usuarioRepository.delete(usuario);
-            usuarioRepository.flush(); // fuerza el DELETE ahora para capturar el error de FK aquí, no después
+            usuarioRepository.flush();
         } catch (org.springframework.dao.DataIntegrityViolationException e) {
             throw new IllegalArgumentException(
                     "No se puede eliminar este usuario porque tiene información asociada en el sistema (citas, consultas, movimientos, etc.).");
@@ -211,7 +210,6 @@ public class UsuarioServiceImpl implements UsuarioService {
         }
 
         Page<Usuario> resultado = switch (campo.toLowerCase()) {
-            // Solución CU-01: Búsqueda por ID
             case "id" -> {
                 try {
                     yield usuarioRepository.buscarPorId(Integer.parseInt(valor), pageable);
@@ -356,20 +354,6 @@ public class UsuarioServiceImpl implements UsuarioService {
     }
 
     private void registrarAuditoria(String accion, Integer entidadId, String detalle) {
-        Auditoria log = new Auditoria();
-        log.setAccion(accion);
-        log.setEntidadAfectada("USUARIO");
-        log.setEntidadId(entidadId);
-        log.setDetalle(detalle);
-
-        var auth = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
-        if (auth != null && auth.getPrincipal() instanceof org.umg.sistemamedicoii.config.security.UsuarioPrincipal principal) {
-            log.setUsuarioEjecutorId(principal.getUsuario().getId());
-        } else {
-            log.setUsuarioEjecutorId(null);
-        }
-
-        log.setFechaHora(java.time.LocalDateTime.now());
-        auditoriaRepo.save(log);
+        org.umg.sistemamedicoii.aop.AuditoriaHelper.registrar(auditoriaRepo, accion, "USUARIO", entidadId, detalle);
     }
 }

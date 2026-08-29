@@ -346,9 +346,7 @@ class PagoServiceImplTest {
         }
     }
 
-    // ---------------------------------------------------------------
     // FA03 - Pago rechazado por la pasarela
-    // ---------------------------------------------------------------
     @Nested
     @DisplayName("procesarPago() - FA03 Pago rechazado por la pasarela (los 3 mensajes del documento)")
     class FA03Tests {
