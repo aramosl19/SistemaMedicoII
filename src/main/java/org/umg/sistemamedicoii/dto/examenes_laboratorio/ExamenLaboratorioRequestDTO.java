@@ -17,7 +17,6 @@ public class ExamenLaboratorioRequestDTO {
     @Size(max = 200, message = "El nombre no puede exceder los 200 caracteres.")
     private String nombre;
 
-    @NotBlank(message = "La descripción es obligatoria.")
     @Size(max = 500, message = "La descripción no puede exceder los 500 caracteres.")
     private String descripcion;
 

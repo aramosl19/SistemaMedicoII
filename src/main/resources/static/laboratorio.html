@@ -125,6 +125,13 @@
             </tr>`).join('') : `<tr><td colspan="5" class="text-muted">No hay órdenes que coincidan con su búsqueda.</td></tr>`;
     }
 
+    // Convierte un LocalDateTime del backend ("2026-08-27T09:20:00") al
+    // formato que espera un <input type="datetime-local"> ("2026-08-27T09:20").
+    function toDatetimeLocal(iso) {
+        if (!iso) return new Date().toISOString().slice(0,16);
+        return iso.substring(0,16);
+    }
+
     async function ver(id) {
         document.getElementById('area-lista').classList.add('d-none');
         document.getElementById('area-res').classList.remove('d-none');
@@ -158,6 +165,13 @@
                     </div>`;
                 }
 
+                // RNF-024: "inmutables sin autorización de supervisor" -- este
+                // botón es esa autorización. Solo lo ve quien puede publicar,
+                // y solo aparece si el examen ya fue publicado.
+                const reabrirBtn = (e.publicado && puedePublicar)
+                    ? `<button class="btn" onclick="reabrir(${e.id})" title="Reabrir para corrección (requiere autorización de supervisor)"><i class="fa-solid fa-lock-open"></i> Reabrir para corrección</button>`
+                    : '';
+
                 return `
                 <div class="well">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
@@ -174,22 +188,23 @@
                             <input type="text" id="v-${e.id}" class="form-control" value="${e.valorResultado||''}" ${e.publicado?'disabled':''}>
                         </div>
                         <div class="form-group flex-1">
-                            <!-- CU-09, flujo principal paso 9 / RN-CU09-02: Unidad es un campo que
-                                 el personal de laboratorio completa al registrar el resultado. El
-                                 dato del catálogo (RN-CU15-03), si existe, se muestra solo como
-                                 placeholder informativo -- no ocupa el value, así que no hay que
-                                 borrarlo para poder escribir. -->
+                            <!-- CU-09, flujo principal paso 9 / RN-CU09-02: Unidad y Rango se
+                                 precargan desde el catálogo del examen (RN-CU15-03) al generar la
+                                 orden (OrdenLaboratorioServiceImpl.generarOrden). Ahora se muestran
+                                 como value real -- igual que Valor obtenido/Observaciones -- para
+                                 que el borrador cargue con lo ya guardado en vez de mostrarse vacío
+                                 hasta publicar (FIX reportado por Regy). -->
                             <label>Unidad de medida</label>
                             <input type="text" id="u-${e.id}" class="form-control"
-                                   value="${e.publicado ? (e.unidad||'') : ''}"
-                                   placeholder="${e.unidad || 'Ej: mg/dL'}"
+                                   value="${e.unidad||''}"
+                                   placeholder="Ej: mg/dL"
                                    ${e.publicado?'disabled':''}>
                         </div>
                         <div class="form-group flex-1">
                             <label>Rango de referencia</label>
                             <input type="text" id="r-${e.id}" class="form-control"
-                                   value="${e.publicado ? (e.rangoReferencia||'') : ''}"
-                                   placeholder="${e.rangoReferencia || 'N/A'}"
+                                   value="${e.rangoReferencia||''}"
+                                   placeholder="N/A"
                                    ${e.publicado?'disabled':''}>
                         </div>
                     </div>
@@ -199,14 +214,25 @@
                             <label>Observaciones de laboratorio</label>
                             <input type="text" id="n-${e.id}" class="form-control" value="${e.notasResultado||''}" ${e.publicado?'disabled':''}>
                         </div>
+                        <div class="form-group flex-1">
+                            <!-- Paso 9 del CU-09: "Fecha del Resultado" es un campo del
+                                 formulario que completa el personal, no algo que el sistema
+                                 debe inventar en silencio. Se precarga con la hora actual
+                                 (o la que ya tenía guardada) y se puede ajustar. -->
+                            <label>Fecha del resultado</label>
+                            <input type="datetime-local" id="fr-${e.id}" class="form-control"
+                                   value="${toDatetimeLocal(e.fechaResultado)}"
+                                   ${e.publicado?'disabled':''}>
+                        </div>
                         ${checkboxHTML}
                     </div>
 
                     <div style="text-align: right; border-top: 1px dashed var(--line); padding-top: 1rem;">
-                        <button class="btn btn-success" onclick="save(${e.id})" ${e.publicado?'disabled':''}>Guardar borrador</button>
+                        <button class="btn btn-success" onclick="save(${e.id})" ${e.publicado?'disabled':''}>Guardar Resultado</button>
                         ${puedePublicar
-                    ? `<button class="btn btn-primary" onclick="pub(${e.id})" ${e.publicado?'disabled':''}>Publicar definitivo</button>`
-                    : `<button class="btn btn-primary" disabled title="Solo el Supervisor de Laboratorio o el Administrador pueden publicar">Publicar definitivo</button>`}
+                    ? `<button class="btn btn-primary" onclick="pub(${e.id})" ${e.publicado?'disabled':''}>Publicar resultado</button>`
+                    : `<button class="btn btn-primary" disabled title="Solo el Supervisor de Laboratorio o el Administrador pueden publicar">Publicar resultado</button>`}
+                        ${reabrirBtn}
                     </div>
                 </div>`;
             }).join('');
@@ -217,6 +243,7 @@
         // Fallback for checkbox since it might be hidden if already published (though it shouldn't happen)
         const checkEl = document.getElementById('f-'+id);
         const outOfRange = checkEl ? checkEl.checked : true;
+        const fechaEl = document.getElementById('fr-'+id);
 
         try {
             await App.apiFetch(`/api/laboratorio/examenes/${id}/resultado`, 'POST', {
@@ -224,7 +251,8 @@
                 unidad: document.getElementById('u-'+id).value,
                 rangoReferencia: document.getElementById('r-'+id).value,
                 notasResultado: document.getElementById('n-'+id).value,
-                fueraDeRango: outOfRange
+                fueraDeRango: outOfRange,
+                fechaResultado: fechaEl ? fechaEl.value : null
             });
             // Solución CU-09: Texto de éxito exacto
             App.showAlert('msg', 'Resultado guardado exitosamente.');
@@ -237,6 +265,19 @@
                 await App.apiFetch(`/api/laboratorio/examenes/${id}/publicar`, 'POST');
                 // Solución CU-09: Texto de éxito exacto
                 App.showAlert('msg', 'Resultado publicado exitosamente.');
+                ver(document.getElementById('o-id').innerText);
+            } catch(e) { App.showAlert('msg', e.message, true); }
+        }
+    }
+
+    async function reabrir(id) {
+        // RNF-024: reabrir un resultado publicado es la excepción autorizada
+        // a la inmutabilidad -- por eso pide confirmación explícita, igual
+        // que publicar.
+        if (await App.confirm("¿Reabrir este resultado para corregirlo? El médico ya pudo haberlo consultado.", { titulo: '¿Reabrir para corrección?', textoBoton: 'Reabrir' })) {
+            try {
+                await App.apiFetch(`/api/laboratorio/examenes/${id}/reabrir`, 'POST');
+                App.showAlert('msg', 'Resultado reabierto para corrección.');
                 ver(document.getElementById('o-id').innerText);
             } catch(e) { App.showAlert('msg', e.message, true); }
         }

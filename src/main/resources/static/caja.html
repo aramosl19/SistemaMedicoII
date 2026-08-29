@@ -53,29 +53,29 @@
                 </div>
                 <div class="form-group flex-1">
                     <label>DPI del paciente</label>
-                    <input type="text" id="refDpi" class="form-control" placeholder="13 dígitos" maxlength="13">
+                    <input type="text" id="refDpi" class="form-control" placeholder="13 dígitos" maxlength="13" inputmode="numeric" oninput="this.value=this.value.replace(/\D/g,'')">
                 </div>
                 <div class="form-group">
-                    <button onclick="buscarCobro()" class="btn btn-primary">Buscar cuentas</button>
+                    <button id="btn-buscar" onclick="buscarCobro()" class="btn btn-primary">Buscar cuentas</button>
                 </div>
             </div>
 
             <table class="table mt-4 d-none" id="tb-cuentas-container">
-                <thead><tr><th>No. referencia</th><th>Paciente</th><th>Servicio</th><th>Monto</th><th>Acción</th></tr></thead>
+                <thead><tr><th>No. referencia</th><th>Paciente</th><th>DPI</th><th>Servicio</th><th>Cantidad de exámenes</th><th>Fecha de creación</th><th>Monto</th><th>Acción</th></tr></thead>
                 <tbody id="tb-cuentas"></tbody>
             </table>
         </div>
 
         <div class="card d-none" id="cobro-area">
             <h3 class="text-error">Total a cobrar: Q<span id="c-monto"></span></h3>
-            <p class="text-muted mt-4">Paciente: <span id="c-paciente" class="font-bold"></span> | Servicio: <span id="c-tipo-text"></span> #<span id="c-id-text"></span></p>
+            <p class="text-muted mt-4">Paciente: <span id="c-paciente" class="font-bold"></span> <span id="c-dpi-wrap" class="d-none">| DPI: <span id="c-dpi"></span></span> <span id="c-cant-wrap" class="d-none">| Exámenes: <span id="c-cant-examenes"></span></span> | Servicio: <span id="c-tipo-text"></span> #<span id="c-id-text"></span></p>
             <p class="text-muted">Especialidad: <span id="c-especialidad"></span> | Médico: <span id="c-medico"></span> | Fecha: <span id="c-fecha"></span> | Hora: <span id="c-hora"></span></p>
             <hr style="margin: 1.5rem 0; border: 0; border-top: 1px solid var(--line);">
             <form id="form-cobro">
                 <input type="hidden" id="c-id">
                 <div class="form-group">
                     <label>Método de pago presencial</label>
-                    <select id="metodo" class="form-control" required onchange="toggleMetodo()">
+                    <select id="metodo" class="form-control" onchange="toggleMetodo()">
                         <option value="">Seleccione una opción</option>
                         <option value="EFECTIVO">Efectivo (moneda local)</option>
                         <option value="VISA">Tarjeta de crédito Visa</option>
@@ -85,7 +85,7 @@
                 </div>
                 <!-- Solución CU-10: Cálculo de cambio en tiempo real -->
                 <div class="form-group d-none" id="div-efectivo">
-                    <label>Monto Recibido</label>
+                    <label id="lbl-monto-recibido">Monto Recibido</label>
                     <input type="number" step="0.01" id="montoRecibido" class="form-control" oninput="calcularCambioVivo()">
                     <small id="cambio-vivo" class="text-muted" style="display:block; margin-top: 0.5rem; font-weight: 600; color: var(--brass);"></small>
                 </div>
@@ -94,7 +94,7 @@
                     <input type="text" id="ultimos" class="form-control" maxlength="4" pattern="\d{4}">
                 </div>
                 <div class="d-flex mt-4">
-                    <button type="submit" class="btn btn-success">Registrar Pago</button>
+                    <button id="btn-confirmar-pago" type="submit" class="btn btn-success">Registrar Pago</button>
                     <button type="button" onclick="cancelarCobro()" class="btn">Cancelar</button>
                 </div>
             </form>
@@ -109,7 +109,9 @@
                 <p><strong>Transacción:</strong> <span id="rec-trx"></span></p>
                 <p><strong>Fecha:</strong> <span id="rec-fec"></span></p>
                 <p><strong>Paciente:</strong> <span id="rec-pac"></span></p>
+                <p><strong>Sucursal:</strong> <span id="rec-sucursal"></span></p>
                 <p><strong>Concepto:</strong> <span id="rec-con"></span></p>
+                <p id="rec-cant-wrap" class="d-none"><strong>Cantidad de exámenes:</strong> <span id="rec-cant-examenes"></span></p>
                 <hr style="margin: 1rem 0; border-top: 1px dashed var(--line);">
                 <h2 style="text-align: right;">Total: Q<span id="rec-tot"></span></h2>
                 <p style="text-align: right;"><strong>Método:</strong> <span id="rec-met"></span></p>
@@ -131,12 +133,18 @@
 
     let cuentasPendientes = [];
 
+    function actualizarBotonBuscar() {
+        // Gap I: CU-06 pide "Buscar cuentas"; el CU de laboratorio pide "Buscar".
+        const esLab = document.getElementById('tipoServ').value === 'LAB';
+        document.getElementById('btn-buscar').innerText = esLab ? 'Buscar' : 'Buscar cuentas';
+    }
+    document.getElementById('tipoServ').addEventListener('change', actualizarBotonBuscar);
+    actualizarBotonBuscar();
+
     function toggleMetodo() {
         const m = document.getElementById('metodo').value;
         document.getElementById('div-efectivo').classList.toggle('d-none', m !== 'EFECTIVO');
-        document.getElementById('montoRecibido').required = (m === 'EFECTIVO');
         document.getElementById('div-tarjeta').classList.toggle('d-none', m === '' || m === 'EFECTIVO');
-        document.getElementById('ultimos').required = (m !== '' && m !== 'EFECTIVO');
     }
 
     function calcularCambioVivo() {
@@ -152,20 +160,30 @@
 
         if(!id && !dpi) return App.showAlert('msg', 'Ingrese el número de referencia o el DPI del paciente.', true);
 
+        // RN-GLOBAL-001: el DPI debe tener exactamente 13 dígitos numéricos.
+        if (dpi && !/^\d{13}$/.test(dpi)) {
+            return App.showAlert('msg', `El DPI debe contener exactamente 13 dígitos. Usted ingresó ${dpi.length} dígitos.`, true);
+        }
+
         let query = id ? `numero${isCita?'Cita':'Orden'}=${id}` : `dpi=${dpi}`;
 
         try {
             cuentasPendientes = await App.apiFetch(isCita ? `/api/caja/citas/buscar?${query}` : `/api/caja/laboratorio/ordenes/buscar?${query}`);
 
-            // Solución CU-06: Distinguir mensaje
+            // Solución CU-06 / CU-Lab: mensaje exacto por tipo de servicio, según cada documento
             if(!cuentasPendientes.length) return App.showAlert('msg',
                 isCita ? 'No se encontraron citas pendientes de pago para el criterio ingresado.'
-                    : 'No se encontraron órdenes de laboratorio pendientes de pago para el criterio ingresado.', true);
+                    : 'No se encontraron órdenes de laboratorio pendientes de pago. Verifique el DPI o número de orden e intente de nuevo.', true);
 
             document.getElementById('tb-cuentas-container').classList.remove('d-none');
             document.getElementById('tb-cuentas').innerHTML = cuentasPendientes.map(d => `
                         <tr>
-                            <td>#${d.id}</td><td>${d.pacienteNombre}</td><td>${isCita?'Consulta médica':'Orden laboratorio'}</td><td class="font-bold">Q${d.monto || d.montoTotal}</td>
+                            <td>#${d.id}</td><td>${d.pacienteNombre}</td>
+                            <td>${isCita ? '-' : (d.pacienteDpi || '-')}</td>
+                            <td>${isCita?'Consulta médica':'Orden laboratorio'}</td>
+                            <td>${isCita ? '-' : (d.cantidadExamenes ?? '-')}</td>
+                            <td>${d.fechaCreacion ? new Date(d.fechaCreacion).toLocaleDateString() : '-'}</td>
+                            <td class="font-bold">Q${d.monto || d.montoTotal}</td>
                             <td><button class="btn btn-primary" onclick="prepararCobro(${d.id})">Cobrar</button></td>
                         </tr>`).join('');
             App.hideAlert('msg');
@@ -181,11 +199,23 @@
         document.getElementById('cobro-area').classList.remove('d-none');
         document.getElementById('cambio-vivo').innerText = ''; // Reset
 
-        document.getElementById('c-monto').innerText = d.monto || d.montoTotal;
+        const monto = d.monto || d.montoTotal;
+        document.getElementById('c-monto').innerText = monto;
         document.getElementById('c-paciente').innerText = d.pacienteNombre;
         document.getElementById('c-id-text').innerText = d.id;
         document.getElementById('c-tipo-text').innerText = isCita ? 'Consulta' : 'Laboratorio';
         document.getElementById('c-id').value = d.id;
+
+        // Gap D: DPI y cantidad de exámenes del paciente, solo aplica al cobro de laboratorio
+        document.getElementById('c-dpi-wrap').classList.toggle('d-none', isCita);
+        document.getElementById('c-dpi').innerText = isCita ? '' : (d.pacienteDpi || '');
+        document.getElementById('c-cant-wrap').classList.toggle('d-none', isCita);
+        document.getElementById('c-cant-examenes').innerText = isCita ? '' : (d.cantidadExamenes ?? '-');
+
+        // Gap E / H: CU-06 exige "Registrar Pago" y "Monto Recibido" literal;
+        // el CU de laboratorio exige "Confirmar Pago Q[monto]" y "Monto Recibido (Q)".
+        document.getElementById('btn-confirmar-pago').innerText = isCita ? 'Registrar Pago' : `Confirmar Pago Q${monto}`;
+        document.getElementById('lbl-monto-recibido').innerText = isCita ? 'Monto Recibido' : 'Monto Recibido (Q)';
 
         // FIX CU-06 GAP A: mostrar especialidad, médico, fecha y hora (paso 2 del documento)
         const fechaHora = d.fechaHora ? new Date(d.fechaHora) : null;
@@ -218,6 +248,10 @@
         const metodo = document.getElementById('metodo').value;
         const ultimos = document.getElementById('ultimos').value;
 
+        if (!metodo) {
+            return App.showAlert('msg', 'Seleccione un método de pago.', true);
+        }
+
         // Solución CU-06 / CU-10: Validación explícita de dígitos de tarjeta
         if (metodo !== 'EFECTIVO') {
             if (!/^\d{4}$/.test(ultimos)) {
@@ -225,12 +259,16 @@
             }
         }
 
-        // Solución CU-06: Validación en cliente de "monto recibido < monto a cobrar"
+        // Solución CU-06: Validación en cliente de "monto recibido" vacío o menor al monto a cobrar
         if (metodo === 'EFECTIVO') {
+            const montoRecibidoVal = document.getElementById('montoRecibido').value;
+            if (!montoRecibidoVal) {
+                return App.showAlert('msg', 'Ingrese el monto recibido.', true);
+            }
             const monto = parseFloat(document.getElementById('c-monto').innerText);
-            const recibido = parseFloat(document.getElementById('montoRecibido').value);
-            if (isNaN(recibido) || recibido < monto) {
-                return App.showAlert('msg', `El monto recibido (Q${recibido || 0}) es menor al monto a cobrar (Q${monto})`, true);
+            const recibido = parseFloat(montoRecibidoVal);
+            if (recibido < monto) {
+                return App.showAlert('msg', `El monto recibido (Q${recibido}) es menor al monto a cobrar (Q${monto})`, true);
             }
         }
 
@@ -257,7 +295,10 @@
             document.getElementById('rec-trx').innerText = data.numeroTransaccion;
             document.getElementById('rec-fec').innerText = new Date().toLocaleString();
             document.getElementById('rec-pac').innerText = data.pacienteNombre;
+            document.getElementById('rec-sucursal').innerText = data.sucursal || '';
             document.getElementById('rec-con').innerText = isCita ? 'Pago consulta médica' : 'Pago orden de laboratorio';
+            document.getElementById('rec-cant-wrap').classList.toggle('d-none', isCita);
+            document.getElementById('rec-cant-examenes').innerText = data.cantidadExamenes ?? '';
             document.getElementById('rec-tot').innerText = data.monto;
             document.getElementById('rec-met').innerText = data.metodoPago;
             document.getElementById('rec-cam').innerText = data.cambio || '0.00';

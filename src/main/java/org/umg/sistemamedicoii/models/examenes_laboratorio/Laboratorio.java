@@ -12,6 +12,6 @@ import org.umg.sistemamedicoii.models.configuracion_catalogos_sistema.Catalogo;
 @Setter
 @Entity
 @Table(name = "laboratorio")
-@AttributeOverride(name = "descripcion", column = @Column(name = "descripcion", nullable = false, length = 500))
+@AttributeOverride(name = "descripcion", column = @Column(name = "descripcion", nullable = true, length = 500))
 public class Laboratorio extends Catalogo {
 }

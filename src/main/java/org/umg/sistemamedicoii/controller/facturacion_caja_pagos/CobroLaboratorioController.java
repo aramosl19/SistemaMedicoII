@@ -3,6 +3,7 @@ package org.umg.sistemamedicoii.controller.facturacion_caja_pagos;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
+import org.umg.sistemamedicoii.aop.Auditable;
 import org.umg.sistemamedicoii.dto.examenes_laboratorio.OrdenLaboratorioResponseDTO;
 import org.umg.sistemamedicoii.dto.facturacion_caja_pagos.CobroLaboratorioRequestDTO;
 import org.umg.sistemamedicoii.dto.facturacion_caja_pagos.CobroLaboratorioResponseDTO;
@@ -15,6 +16,7 @@ public class CobroLaboratorioController {
     @Autowired
     private CobroLaboratorioService cobroLaboratorioService;
 
+    @Auditable(value = "Registró cobro de laboratorio", entidad = "ORDEN_LABORATORIO")
     @PostMapping("/cobro")
     public CobroLaboratorioResponseDTO cobrar(@Valid @RequestBody CobroLaboratorioRequestDTO dto) {
         return cobroLaboratorioService.cobrar(dto);

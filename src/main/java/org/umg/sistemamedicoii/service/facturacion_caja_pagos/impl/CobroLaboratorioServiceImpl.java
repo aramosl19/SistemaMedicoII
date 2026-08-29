@@ -52,7 +52,11 @@ public class CobroLaboratorioServiceImpl implements CobroLaboratorioService {
         respuesta.setNumeroTransaccion(numeroTransaccion);
         respuesta.setOrdenId(orden.getId());
         respuesta.setPacienteNombre(nombreTitular);
+        // No existe relación OrdenLaboratorio -> laboratorista/supervisor;
+        // se toma la sucursal de la cita de origen (Cita ya trae su propia sucursal).
+        respuesta.setSucursal(orden.getCita().getSucursal().getNombre());
         respuesta.setMonto(orden.getMontoTotal());
+        respuesta.setCantidadExamenes(orden.getDetalles().size());
         respuesta.setMetodoPago(dto.getMetodoPago());
         respuesta.setMontoRecibido(montos[0]);
         respuesta.setCambio(montos[1]);
@@ -82,6 +86,10 @@ public class CobroLaboratorioServiceImpl implements CobroLaboratorioService {
             dto.setId(o.getId());
             dto.setCitaId(o.getCita().getId());
             dto.setPacienteNombre(o.getCita().getPaciente().getNombreCompleto());
+            // El DPI ya viaja encriptado en BD (CryptoConverter en Usuario.dpi);
+            // JPA lo desencripta solo al leerlo, no requiere manejo adicional aquí.
+            dto.setPacienteDpi(o.getCita().getPaciente().getDpi());
+            dto.setCantidadExamenes(o.getDetalles().size());
             dto.setMedicoNombre(o.getMedico().getNombreCompleto());
             dto.setEspecialidadNombre(o.getCita().getEspecialidad().getNombre());
             dto.setFechaHora(o.getCita().getFechaHora());

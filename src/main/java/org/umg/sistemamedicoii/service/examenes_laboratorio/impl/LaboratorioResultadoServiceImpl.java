@@ -77,11 +77,27 @@ public class LaboratorioResultadoServiceImpl implements LaboratorioResultadoServ
         }
 
         detalle.setValorResultado(dto.getValorResultado());
-        detalle.setUnidad(dto.getUnidad());
-        detalle.setRangoReferencia(dto.getRangoReferencia());
+
+        // FIX (reportado por Regy): si el laboratorista guarda el borrador sin
+        // tocar Unidad/Rango, el frontend manda "" en vez del dato precargado
+        // del catálogo (RN-CU15-03) que ya trae el detalle desde generarOrden().
+        // Antes esto pisaba ese dato bueno con vacío. Ahora solo se sobrescribe
+        // si realmente llega un valor no vacío.
+        if (dto.getUnidad() != null && !dto.getUnidad().isBlank()) {
+            detalle.setUnidad(dto.getUnidad());
+        }
+        if (dto.getRangoReferencia() != null && !dto.getRangoReferencia().isBlank()) {
+            detalle.setRangoReferencia(dto.getRangoReferencia());
+        }
+
         detalle.setFueraDeRango(dto.isFueraDeRango());
         detalle.setNotasResultado(dto.getNotasResultado());
-        detalle.setFechaResultado(LocalDateTime.now());
+
+        // Paso 9 del CU-09 (gap encontrado en la auditoría): "Fecha del
+        // Resultado" es un campo del formulario, no algo que el sistema debe
+        // inventar. Si el frontend lo manda, se respeta; si no llega (llamadas
+        // viejas, integraciones), se hace fallback a la hora actual.
+        detalle.setFechaResultado(dto.getFechaResultado() != null ? dto.getFechaResultado() : LocalDateTime.now());
 
         detalleOrdenLaboratorioRepository.save(detalle);
 
@@ -117,6 +133,28 @@ public class LaboratorioResultadoServiceImpl implements LaboratorioResultadoServ
         notificarResultadoAlMedico(orden, detalle);
 
         return toDetalleResponseDTO(detalle, "Resultado publicado exitosamente.");
+    }
+
+    @Override
+    public DetalleOrdenLaboratorioResponseDTO reabrirResultado(Integer detalleId) {
+        DetalleOrdenLaboratorio detalle = buscarDetalle(detalleId);
+
+        if (!detalle.isPublicado()) {
+            throw new IllegalArgumentException("Este examen todavía no ha sido publicado, no hay nada que reabrir.");
+        }
+
+        detalle.setPublicado(false);
+        detalleOrdenLaboratorioRepository.save(detalle);
+
+        // Si la orden ya estaba COMPLETADA porque todos los exámenes estaban
+        // publicados, al reabrir uno la orden vuelve a EN_PROCESO.
+        OrdenLaboratorio orden = detalle.getOrden();
+        if (orden.getEstado() == EstadoOrdenLaboratorioEnum.COMPLETADA) {
+            orden.setEstado(EstadoOrdenLaboratorioEnum.EN_PROCESO);
+            ordenLaboratorioRepository.save(orden);
+        }
+
+        return toDetalleResponseDTO(detalle, "Resultado reabierto para corrección. Vuelve a estar disponible para edición.");
     }
 
     private void notificarResultadoAlMedico(OrdenLaboratorio orden, DetalleOrdenLaboratorio detalle) {

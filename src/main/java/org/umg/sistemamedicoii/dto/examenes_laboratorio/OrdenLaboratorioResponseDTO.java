@@ -14,6 +14,8 @@ public class OrdenLaboratorioResponseDTO {
     private Integer id;
     private Integer citaId;
     private String pacienteNombre;
+    private String pacienteDpi;
+    private Integer cantidadExamenes;
     private String medicoNombre;
     private String especialidadNombre;
     private LocalDateTime fechaHora;

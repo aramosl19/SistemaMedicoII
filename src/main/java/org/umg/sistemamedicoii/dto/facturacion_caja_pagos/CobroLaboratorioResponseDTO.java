@@ -10,9 +10,11 @@ public class CobroLaboratorioResponseDTO {
     private String numeroTransaccion;
     private Integer ordenId;
     private String pacienteNombre;
+    private String sucursal;
     private BigDecimal monto;
     private String metodoPago;
     private BigDecimal montoRecibido;
     private BigDecimal cambio;
     private String mensaje;
+    private Integer cantidadExamenes;
 }

@@ -21,4 +21,6 @@ public interface LaboratorioResultadoService {
     DetalleOrdenLaboratorioResponseDTO registrarResultado(Integer detalleId, RegistrarResultadoRequestDTO dto);
 
     DetalleOrdenLaboratorioResponseDTO publicarResultado(Integer detalleId);
+    
+    DetalleOrdenLaboratorioResponseDTO reabrirResultado(Integer detalleId);
 }

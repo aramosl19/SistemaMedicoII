@@ -3,6 +3,7 @@ package org.umg.sistemamedicoii.controller.examenes_laboratorio;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
+import org.umg.sistemamedicoii.aop.Auditable;
 import org.umg.sistemamedicoii.dto.examenes_laboratorio.ExamenLaboratorioRequestDTO;
 import org.umg.sistemamedicoii.exception.ResourceNotFoundException;
 import org.umg.sistemamedicoii.models.examenes_laboratorio.ExamenLaboratorio;
@@ -32,18 +33,21 @@ public class ExamenLaboratorioController {
         return examenLaboratorioService.obtenerPorId(id);
     }
 
+    @Auditable(value = "Creó Examen de Laboratorio", entidad = "EXAMEN_LABORATORIO")
     @PostMapping
     public ExamenLaboratorio crear(@Valid @RequestBody ExamenLaboratorioRequestDTO dto) {
         ExamenLaboratorio examen = mapToEntity(new ExamenLaboratorio(), dto);
         return examenLaboratorioService.crear(examen);
     }
 
+    @Auditable(value = "Actualizó Examen de Laboratorio", entidad = "EXAMEN_LABORATORIO")
     @PutMapping("/{id}")
     public ExamenLaboratorio actualizar(@PathVariable Integer id, @Valid @RequestBody ExamenLaboratorioRequestDTO dto) {
         ExamenLaboratorio examen = mapToEntity(new ExamenLaboratorio(), dto);
         return examenLaboratorioService.actualizar(id, examen);
     }
 
+    @Auditable(value = "Eliminó Examen de Laboratorio", entidad = "EXAMEN_LABORATORIO")
     @DeleteMapping("/{id}")
     public void eliminar(@PathVariable Integer id) {
         examenLaboratorioService.eliminar(id);
