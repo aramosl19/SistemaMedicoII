@@ -14,7 +14,6 @@ import org.umg.sistemamedicoii.models.configuracion_catalogos_sistema.Sucursal;
 import org.umg.sistemamedicoii.models.configuracion_catalogos_sistema.SucursalEspecialidad;
 import org.umg.sistemamedicoii.models.configuracion_catalogos_sistema.TipoCita;
 import org.umg.sistemamedicoii.models.gestion_usuarios_accesos.Usuario;
-import org.umg.sistemamedicoii.models.gestion_usuarios_accesos.Auditoria;
 import org.umg.sistemamedicoii.repository.gestion_cita_recepcion.CitaRepository;
 import org.umg.sistemamedicoii.repository.configuracion_catalogos_sistema.EspecialidadRepository;
 import org.umg.sistemamedicoii.repository.gestion_usuarios_accesos.AuditoriaRepository;
@@ -83,9 +82,6 @@ public class RecepcionServiceImpl implements RecepcionService {
         List<Cita> citasActivas = citaRepository
                 .findByPaciente_IdAndEstado_NombreNotOrderByFechaHoraAsc(paciente.getId(), ESTADO_CANCELADA)
                 .stream()
-                // FIX: "Atención Finalizada" y "No Asistió" son estados terminales,
-                // igual que "Cancelada" — una cita en esos estados no debe contar
-                // como cita activa del paciente.
                 .filter(c -> !c.getEstado().getNombre().equals(ESTADO_ATENCION_FINALIZADA)
                         && !c.getEstado().getNombre().equals(ESTADO_NO_ASISTIO))
                 .toList();
@@ -162,32 +158,15 @@ public class RecepcionServiceImpl implements RecepcionService {
         Integer medicoAnteriorId = cita.getMedico().getId();
         cita.setMedico(nuevoMedico);
         citaRepository.save(cita);
-        Auditoria log = new Auditoria();
-        log.setAccion("REASIGNACION_MEDICO");
-        log.setEntidadAfectada("CITA");
-        log.setEntidadId(cita.getId());
-        log.setDetalle("Médico anterior: " + medicoAnteriorId + ". Nuevo médico: " + nuevoMedico.getId() + ". Motivo: " + (dto.getMotivoReasignacion() != null ? dto.getMotivoReasignacion() : "Sin especificar"));
 
-        var auth = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
-        if (auth != null && auth.getPrincipal() instanceof org.umg.sistemamedicoii.config.security.UsuarioPrincipal principal) {
-            log.setUsuarioEjecutorId(principal.getUsuario().getId());
-        } else {
-            log.setUsuarioEjecutorId(null);
-        }
+        org.umg.sistemamedicoii.aop.AuditoriaHelper.registrar(auditoriaRepo, "REASIGNACION_MEDICO", "CITA", cita.getId(),
+                "Médico anterior: " + medicoAnteriorId + ". Nuevo médico: " + nuevoMedico.getId() + ". Motivo: " + (dto.getMotivoReasignacion() != null ? dto.getMotivoReasignacion() : "Sin especificar"));
 
-        log.setFechaHora(LocalDateTime.now());
-        auditoriaRepo.save(log);
         CitaRecepcionResponseDTO res = toRecepcionDTO(cita);
         res.setMensaje("Médico reasignado correctamente.");
         return res;
     }
 
-    // FIX CU-05 FA01: alta directa de un paciente en emergencia, sin cita previa.
-    // Crea la Cita ya en estado "Paciente Presente" (llegó físicamente), marcada
-    // emergencia=true, sin exigir horario ni pasar por Pendiente de pago/Confirmada.
-    // Se mantiene tal cual para no romper integraciones que ya elijan
-    // sucursal/especialidad/médico a mano; el flujo nuevo (con alta automática de
-    // paciente) es registrarEmergenciaConAlta().
     @Override
     public CitaRecepcionResponseDTO registrarEmergenciaDirecta(Integer pacienteId, EmergenciaRequestDTO dto) {
         Usuario paciente = usuarioRepository.findById(pacienteId)
@@ -208,18 +187,6 @@ public class RecepcionServiceImpl implements RecepcionService {
         return crearCitaEmergencia(paciente, medico, sucursal, especialidad, tipoCita, dto.getMotivo());
     }
 
-    // FIX CU-05 FA01: alta automática de la cuenta del paciente cuando el DPI
-    // ingresado no existe, y creación directa de la cita de emergencia en un solo
-    // paso. Sede/especialidad/médico ya NO se le piden al Recepcionista: se
-    // resuelven a partir de su propia sesión (su sucursal asignada), tal como pidió
-    // el equipo — el documento no menciona esos datos como parte de este paso.
-    //
-    // Toda emergencia entra con prioridad ALTA por definición: si no ameritara
-    // prioridad alta, no calificaría como emergencia. Por eso no existe (ni se
-    // agrega aquí) un campo de triaje/severidad — se decidió en equipo que esa
-    // distinción no aporta valor: cualquier caso que use este flujo ya se
-    // considera urgente y se salta la sala de espera normal (pero NO se salta la
-    // toma de signos vitales, que sigue siendo obligatoria antes de la consulta).
     @Override
     public CitaRecepcionResponseDTO registrarEmergenciaConAlta(EmergenciaAltaRequestDTO dto) {
         Usuario recepcionista = usuarioAutenticado()
@@ -253,17 +220,6 @@ public class RecepcionServiceImpl implements RecepcionService {
         return crearCitaEmergencia(paciente, medico, sucursal, especialidad, null, dto.getMotivo());
     }
 
-    // Alta MÍNIMA del paciente: solo lo que exige el paso 2 de FA01 (nombre y
-    // DPI). correo/nombreUsuario/password son NOT NULL + UNIQUE en el esquema
-    // actual, así que se rellenan con placeholders únicos basados en el DPI —
-    // la persona queda activa=true para que el flujo clínico continúe de
-    // inmediato, pero SIN poder iniciar sesión en el portal todavía (la
-    // contraseña es aleatoria y no se le entrega a nadie).
-    //
-    // PENDIENTE de confirmar con Edy Ramírez: quién completa correo/teléfono/NIT
-    // reales después, y si el Recepcionista o el propio paciente debe hacerlo
-    // desde algún flujo de "completar mi registro". Por ahora esos tres campos
-    // se guardan con el placeholder hasta que alguien los edite.
     private Usuario crearPacienteMinimo(String nombre, String dpi) {
         Rol rolPaciente = rolRepository.findByNombre(ROL_PACIENTE)
                 .orElseThrow(() -> new ResourceNotFoundException("El rol 'Paciente' no está configurado en el sistema."));

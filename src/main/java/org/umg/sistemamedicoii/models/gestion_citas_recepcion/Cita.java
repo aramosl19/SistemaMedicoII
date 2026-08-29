@@ -88,4 +88,7 @@ public class Cita {
 
     @Column(name = "documento_estado", nullable = true, length = 20)
     private String documentoEstado; // LIMPIO, RECHAZADO
+
+    @Column(name = "recordatorio_seguimiento_enviado", nullable = false, columnDefinition = "boolean default false")
+    private boolean recordatorioSeguimientoEnviado = false;
 }

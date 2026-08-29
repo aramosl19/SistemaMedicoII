@@ -39,29 +39,29 @@
 
         <div class="d-flex" id="panel-vistas">
             <div class="card flex-1">
-                <h3 class="text-muted">En espera (triage completado)</h3>
+                <h3 class="text-muted">En Espera de Consulta</h3>
                 <ul id="l-espera" class="list-plain mt-4"></ul>
             </div>
             <div class="card flex-1">
-                <h3 class="text-primary">Consulta activa</h3>
+                <h3 class="text-primary">En Consulta Médica</h3>
                 <ul id="l-consulta" class="list-plain mt-4"></ul>
             </div>
             <div class="card flex-1">
-                <h3 class="text-success">Evaluados (pendiente de cierre)</h3>
+                <h3 class="text-success">Evaluados — Pendiente de cierre</h3>
                 <ul id="l-eval" class="list-plain mt-4"></ul>
             </div>
         </div>
 
         <div class="card d-none" id="area-consulta">
-            <h3>Expediente clínico — Consulta #<span id="c-id"></span></h3>
-            <form id="form-consulta" class="mt-4">
+            <h3>Expediente clínico — Consulta #<span id="c-id"></span> — <span id="c-paciente"></span></h3>
+            <form id="form-consulta" class="mt-4" novalidate>
                 <input type="hidden" id="citaActual">
                 <div class="form-group"><label>Motivo de visita</label><textarea id="mot" class="form-control" required rows="2"></textarea></div>
                 <div class="form-group"><label>Hallazgos clínicos</label><textarea id="hal" class="form-control" required rows="3"></textarea></div>
 
                 <div class="d-flex">
                     <div class="form-group flex-1">
-                        <label>Diagnóstico (obligatorio para finalizar)</label>
+                        <label>Diagnóstico</label>
                         <textarea id="diag" class="form-control" rows="2" minlength="10" maxlength="5000"></textarea>
                     </div>
                     <div class="form-group flex-1">
@@ -72,6 +72,7 @@
                 </div>
 
                 <div class="form-group"><label>Plan de tratamiento</label><textarea id="trat" class="form-control" required rows="2"></textarea></div>
+                <div class="form-group"><label>Notas Adicionales</label><textarea id="notas-add" class="form-control" rows="2"></textarea></div>
 
                 <div class="well mt-4">
                     <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; font-weight: 600;">
@@ -80,7 +81,7 @@
                     </label>
                 </div>
                 <div class="d-flex mt-4">
-                    <button type="submit" class="btn btn-primary">Guardar historial clínico</button>
+                    <button type="submit" class="btn btn-primary">Guardar Consulta</button>
                     <button type="button" onclick="cerrarFormulario('area-consulta')" class="btn">Ocultar</button>
                 </div>
             </form>
@@ -92,7 +93,7 @@
                 <input type="hidden" id="accion-cita-id">
 
                 <div id="form-receta" class="d-none">
-                    <form id="add-med-form" onsubmit="agregarMedicamentoAReceta(event)">
+                    <form id="add-med-form" onsubmit="agregarMedicamentoAReceta(event)" novalidate>
                         <div class="d-flex">
                             <div class="form-group flex-1"><label>Medicamento</label><select id="r-med" class="form-control" required></select></div>
                             <div class="form-group flex-1"><label>Dosis</label><input type="text" id="r-dosis" class="form-control" required></div>
@@ -131,7 +132,7 @@
                     </div>
                 </form>
 
-                <form id="form-seg" class="d-none">
+                <form id="form-seg" class="d-none" novalidate>
                     <div class="d-flex">
                         <div class="form-group flex-1">
                             <label>Tipo de Seguimiento</label>
@@ -175,6 +176,27 @@
     let catCie10 = [], catMedicamentos = [], catExamenes = [];
     let recetaItemsTemporales = [];
 
+    // Mensajes específicos por campo para CU-08, mismo mecanismo que usa
+    // registro.html (App.fieldMessages + App.getValidationMessage).
+    Object.assign(App.fieldMessages, {
+        mot: { required: 'El motivo de visita es obligatorio.' },
+        hal: { required: 'Los hallazgos clínicos son obligatorios.' },
+        trat: { required: 'El plan de tratamiento es obligatorio.' },
+        'r-med': { required: 'Debe seleccionar un medicamento.' },
+        'r-dosis': { required: 'La dosis es obligatoria.' },
+        'r-frec': { required: 'La frecuencia es obligatoria.' },
+        'r-dur': { required: 'La duración es obligatoria.' },
+        'r-cant': { required: 'La cantidad a despachar es obligatoria.' },
+        's-tipo': { required: 'Debe seleccionar el tipo de seguimiento.' },
+        's-prioridad': { required: 'Debe seleccionar la prioridad.' },
+        's-fecha': { required: 'La fecha de seguimiento es obligatoria.' },
+        's-hora': { required: 'Debe seleccionar un horario disponible.' },
+        's-motivo': {
+            required: 'El motivo clínico de seguimiento es obligatorio.',
+            tooShort: (len) => `El motivo debe contener al menos 10 caracteres. Usted ingresó ${len} caracteres.`
+        }
+    });
+
     async function init() {
         try {
             catCie10 = await App.apiFetch('/api/cie10').catch(()=>[]);
@@ -192,13 +214,22 @@
         } catch(e) {}
     }
 
+    // NOTA GAP (B): cada tarjeta debe mostrar número de cita, especialidad, estado
+    // y la fecha completa (no solo la hora), además del paciente. CitaPanelMedicoResponseDTO
+    // ya traía id/especialidadNombre/estadoNombre; solo faltaba pintarlos.
+    function metaCita(c) {
+        const fechaTxt = new Date(c.fechaHora).toLocaleDateString('es-GT', { day: 'numeric', month: 'short' });
+        const horaTxt = c.fechaHora.substring(11, 16);
+        return `Cita #${c.id} · ${c.especialidadNombre} · ${c.estadoNombre} · ${fechaTxt} ${horaTxt}`;
+    }
+
     async function loadPanel() {
         try {
             const data = await App.apiFetch('/api/medico/' + App.getUid() + '/panel');
 
             const btnEspera = (c) => `<li class="item-card">
-                <div class="font-bold">${c.pacienteNombre} ${c.emergencia?'<span class="badge badge-danger">URGENCIA</span>':''}</div>
-                <div class="text-muted" style="font-size: 0.85rem;">Hora: ${c.fechaHora.substring(11,16)}</div>
+                <div class="font-bold">${c.pacienteNombre} ${c.emergencia?'<span class="badge badge-danger">Emergencia</span>':''}</div>
+                <div class="text-muted" style="font-size: 0.85rem;">${metaCita(c)}</div>
                 <div class="d-flex mt-4">
                     <button class="btn btn-primary" style="padding: 0.4rem 0.8rem; font-size:0.85rem;" onclick="llamar(${c.id})">Iniciar consulta</button>
                     <button class="btn btn-danger" style="padding: 0.4rem 0.8rem; font-size:0.85rem;" onclick="ausente(${c.id})">No asistió</button>
@@ -207,11 +238,13 @@
 
             const btnActiva = (c) => `<li class="item-card accent-coffee">
                 <div class="font-bold">${c.pacienteNombre}</div>
-                <button class="btn btn-primary mt-4" style="width:100%;" onclick="abrirExpediente(${c.id})">Continuar evaluación</button>
+                <div class="text-muted" style="font-size: 0.85rem;">${metaCita(c)}</div>
+                <button class="btn btn-primary mt-4" style="width:100%;" onclick="abrirExpediente(${c.id}, '${c.pacienteNombre.replace(/'/g, "\\'")}')">Ver / Completar Consulta</button>
             </li>`;
 
             const btnEval = (c) => `<li class="item-card accent-brass">
                 <div class="font-bold">${c.pacienteNombre}</div>
+                <div class="text-muted" style="font-size: 0.85rem;">${metaCita(c)}</div>
                 <div class="d-flex mt-4" style="flex-direction: column; gap: 0.5rem;">
                     <button class="btn" style="width:100%; justify-content: flex-start;" onclick="abrirModal('receta', ${c.id})"><i class="fa-solid fa-pills" style="width:20px;"></i> Generar receta</button>
                     <button class="btn" style="width:100%; justify-content: flex-start;" onclick="abrirModal('lab', ${c.id})"><i class="fa-solid fa-flask" style="width:20px;"></i> Orden de laboratorio</button>
@@ -259,10 +292,32 @@
         } catch(e) { App.showAlert('msg', e.message, true); }
     }
 
-    function abrirExpediente(id) {
+    async function abrirExpediente(id, pacienteNombre) {
         document.getElementById('area-consulta').classList.remove('d-none');
         document.getElementById('c-id').innerText = id;
+        document.getElementById('c-paciente').innerText = pacienteNombre;
         document.getElementById('citaActual').value = id;
+        App.clearInvalidFields(document.getElementById('form-consulta'));
+
+        // FIX: guardarConsulta con finalizar=false sí deja el avance guardado
+        // en BD, pero el formulario nunca lo recuperaba al reabrir el
+        // expediente (parecía que se perdía). Ahora se trae el borrador
+        // existente y se precargan los campos si ya hay uno.
+        document.getElementById('form-consulta').reset();
+        validarCierre();
+        try {
+            const borrador = await App.apiFetch(`/api/medico/citas/${id}/consulta`, 'GET');
+            if (borrador) {
+                document.getElementById('mot').value = borrador.motivoVisita || '';
+                document.getElementById('hal').value = borrador.hallazgosClinicos || '';
+                document.getElementById('diag').value = borrador.diagnostico || '';
+                document.getElementById('trat').value = borrador.planTratamiento || '';
+                document.getElementById('notas-add').value = borrador.notasAdicionales || '';
+                document.getElementById('cie10-input').value = borrador.cie10Codigo || '';
+            }
+        } catch (e) {
+            App.showAlert('msg', e.message, true);
+        }
     }
 
     function cerrarFormulario(id) {
@@ -270,12 +325,27 @@
     }
 
     function validarCierre() {
-        const fin = document.getElementById('fin').checked;
-        document.getElementById('diag').required = fin;
+        document.getElementById('diag').required = document.getElementById('fin').checked;
     }
 
+    // NOTA GAP (G): antes se mostraba un texto fijo genérico ("Expediente clínico
+    // actualizado exitosamente.") sin importar lo que devolviera el backend. El
+    // service (guardarConsulta) ya arma el mensaje correcto según isFinalizar():
+    // el de FA/RN de finalización o el de avance simple. Ahora se usa res.mensaje,
+    // igual que ya se hacía en llamar/ausente/cerrarTurno. También se envía
+    // notasAdicionales (campo E, ya soportado por el DTO/backend).
     document.getElementById('form-consulta').addEventListener('submit', async(e)=>{
         e.preventDefault();
+        const form = e.target;
+        App.hideAlert('msg');
+        App.clearInvalidFields(form);
+        validarCierre();
+
+        if (!form.checkValidity()) {
+            App.markInvalidFields(form);
+            return App.showAlert('msg', 'Revise los campos marcados en rojo antes de continuar.', true);
+        }
+
         const cie = document.getElementById('cie10-input').value;
         const objCie = catCie10.find(c => c.codigo === cie);
 
@@ -287,16 +357,24 @@
         }
 
         try {
-            await App.apiFetch(`/api/medico/citas/${document.getElementById('citaActual').value}/consulta`, 'POST', {
+            const res = await App.apiFetch(`/api/medico/citas/${document.getElementById('citaActual').value}/consulta`, 'POST', {
                 motivoVisita: document.getElementById('mot').value, hallazgosClinicos: document.getElementById('hal').value,
                 diagnostico: document.getElementById('diag').value, planTratamiento: document.getElementById('trat').value,
+                notasAdicionales: document.getElementById('notas-add').value,
                 cie10Id: objCie ? objCie.id : null,
                 finalizar: document.getElementById('fin').checked
             });
-            App.showAlert('msg', 'Expediente clínico actualizado exitosamente.');
+            App.showAlert('msg', res.mensaje);
             cerrarFormulario('area-consulta');
             loadPanel();
-        } catch(err) { App.showAlert('msg', err.message, true); }
+        } catch(err) {
+            // El mensaje exacto del backend se muestra en el alert general (igual
+            // que antes, para no romper los tests de RN-CU08-01) y ADEMÁS se
+            // repite debajo de #diag para que quede visualmente igual al resto
+            // de formularios del sistema.
+            App.markFieldByErrorMessage(form, err.message, { 'diagnóstico': 'diag' });
+            App.showAlert('msg', err.message, true);
+        }
     });
 
     function abrirModal(tipo, citaId) {
@@ -330,6 +408,14 @@
 
     function agregarMedicamentoAReceta(e) {
         e.preventDefault();
+        const form = e.target;
+        App.clearInvalidFields(form);
+
+        if (!form.checkValidity()) {
+            App.markInvalidFields(form);
+            return;
+        }
+
         const sel = document.getElementById('r-med');
         const nomMed = sel.options[sel.selectedIndex].text;
 
@@ -343,6 +429,7 @@
             indicaciones: document.getElementById('r-ind').value || null
         });
 
+        App.clearInvalidFields(form);
         document.getElementById('add-med-form').reset();
         actualizarTablaReceta();
     }
@@ -413,6 +500,15 @@
 
     document.getElementById('form-seg').addEventListener('submit', async(e) => {
         e.preventDefault();
+        const form = e.target;
+        App.hideAlert('msg');
+        App.clearInvalidFields(form);
+
+        if (!form.checkValidity()) {
+            App.markInvalidFields(form);
+            return App.showAlert('msg', 'Revise los campos marcados en rojo antes de continuar.', true);
+        }
+
         const payload = {
             fechaHora: document.getElementById('s-hora').value,
             tipoSeguimiento: document.getElementById('s-tipo').value,
@@ -421,14 +517,21 @@
         };
         try {
             const res = await App.apiFetch(`/api/medico/citas/${document.getElementById('accion-cita-id').value}/seguimiento`, 'POST', payload);
-            // FIX CU-08: CitaResponseDTO no trae campo "mensaje"; se construye el texto
-            // con fechaHora real (antes se mostraba un texto genérico fijo sin la fecha)
-            const f = new Date(res.fechaHora);
-            const fechaTxt = f.toLocaleDateString('es-GT', { day: 'numeric', month: 'long', year: 'numeric' });
-            const horaTxt = f.toLocaleTimeString('es-GT', { hour: '2-digit', minute: '2-digit' });
-            App.showAlert('msg', `Cita de seguimiento agendada para el ${fechaTxt} a las ${horaTxt}. El paciente recibirá un recordatorio.`);
+            // Fix #6: el CU exige este texto exacto ("...agendada exitosamente. Tipo: [tipo].
+            // Paciente: [Nombre]."), no el de fecha/hora que había antes. CitaResponseDTO ya
+            // trae tipoSeguimiento y pacienteNombre, así que no hizo falta tocar el backend.
+            App.showAlert('msg', `Cita de seguimiento agendada exitosamente. Tipo: ${res.tipoSeguimiento}. Paciente: ${res.pacienteNombre}.`);
             cerrarFormulario('modal-acciones');
-        } catch(err) { App.showAlert('msg', err.message, true); }
+        } catch(err) {
+            App.showAlert('msg', err.message, true);
+            // Fix #9: si el rechazo fue por choque de horario, se limpia la selección y se
+            // vuelve a consultar disponibilidad para esa misma fecha, en vez de dejar
+            // seleccionado un horario que el backend ya rechazó.
+            if (err.message && err.message.toLowerCase().includes('ya no está disponible')) {
+                document.getElementById('s-hora').value = '';
+                buscarHorariosSeguimiento();
+            }
+        }
     });
 
     function toggleMobileSidebar() {
@@ -445,3 +548,4 @@
 </script>
 </body>
 </html>
+```

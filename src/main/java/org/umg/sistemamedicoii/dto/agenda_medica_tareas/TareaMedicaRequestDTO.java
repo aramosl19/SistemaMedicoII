@@ -21,6 +21,7 @@ public class TareaMedicaRequestDTO {
     @NotNull(message = "La prioridad de la tarea es obligatoria.")
     private Integer prioridad;
 
+    @NotNull(message = "La fecha límite de la tarea es obligatoria.")
     private LocalDateTime fechaLimite;
 
     private boolean completada;

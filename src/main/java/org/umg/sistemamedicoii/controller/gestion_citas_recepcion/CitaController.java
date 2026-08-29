@@ -6,6 +6,7 @@ import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+import org.umg.sistemamedicoii.aop.Auditable;
 import org.umg.sistemamedicoii.config.security.UsuarioPrincipal;
 import org.umg.sistemamedicoii.dto.gestion_citas_recepcion.CitaRequestDTO;
 import org.umg.sistemamedicoii.dto.gestion_citas_recepcion.CitaResponseDTO;
@@ -34,7 +35,6 @@ public class CitaController {
     @Autowired
     private AntivirusService antivirusService;
 
-    // FEAT: valida contenido del PDF (vacío/contraseña/JS embebido)
     @Autowired
     private PdfContentValidationService pdfContentValidationService;
 
@@ -65,19 +65,19 @@ public class CitaController {
         return citaService.listarCitasPorMedicoYRango(medicoId, desde, hasta);
     }
 
+    @Auditable(value = "Agendó cita médica", entidad = "CITA")
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public CitaResponseDTO agendar(@Valid @RequestBody CitaRequestDTO dto) {
-        return citaService.agendarCita(dto, false); // siempre viene del portal (CU-03)
+        return citaService.agendarCita(dto, false);
     }
 
-    // Solución QA: historial completo de citas del paciente autenticado (antes
-    // paciente_citas.html solo consultaba /api/caja/citas/buscar, que solo traia pendientes de pago)
     @GetMapping("/mis-citas")
     public List<CitaResponseDTO> misCitas(@AuthenticationPrincipal UsuarioPrincipal principal) {
         return citaService.listarMisCitas(principal.getUsuario().getId());
     }
 
+    @Auditable(value = "Subió documento adjunto a cita", entidad = "CITA")
     @PostMapping("/{id}/documento")
     public java.util.Map<String, String> subirDocumento(
             @PathVariable Integer id,
@@ -98,15 +98,8 @@ public class CitaController {
 
         byte[] bytes = archivo.getBytes();
 
-        // 1) Validación de contenido del PDF (vacío / con contraseña / con JS embebido).
-        //    Va antes del antivirus porque es una validación local y más barata, y
-        //    detecta casos que ClamAV no está diseñado para marcar como "FOUND".
         pdfContentValidationService.validarContenido(bytes);
-
-        // 2) Escaneo antivirus: si falla, aquí se corta y nunca se sube a Blob Storage
         antivirusService.escanear(bytes);
-
-        // 3) Solo si pasó ambas validaciones, se sube al storage
         String url = blobStorageService.subir(bytes, archivo.getOriginalFilename(), id);
 
         cita.setDocumentoUrl(url);

@@ -107,9 +107,6 @@
                 <button id="btn-llegada" class="btn btn-success" onclick="registrarLlegada()">Registrar llegada a clínica</button>
                 <button id="btn-reasignar" class="btn" onclick="abrirReasignacion()">Reasignar Médico</button>
                 <button class="btn" onclick="limpiar()">Cerrar expediente</button>
-                <button id="btn-signos-urgente" class="btn btn-danger d-none" onclick="window.location.href='enfermeria.html'">
-                    <i class="fa-solid fa-heart-pulse"></i> Signos Vitales (Urgente)
-                </button>
             </div>
         </div>
 
@@ -225,7 +222,6 @@
         extra.classList.add('d-none'); btnReg.classList.add('d-none'); btnWalk.classList.add('d-none');
         btnNuevaCita.classList.add('d-none'); txtExtraSub.textContent = '';
         document.getElementById('detalle').classList.add('d-none');
-        document.getElementById('btn-signos-urgente').classList.add('d-none');
         document.getElementById('d-indicador-llegada').classList.add('d-none');
         currentPacienteId = null;
         App.hideAlert('msg');
@@ -281,9 +277,6 @@
 
                 document.getElementById('btn-llegada').disabled = (c.estadoNombre !== 'Confirmada');
                 document.getElementById('btn-reasignar').disabled = (c.estadoNombre !== 'Confirmada' && c.estadoNombre !== 'Paciente Presente');
-
-                document.getElementById('btn-signos-urgente').classList.toggle('d-none',
-                    !(c.emergencia && c.estadoNombre === 'Paciente Presente'));
 
                 document.getElementById('detalle').classList.remove('d-none');
 
@@ -388,7 +381,6 @@
             const mapColorBadge = { 'Pagada': 'badge-success', 'Confirmada': 'badge-success', 'Pendiente de pago': 'badge-warning', 'Cancelada': 'badge-danger', 'Paciente Presente': 'badge-primary', 'Signos Vitales': 'badge-primary', 'En Espera': 'badge-primary', 'Consulta Médica': 'badge-primary', 'Evaluado': 'badge-primary', 'Atención Finalizada': 'badge-success', 'No Asistió': 'badge-danger' };
             document.getElementById('d-est').innerHTML = `<span class="badge ${mapColorBadge[data.estadoNombre] || ''}">${data.estadoNombre}</span>`;
 
-            document.getElementById('btn-signos-urgente').classList.toggle('d-none', !esEmergencia);
             document.getElementById('d-indicador-llegada').classList.remove('d-none');
 
             // FIX N1: la hora de llegada se actualiza aquí mismo con la respuesta

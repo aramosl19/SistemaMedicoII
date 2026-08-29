@@ -4,8 +4,8 @@ import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
+import org.umg.sistemamedicoii.aop.Auditable;
 import org.umg.sistemamedicoii.dto.gestion_citas_recepcion.*;
-import org.umg.sistemamedicoii.dto.gestion_citas_recepcion.RegistrarLlegadaRequestDTO;
 import org.umg.sistemamedicoii.service.gestion_citas_recepcion.CitaService;
 import org.umg.sistemamedicoii.service.gestion_citas_recepcion.RecepcionService;
 
@@ -26,6 +26,7 @@ public class RecepcionController {
         return recepcionService.buscar(numeroCita, dpi);
     }
 
+    @Auditable(value = "Registró llegada de paciente", entidad = "CITA")
     @PostMapping("/citas/{id}/llegada")
     public CitaRecepcionResponseDTO registrarLlegada(
             @PathVariable Integer id,
@@ -34,7 +35,7 @@ public class RecepcionController {
         return recepcionService.registrarLlegada(id, esEmergencia);
     }
 
-    // CU-05 FA04: cita walk-in creada por recepción, no se cancela automáticamente.
+    @Auditable(value = "Agendó cita walk-in", entidad = "CITA")
     @PostMapping("/citas")
     @ResponseStatus(HttpStatus.CREATED)
     public CitaResponseDTO agendarWalkIn(@Valid @RequestBody CitaRequestDTO dto) {
@@ -48,8 +49,7 @@ public class RecepcionController {
         return recepcionService.reasignarMedico(id, dto);
     }
 
-    // Se mantiene para no romper integraciones que ya elijan sucursal/especialidad/
-    // médico a mano. El flujo nuevo que usa recepcion.html es /emergencia (abajo).
+    @Auditable(value = "Registró atención de emergencia", entidad = "CITA")
     @PostMapping("/pacientes/{pacienteId}/emergencia")
     @ResponseStatus(HttpStatus.CREATED)
     public CitaRecepcionResponseDTO registrarEmergenciaDirecta(
@@ -58,10 +58,7 @@ public class RecepcionController {
         return recepcionService.registrarEmergenciaDirecta(pacienteId, dto);
     }
 
-    // FIX CU-05 FA01: un solo endpoint — recibe nombre+DPI, da de alta al
-    // paciente automáticamente si el DPI no existe (o usa la cuenta existente
-    // si sí existe), y crea la cita de emergencia ya resolviendo sede,
-    // especialidad y médico desde el propio Recepcionista autenticado.
+    @Auditable(value = "Registró emergencia con alta de paciente nuevo", entidad = "CITA")
     @PostMapping("/emergencia")
     @ResponseStatus(HttpStatus.CREATED)
     public CitaRecepcionResponseDTO registrarEmergenciaConAlta(

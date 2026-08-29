@@ -15,7 +15,7 @@ public class EventoAgendaRequestDTO {
     @Size(min = 5, max = 200, message = "El título debe contener entre 5 y 200 caracteres.")
     private String titulo;
 
-    @Size(max = 2000, message = "La descripción no puede exceder los 2000 caracteres.")
+    @Size(max = 500, message = "La descripción no puede exceder los 500 caracteres.")
     private String descripcion;
 
     @NotNull(message = "La fecha de inicio es obligatoria.")

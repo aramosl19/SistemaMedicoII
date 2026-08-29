@@ -23,7 +23,7 @@ public class EventoAgenda {
     @Column(nullable = false, length = 200)
     private String titulo;
 
-    @Column(length = 2000)
+    @Column(length = 500)
     private String descripcion;
 
     @Column(nullable = false)

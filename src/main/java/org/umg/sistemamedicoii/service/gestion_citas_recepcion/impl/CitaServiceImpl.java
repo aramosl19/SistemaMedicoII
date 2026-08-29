@@ -1,6 +1,7 @@
 package org.umg.sistemamedicoii.service.gestion_citas_recepcion.impl;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.umg.sistemamedicoii.config.cache.EstadoCitaCache;
 import org.umg.sistemamedicoii.dto.gestion_citas_recepcion.CitaRequestDTO;
@@ -50,6 +51,14 @@ public class CitaServiceImpl implements CitaService {
     @Autowired private EspecialidadRepository especialidadRepository;
     @Autowired private EstadoCitaCache estadoCache;
     @Autowired private EventoAgendaRepository eventoAgendaRepository;
+
+    // RN-CU11-04 / RN-GLOBAL-006: ya existían estas propiedades para EmailServiceImpl;
+    // CitaServiceImpl no las tenía inyectadas.
+    @Value("${app.hospital.nombre}")
+    private String nombreHospital;
+
+    @Value("${app.hospital.telefono}")
+    private String telefonoContacto;
 
     @Override
     public List<MedicoDisponibleResponseDTO> listarMedicosDisponibles(Integer sucursalId, Integer especialidadId){
@@ -107,7 +116,7 @@ public class CitaServiceImpl implements CitaService {
 
         if (citaRepository.existsByMedicoIdAndFechaHoraAndEstado_NombreNot(
                 dto.getMedicoId(), dto.getFechaHora(), ESTADO_CANCELADA)){
-            throw new IllegalArgumentException("El horario seleccionado ya no esta disponible. Por favor, elija otro horario.");
+            throw new IllegalArgumentException("El horario seleccionado ya no está disponible. Por favor, elija otro horario.");
         }
 
         // GAP QA: validación de respaldo en backend — aunque el horario ya no aparezca
@@ -138,6 +147,17 @@ public class CitaServiceImpl implements CitaService {
             String prioridad = dto.getPrioridadSeguimiento().trim();
             if (!prioridad.equalsIgnoreCase("Alta") && !prioridad.equalsIgnoreCase("Media") && !prioridad.equalsIgnoreCase("Baja")) {
                 throw new IllegalArgumentException("Prioridad de seguimiento inválida. Opciones: 'Alta', 'Media' o 'Baja'.");
+            }
+            // Fix #11: RN-CU11-03 exige un texto de validación propio para el motivo del
+            // seguimiento ("Las observaciones son obligatorias..."), distinto al de CU-03/CU-05
+            // ("El motivo es obligatorio..."). Como CitaRequestDTO.motivo es compartido por las
+            // tres rutas, NO se cambia la anotación del DTO (rompería el mensaje de CU-03/CU-05);
+            // se valida aquí, solo para el flujo de seguimiento. Si más adelante se prefiere que
+            // Bean Validation dispare este mensaje directamente, hay que duplicar el campo en el
+            // DTO (p.ej. observacionesSeguimiento) en vez de compartirlo — confirmar con Edy.
+            if (dto.getMotivo() == null || dto.getMotivo().isBlank()
+                    || dto.getMotivo().trim().length() < 10 || dto.getMotivo().trim().length() > 2000) {
+                throw new IllegalArgumentException("Las observaciones son obligatorias. Deben contener entre 10 y 2000 caracteres.");
             }
         }
 
@@ -183,7 +203,7 @@ public class CitaServiceImpl implements CitaService {
 
         // RN-CU11-04: Notificación por correo al agendar seguimiento
         if (cita.getCitaPadreId() != null) {
-            String asunto = "Cita de Seguimiento Agendada - Hospital";
+            String asunto = "Cita de Seguimiento Agendada - Hospital " + nombreHospital;
             String mensaje = String.format(
                     "Estimado(a) %s,\n\nSe ha agendado una cita de seguimiento de tipo: %s.\n" +
                             "Número de cita: %d\n" +
@@ -194,9 +214,10 @@ public class CitaServiceImpl implements CitaService {
                             "Esta cita se encuentra en estado 'Pendiente de pago'. Para confirmarla, realice el pago " +
                             "en línea desde el portal del paciente (indicando el número de cita) o en la ventanilla de caja " +
                             "de la sucursal antes de la fecha de su cita.\n\n" +
-                            "Este es un correo automático, no responda.",
+                            "Este es un correo automático del Sistema Informático Hospitalario. " +
+                            "No responda a este mensaje. Para consultas, comuníquese al teléfono %s.",
                     paciente.getNombreCompleto(), dto.getTipoSeguimiento(), cita.getId(), cita.getFechaHora().toString(),
-                    medico.getNombreCompleto(), sucursal.getNombre(), cita.getMotivo());
+                    medico.getNombreCompleto(), sucursal.getNombre(), cita.getMotivo(), telefonoContacto);
             emailService.enviarCorreo(paciente.getCorreo(), asunto, mensaje);
         }
 

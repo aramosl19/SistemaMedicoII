@@ -120,10 +120,8 @@ public class AgendaMedicaServiceImpl implements AgendaMedicaService {
     }
 
     private void validarFechasEvento(LocalDateTime inicio, LocalDateTime fin) {
-        // RN-CU14-01: Validaciones de fechas
-        if (inicio.isBefore(LocalDateTime.now().minusMinutes(5))) {
-            throw new IllegalArgumentException("La fecha de inicio debe ser una fecha futura o actual.");
-        }
+        // RN-CU14-01 (CU-14): la fecha de inicio solo es obligatoria (ya la garantiza
+        // @NotNull del DTO); no se exige que sea futura o actual.
         if (fin.isBefore(inicio) || fin.isEqual(inicio)) {
             throw new IllegalArgumentException("La fecha de fin debe ser posterior a la fecha de inicio.");
         }
@@ -145,7 +143,7 @@ public class AgendaMedicaServiceImpl implements AgendaMedicaService {
         tarea.setFechaLimite(dto.getFechaLimite());
         tarea.setCompletada(dto.isCompletada());
 
-        if (dto.getFechaLimite() != null && dto.getFechaLimite().isBefore(LocalDateTime.now().minusMinutes(5))) {
+        if (dto.getFechaLimite().isBefore(LocalDateTime.now().minusMinutes(5))) {
             throw new IllegalArgumentException("La fecha límite de la tarea debe ser una fecha futura.");
         }
     }

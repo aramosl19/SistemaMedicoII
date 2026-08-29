@@ -140,6 +140,7 @@
                     <h3>Gestión de tareas</h3>
                     <button class="btn btn-success" onclick="abrirTareaModal()" style="padding: 0.3rem 0.6rem; font-size: 0.85rem;">+ Nueva</button>
                 </div>
+                <div id="fecha-tareas-panel" style="font-size: 0.8rem; color: var(--ink-soft); margin-bottom: 0.5rem;"></div>
 
                 <div class="form-group">
                     <select id="filtro-tareas" class="form-control" onchange="renderTasks()">
@@ -153,11 +154,10 @@
             </div>
         </div>
 
-        <!-- Modales idénticos al anterior... -->
         <div class="modal-overlay d-none" id="modal-tarea">
             <div class="modal-content" style="max-width: 500px;">
                 <h3 id="t-modal-titulo">Nueva tarea</h3>
-                <form id="f-ta" class="mt-4" onsubmit="guardarTarea(event)">
+                <form id="f-ta" class="mt-4" onsubmit="guardarTarea(event)" novalidate>
                     <input type="hidden" id="t-id">
                     <div class="form-group"><label>Título</label><input type="text" id="t-tit" class="form-control" required minlength="5"></div>
                     <div class="form-group"><label>Descripción (opcional)</label><textarea id="t-desc" class="form-control" rows="2" maxlength="1000"></textarea></div>
@@ -167,7 +167,7 @@
                                 <option value="0">Baja</option><option value="1" selected>Normal</option><option value="2">Alta</option>
                             </select>
                         </div>
-                        <div class="form-group flex-1"><label>Fecha límite</label><input type="datetime-local" id="t-lim" class="form-control"></div>
+                        <div class="form-group flex-1"><label>Fecha límite</label><input type="datetime-local" id="t-lim" class="form-control" required></div>
                     </div>
                     <div class="d-flex mt-4" style="justify-content: flex-end;">
                         <button type="button" class="btn" onclick="document.getElementById('modal-tarea').classList.add('d-none')">Cancelar</button>
@@ -180,11 +180,11 @@
         <div class="modal-overlay d-none" id="modal-evento">
             <div class="modal-content" style="max-width: 500px;">
                 <h3 id="e-modal-titulo">Bloqueo de agenda</h3>
-                <form id="f-ev" class="mt-4" onsubmit="guardarEvento(event)">
+                <form id="f-ev" class="mt-4" onsubmit="guardarEvento(event)" novalidate>
                     <input type="hidden" id="e-id">
                     <div class="form-group"><label>Título descriptivo</label><input type="text" id="e-tit" class="form-control" required minlength="5"></div>
                     <!-- Solución CU-16 (gap #3 del QA): campo Descripción; el backend ya lo soportaba (@Size max=2000) pero no existía en el HTML -->
-                    <div class="form-group"><label>Descripción (opcional)</label><textarea id="e-desc" class="form-control" rows="2" maxlength="2000"></textarea></div>
+                    <div class="form-group"><label>Descripción (opcional)</label><textarea id="e-desc" class="form-control" rows="2" maxlength="500"></textarea></div>
                     <div class="form-group"><label>Tipo de ausencia</label>
                         <select id="e-tip" class="form-control" required>
                             <option value="0">Reunión institucional</option><option value="1">Descanso / almuerzo</option>
@@ -208,6 +208,20 @@
                         <button type="submit" class="btn btn-primary">Reservar horario</button>
                     </div>
                 </form>
+            </div>
+        </div>
+
+        <div class="modal-overlay d-none" id="modal-cita-detalle">
+            <div class="modal-content" style="max-width: 400px;">
+                <h3>Detalle de la cita</h3>
+                <div class="mt-4" style="display:flex; flex-direction:column; gap:0.5rem;">
+                    <div><strong>Paciente:</strong> <span id="cd-paciente"></span></div>
+                    <div><strong>Fecha y hora:</strong> <span id="cd-fecha"></span></div>
+                    <div><strong>Estado:</strong> <span id="cd-estado"></span></div>
+                </div>
+                <div class="d-flex mt-4" style="justify-content: flex-end;">
+                    <button type="button" class="btn" onclick="document.getElementById('modal-cita-detalle').classList.add('d-none')">Cerrar</button>
+                </div>
             </div>
         </div>
 
@@ -283,16 +297,24 @@
         const list = document.getElementById('l-ta');
         const mapCol = {0: 'var(--ink-faint)', 1: 'var(--coffee)', 2: 'var(--danger)'};
 
-        const filtered = tasksCache.filter(t => f === 'ALL' ? true : (f === 'DONE' ? t.completada : !t.completada));
+        // Solución FA06 (CU-14): el panel muestra las tareas del día seleccionado en el
+        // calendario (currentDate), no todas las tareas del médico.
+        const isoDia = formatDateIso(currentDate);
+        const delDia = tasksCache.filter(t => t.fechaLimite && formatDateIso(new Date(t.fechaLimite)) === isoDia);
+        const filtered = delDia.filter(t => f === 'ALL' ? true : (f === 'DONE' ? t.completada : !t.completada));
+
+        const lblFecha = document.getElementById('fecha-tareas-panel');
+        if (lblFecha) lblFecha.textContent = currentDate.toLocaleDateString('es-GT', { day: 'numeric', month: 'long', year: 'numeric' });
 
         // Solución CU-16 (gap #1 del QA): conteo de tareas pendientes en el botón toggle
-        document.getElementById('contador-tareas').textContent = tasksCache.filter(t => !t.completada).length;
+        document.getElementById('contador-tareas').textContent = delDia.filter(t => !t.completada).length;
 
         list.innerHTML = filtered.length ? filtered.map(t => `
             <div class="item-card" style="border-left-color: ${mapCol[t.prioridad]}; ${t.completada ? 'opacity: 0.6;' : ''}; padding: 0.75rem;">
                 <div class="d-flex" style="justify-content: space-between; align-items: flex-start;">
                     <div>
                         <div class="font-bold ${t.completada ? 'text-muted' : ''}" style="font-size:0.9rem; ${t.completada ? 'text-decoration: line-through;' : ''}">${t.titulo}</div>
+                        ${t.descripcion ? `<div style="font-size: 0.75rem; color: var(--ink-soft);">${t.descripcion}</div>` : ''}
                         ${t.fechaLimite ? `<div style="font-size: 0.75rem; color: var(--ink-soft);">Vence: ${t.fechaLimite.replace('T', ' ')}</div>` : ''}
                     </div>
                     <div style="display: flex; gap: 3px;">
@@ -302,7 +324,7 @@
                     </div>
                 </div>
             </div>
-        `).join('') : '<p class="text-muted" style="text-align:center; padding: 1rem;">No hay tareas que coincidan.</p>';
+        `).join('') : '<p class="text-muted" style="text-align:center; padding: 1rem;">No hay tareas que coincidan para este día.</p>';
     }
 
     // Solución CU-16 (gap #1 del QA, FA06): panel de tareas colapsable a la derecha
@@ -330,6 +352,12 @@
 
     async function guardarTarea(e) {
         e.preventDefault();
+        const form = e.target;
+        App.clearInvalidFields(form);
+        if (!form.checkValidity()) {
+            App.markInvalidFields(form);
+            return App.showAlert('msg', 'Revise los campos marcados en rojo antes de continuar.', true);
+        }
         const id = document.getElementById('t-id').value;
         const payload = {
             titulo: document.getElementById('t-tit').value,
@@ -425,6 +453,8 @@
         if (currentView === 'mes') renderMes();
         else if (currentView === 'dia') renderDia();
         else renderSemana();
+        // FA06 (CU-14): las tareas dependen del día seleccionado (currentDate)
+        renderTasks();
     }
 
     function pintarEventoEnCelda(idCelda, topPx, heightPx, claseCss, colorFondo, titulo, onclickAttr, tooltip) {
@@ -479,8 +509,17 @@
 
             pintarEventoEnCelda(`cell-${cIso}-${horaStart}`, topPx, heightPx, 'cita',
                 mapColorEstado[c.estadoNombre] || 'rgba(215,161,122,0.85)',
-                c.pacienteNombre, '', `Cita (${c.estadoNombre}) - ${c.pacienteNombre}`);
+                c.pacienteNombre, `onclick="verDetalleCita(${c.id})"`, `Cita (${c.estadoNombre}) - ${c.pacienteNombre}`);
         });
+    }
+
+    function verDetalleCita(id) {
+        const c = citasCache.find(x => x.id === id);
+        if (!c) return;
+        document.getElementById('cd-paciente').textContent = c.pacienteNombre;
+        document.getElementById('cd-fecha').textContent = new Date(c.fechaHora).toLocaleString('es-GT', { dateStyle: 'medium', timeStyle: 'short' });
+        document.getElementById('cd-estado').textContent = c.estadoNombre;
+        document.getElementById('modal-cita-detalle').classList.remove('d-none');
     }
 
     function renderSemana() {
@@ -632,6 +671,12 @@
 
     async function guardarEvento(e) {
         e.preventDefault();
+        const form = e.target;
+        App.clearInvalidFields(form);
+        if (!form.checkValidity()) {
+            App.markInvalidFields(form);
+            return App.showAlert('msg', 'Revise los campos marcados en rojo antes de continuar.', true);
+        }
         const id = document.getElementById('e-id').value;
         const todo = document.getElementById('e-todo').checked;
         const payload = {
@@ -658,10 +703,10 @@
     }
 
     async function borrarEvento(id) {
-        if (await App.confirm("¿Liberar este horario en la agenda de citas?", { titulo: '¿Liberar horario?', textoBoton: 'Liberar' })) {
+        if (await App.confirm("¿Está seguro de eliminar este evento?", { titulo: '¿Eliminar evento?', textoBoton: 'Eliminar' })) {
             try {
                 await App.apiFetch(`/api/agenda/eventos/${id}`, 'DELETE');
-                App.showAlert('msg', 'Horario liberado para los pacientes.');
+                App.showAlert('msg', 'Evento eliminado exitosamente.');
                 document.getElementById('modal-evento').classList.add('d-none');
                 loadEvents();
             } catch(e) { App.showAlert('msg', e.message, true); }

@@ -30,7 +30,7 @@ public class TareaMedica {
     @Column(nullable = false)
     private Integer prioridad = 1;
 
-    @Column(nullable = true)
+    @Column(nullable = false)
     private LocalDateTime fechaLimite;
 
     @Column(nullable = false)

@@ -1,6 +1,7 @@
 package org.umg.sistemamedicoii.scheduler;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.umg.sistemamedicoii.models.gestion_citas_recepcion.Cita;
@@ -19,6 +20,9 @@ public class RecordatorioScheduler {
     @Autowired
     private EmailService emailService;
 
+    @Value("${app.hospital.telefono}")
+    private String telefonoContacto;
+
     // Se ejecuta todos los días a las 8:00 AM (RN-CU11-05)
     // El formato cron es: "Segundos Minutos Horas Día Mes DíaDeLaSemana"
     @Scheduled(cron = "0 0 8 * * *")
@@ -33,18 +37,22 @@ public class RecordatorioScheduler {
                 .filter(c -> c.getFechaHora().isAfter(desde) && c.getFechaHora().isBefore(hasta))
                 .filter(c -> !c.getEstado().getNombre().equalsIgnoreCase("Cancelada"))
                 .filter(c -> c.getCitaPadreId() != null) // Solo las de seguimiento
+                .filter(c -> !c.isRecordatorioSeguimientoEnviado()) // Fix #13: solo una vez
                 .toList();
 
         for (Cita cita : proximasCitas) {
             String asunto = "Recordatorio: Su Cita de Seguimiento se aproxima";
-            String mensaje = String.format("Estimado(a) %s,\n\nLe recordamos su cita de seguimiento de tipo: %s.\nFecha: %s\nMédico: %s\nSucursal: %s\n\nEste es un correo automático del Sistema Informático Hospitalario. No responda a este mensaje.",
+            String mensaje = String.format("Estimado(a) %s,\n\nLe recordamos su cita de seguimiento de tipo: %s.\nFecha: %s\nMédico: %s\nSucursal: %s\n\nEste es un correo automático del Sistema Informático Hospitalario. No responda a este mensaje. Para consultas, comuníquese al teléfono %s.",
                     cita.getPaciente().getNombreCompleto(),
                     cita.getTipoSeguimiento(),
                     cita.getFechaHora().toString(),
                     cita.getMedico().getNombreCompleto(),
-                    cita.getSucursal().getNombre());
+                    cita.getSucursal().getNombre(),
+                    telefonoContacto);
 
             emailService.enviarCorreo(cita.getPaciente().getCorreo(), asunto, mensaje);
+            cita.setRecordatorioSeguimientoEnviado(true);
         }
+        citaRepository.saveAll(proximasCitas); // Fix #13: persistir la bandera
     }
 }
