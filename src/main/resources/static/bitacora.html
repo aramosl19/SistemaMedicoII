@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bitácora de Operación - Hospital El Milagro</title>
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<div class="aurora aurora-a"></div>
+<div class="aurora aurora-b"></div>
+<div class="paper-grain"></div>
+<div class="backdrop" id="backdrop" onclick="toggleMobileSidebar()"></div>
+
+<button class="sidebar-toggle-mobile" onclick="toggleMobileSidebar()" aria-label="Abrir menú">
+    <i class="fa-solid fa-bars"></i>
+</button>
+
+<div class="app-container">
+    <nav class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <h3>Hospital El Milagro</h3>
+            <button class="sidebar-collapse-btn" onclick="toggleSidebarCollapse()" aria-label="Colapsar menú">
+                <i class="fa-solid fa-angles-left" id="collapse-icon"></i>
+            </button>
+        </div>
+        <div class="user-badge">
+            <span id="user-name"></span>
+            <span id="user-role"></span>
+        </div>
+        <div class="nav-menu" id="sidebar-menu"></div>
+    </nav>
+    <main class="main-content">
+        <h2>Bitácora de Operación</h2>
+        <div id="msg" class="alert"></div>
+
+        <div class="card">
+            <div class="d-flex" style="align-items: flex-end; flex-wrap: wrap; gap: 1rem;">
+                <div class="form-group flex-1" style="min-width: 160px;">
+                    <label>Buscar por</label>
+                    <select id="b-campo" class="form-control">
+                        <option value="USUARIO">Nombre de Usuario</option>
+                        <option value="NOMBRE">Nombre Real</option>
+                        <option value="ROL">Rol</option>
+                        <option value="OPERACION">Operación</option>
+                    </select>
+                </div>
+                <div class="form-group flex-1" style="min-width: 200px;">
+                    <label>Valor</label>
+                    <input type="text" id="b-valor" class="form-control" maxlength="100" placeholder="Buscar...">
+                </div>
+            </div>
+
+            <div class="d-flex mt-4" style="align-items: flex-end; flex-wrap: wrap; gap: 1rem;">
+                <div class="form-group flex-1" style="min-width: 150px;">
+                    <label>Fecha desde</label>
+                    <input type="date" id="b-fecha-desde" class="form-control">
+                </div>
+                <div class="form-group flex-1" style="min-width: 150px;">
+                    <label>Fecha hasta</label>
+                    <input type="date" id="b-fecha-hasta" class="form-control">
+                </div>
+                <div class="form-group flex-1" style="min-width: 130px;">
+                    <label>Hora desde</label>
+                    <input type="time" id="b-hora-desde" class="form-control">
+                </div>
+                <div class="form-group flex-1" style="min-width: 130px;">
+                    <label>Hora hasta</label>
+                    <input type="time" id="b-hora-hasta" class="form-control">
+                </div>
+                <div class="form-group" style="align-self: flex-end;">
+                    <button onclick="buscarBitacora(0)" class="btn btn-primary">Buscar</button>
+                </div>
+                <div class="form-group" style="align-self: flex-end;">
+                    <button onclick="limpiarFiltros()" class="btn">Limpiar</button>
+                </div>
+            </div>
+
+            <table class="table mt-4">
+                <thead>
+                <tr>
+                    <th>Usuario</th>
+                    <th>Nombre</th>
+                    <th>Rol</th>
+                    <th>Operación</th>
+                    <th>Entidad</th>
+                    <th>ID Afectado</th>
+                    <th>Fecha</th>
+                    <th>Hora</th>
+                </tr>
+                </thead>
+                <tbody id="tb-bitacora"></tbody>
+            </table>
+
+            <!-- Paginación: tamaño fijo de 20, definido por el backend -->
+            <div class="d-flex mt-4" style="justify-content: space-between; align-items: center;" id="paginacion">
+                <button class="btn" id="btn-prev" onclick="buscarBitacora(currentPage - 1)">Anterior</button>
+                <span id="page-info" class="text-muted">Página 1 de 1</span>
+                <button class="btn" id="btn-next" onclick="buscarBitacora(currentPage + 1)">Siguiente</button>
+            </div>
+        </div>
+    </main>
+</div>
+<script src="js/app.js"></script>
+<script>
+    App.requireAuth();
+
+    // Solo Administrador tiene acceso a esta pantalla (el backend ya lo exige
+    // en /api/bitacora/**; esto solo evita que alguien llegue por URL directa
+    // y vea una pantalla vacía llena de errores 403).
+    const rolActual = (App.getRole() || '').toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    if (rolActual !== 'ADMINISTRADOR') {
+        window.location.href = 'dashboard.html';
+    }
+
+    document.getElementById('user-name').textContent = App.getName() || 'Usuario del Sistema';
+    document.getElementById('user-role').textContent = App.getRole() || '';
+
+    let currentPage = 0;
+    let totalPages = 1;
+
+    async function buscarBitacora(page = 0) {
+        if (page < 0 || (page >= totalPages && totalPages > 0)) return;
+
+        const campo = document.getElementById('b-campo').value;
+        const valor = document.getElementById('b-valor').value.trim();
+        const fechaDesde = document.getElementById('b-fecha-desde').value;
+        const fechaHasta = document.getElementById('b-fecha-hasta').value;
+        const horaDesde = document.getElementById('b-hora-desde').value;
+        const horaHasta = document.getElementById('b-hora-hasta').value;
+
+        let url = `/api/bitacora?pagina=${page}`;
+        if (valor) { url += `&campo=${encodeURIComponent(campo)}&valor=${encodeURIComponent(valor)}`; }
+        if (fechaDesde) url += `&fechaDesde=${fechaDesde}`;
+        if (fechaHasta) url += `&fechaHasta=${fechaHasta}`;
+        if (horaDesde) url += `&horaDesde=${horaDesde}`;
+        if (horaHasta) url += `&horaHasta=${horaHasta}`;
+
+        try {
+            const data = await App.apiFetch(url);
+            const registros = data.content || [];
+            currentPage = data.number !== undefined ? data.number : 0;
+            totalPages = data.totalPages !== undefined ? data.totalPages : 1;
+            const totalRegistros = data.totalElements !== undefined ? data.totalElements : registros.length;
+
+            renderTabla(registros);
+
+            document.getElementById('page-info').textContent =
+                `Página ${currentPage + 1} de ${totalPages === 0 ? 1 : totalPages} — ${totalRegistros} registro(s) en total`;
+            document.getElementById('btn-prev').disabled = currentPage === 0;
+            document.getElementById('btn-next').disabled = currentPage >= totalPages - 1;
+        } catch (e) {
+            App.showAlert('msg', e.message, true);
+        }
+    }
+
+    function renderTabla(registros) {
+        const tb = document.getElementById('tb-bitacora');
+        tb.innerHTML = registros.map(r => `
+            <tr>
+                <td>${r.nombreUsuario || '-'}</td>
+                <td>${r.nombreReal || '-'}</td>
+                <td>${r.rol || '-'}</td>
+                <td>${r.operacion || '-'}</td>
+                <td>${r.entidadAfectada || '-'}</td>
+                <td class="font-bold">${r.entidadId || '-'}</td>
+                <td>${formatearFecha(r.fecha)}</td>
+                <td>${formatearHora(r.hora)}</td>
+            </tr>`).join('');
+        if (registros.length === 0) {
+            // Aumentado a 8 columnas
+            tb.innerHTML = '<tr><td colspan="8" class="text-muted">No se encontraron registros para los filtros seleccionados</td></tr>';
+        }
+    }
+
+    function formatearFecha(fecha) {
+        if (!fecha) return '-';
+        const [anio, mes, dia] = fecha.split('-');
+        return `${dia}/${mes}/${anio}`;
+    }
+
+    function formatearHora(hora) {
+        if (!hora) return '-';
+        return hora.substring(0, 8); // HH:mm:ss
+    }
+
+    function limpiarFiltros() {
+        document.getElementById('b-campo').value = 'USUARIO';
+        document.getElementById('b-valor').value = '';
+        document.getElementById('b-fecha-desde').value = '';
+        document.getElementById('b-fecha-hasta').value = '';
+        document.getElementById('b-hora-desde').value = '';
+        document.getElementById('b-hora-hasta').value = '';
+        buscarBitacora(0);
+    }
+
+    function toggleMobileSidebar() {
+        document.getElementById('sidebar').classList.toggle('mobile-open');
+        document.getElementById('backdrop').classList.toggle('show');
+    }
+
+    function toggleSidebarCollapse() {
+        document.getElementById('sidebar').classList.toggle('collapsed');
+        const icon = document.getElementById('collapse-icon');
+        icon.classList.toggle('fa-angles-left');
+        icon.classList.toggle('fa-angles-right');
+    }
+
+    buscarBitacora(0);
+</script>
+</body>
+</html>

@@ -6,29 +6,36 @@ import lombok.Setter;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "auditoria")
+@Table(name = "auditoria", indexes = @Index(name = "idx_auditoria_fecha_hora", columnList = "fechaHora"))
 @Getter @Setter
 public class Auditoria {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
 
-    @Column(nullable = false, length = 100)
-    private String accion; // Ej: "CREAR", "REASIGNAR_MEDICO", "DESPACHO_CONTROLADO"
+    @Column(nullable = false, length = 150)
+    private String accion;
 
     @Column(nullable = false, length = 100)
-    private String entidadAfectada; // Ej: "USUARIO", "CITA", "MEDICAMENTO"
+    private String entidadAfectada;
 
-    @Column(nullable = false)
-    private Integer entidadId; // ID del registro afectado
+    @Column(nullable = true)
+    private Integer entidadId;
 
     @Column(nullable = false, length = 1000)
     private String detalle;
 
-    // Aquí está el requerimiento clave de auditor.
-    // Es nullable ahora porque no tenemos Spring Security, pero está listo para el futuro.
     @Column(nullable = true)
     private Integer usuarioEjecutorId;
+
+    @Column(nullable = true, length = 150)
+    private String nombreUsuario;
+
+    @Column(nullable = true, length = 150)
+    private String nombreReal;
+
+    @Column(nullable = true, length = 100)
+    private String rol;
 
     @Column(nullable = false)
     private LocalDateTime fechaHora;
