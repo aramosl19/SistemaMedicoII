@@ -230,6 +230,9 @@ public class UsuarioServiceImpl implements UsuarioService {
 
     @Override
     public UsuarioResponseDTO registrarExterno(RegistroExternoRequestDTO dto) {
+        if (!dto.getCorreo().toLowerCase().endsWith(".com")) {
+            throw new IllegalArgumentException("El formato del correo electrónico no es válido. Ejemplo: usuario@dominio.com");
+        }
         if (usuarioRepository.existsByCorreo(dto.getCorreo())) {
             throw new DuplicateResourceException(
                     "Ya existe una cuenta registrada con este correo electrónico.");
