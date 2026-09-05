@@ -295,7 +295,7 @@ const App = {
             html += `<a href="crear_usuario.html"${location.pathname.includes('crear_usuario.html') ? ' class="active"' : ''}>Crear Usuario</a>`;
             html += `</div></div>`;
             html += `<a href="admin_catalogos.html">Mantenimiento de Catálogos</a>`;
-            html += `<a href="bitacora.html">Bitácora de Operación</a>`;
+          //html += `<a href="bitacora.html">Bitácora de Operación</a>`;
         }
         if (r === 'PACIENTE' || r === 'ADMINISTRADOR') {
             html += `<a href="paciente_agendar.html">Agendar Cita Médica</a>`;
