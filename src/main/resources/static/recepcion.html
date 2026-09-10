@@ -126,7 +126,7 @@
                     <!-- N2: médico actual, exigido por el documento (FA07 paso 3) -->
                     <p class="mb-0"><strong>Médico actual:</strong> <span id="rr-medico"></span></p>
                 </div>
-                <form id="form-reasignar" class="mt-4" onsubmit="reasignar(event)">
+                <form id="form-reasignar" class="mt-4" onsubmit="reasignar(event)" novalidate>
                     <div class="form-group"><label>Nuevo médico disponible</label><select id="r-medico" class="form-control" required></select></div>
                     <div class="form-group"><label>Motivo de la reasignación (opcional, auditoría)</label><input type="text" id="r-motivo" class="form-control"></div>
                     <div class="d-flex mt-4" style="justify-content: flex-end;">
@@ -163,11 +163,11 @@
                 <form id="form-emergencia" class="mt-4" onsubmit="confirmarEmergencia(event)">
                     <div class="form-group">
                         <label>Nombre del paciente</label>
-                        <input type="text" id="em-nombre" class="form-control" required>
+                        <input type="text" id="em-nombre" class="form-control">
                     </div>
                     <div class="form-group">
                         <label>DPI del paciente</label>
-                        <input type="text" id="em-dpi" class="form-control" maxlength="13" placeholder="13 dígitos" required>
+                        <input type="text" id="em-dpi" class="form-control" placeholder="13 dígitos">
                     </div>
                     <div class="d-flex mt-4" style="justify-content: flex-end;">
                         <button type="button" class="btn" onclick="cerrarModalEmergencia()">Cancelar</button>
@@ -328,21 +328,18 @@
         document.getElementById('modal-emergencia').classList.add('d-none');
     }
 
-    // FIX CU-05 FA01: un solo POST a /api/recepcion/emergencia. El backend
-    // resuelve todo: si el DPI ya existe, usa esa cuenta; si no existe, la
-    // crea automáticamente con nombre+DPI (lo único que pide el documento en
-    // este paso). Sede, especialidad y médico se resuelven del lado del
-    // servidor a partir del Recepcionista autenticado — el frontend ya no
-    // necesita encadenar /usuarios/me, /sucursal-especialidad ni
+    // El nombre y el DPI (obligatoriedad, longitud, formato) los valida el
+    // backend (EmergenciaAltaRequestDTO). El backend resuelve todo: si el
+    // DPI ya existe, usa esa cuenta; si no existe, la crea automáticamente
+    // con nombre+DPI (lo único que pide el documento en este paso). Sede,
+    // especialidad y médico se resuelven del lado del servidor a partir
+    // del Recepcionista autenticado — el frontend ya no necesita
+    // encadenar /usuarios/me, /sucursal-especialidad ni
     // /citas/medicos-disponibles.
     async function confirmarEmergencia(e) {
         e.preventDefault();
         const form = e.target;
         App.clearInvalidFields(form);
-        if (!form.checkValidity()) {
-            App.markInvalidFields(form);
-            return;
-        }
 
         try {
             const data = await App.apiFetch('/api/recepcion/emergencia', 'POST', {

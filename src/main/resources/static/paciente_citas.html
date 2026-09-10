@@ -70,21 +70,21 @@
         <input type="hidden" id="p-citaId">
         <div class="form-group">
           <label>Número de tarjeta</label>
-          <input type="text" id="p-tarjeta" class="form-control" required pattern="^([\d ]{13,23}|\*{9,15}\d{4})$" placeholder="Ej. 4111 2222 3333 4444" onfocus="restaurarTarjeta(this)" onblur="enmascararTarjeta(this)" oninput="formatearTarjeta(this)" title="Ingrese de 13 a 19 dígitos (los espacios se ignoran)">
+          <input type="text" id="p-tarjeta" class="form-control" placeholder="Ej. 4111 2222 3333 4444" onfocus="restaurarTarjeta(this)" onblur="enmascararTarjeta(this)" oninput="formatearTarjeta(this)">
         </div>
         <div class="form-group">
           <!-- Solución CU-04: Validación de longitud y patrón alfabético en el titular -->
           <label>Nombre del titular</label>
-          <input type="text" id="p-titular" class="form-control" required minlength="5" maxlength="100" pattern="^[a-zA-ZÀ-ÿ\s]+$" style="text-transform: uppercase;" oninput="this.value = this.value.toUpperCase()" title="Solo letras y espacios permitidos">
+          <input type="text" id="p-titular" class="form-control" style="text-transform: uppercase;" oninput="this.value = this.value.toUpperCase()">
         </div>
         <div class="d-flex">
           <div class="form-group flex-1">
             <label>Vencimiento</label>
-            <input type="text" id="p-venc" class="form-control" required pattern="(0[1-9]|1[0-2])/\d{2}" placeholder="MM/AA" oninput="formatearFecha(this)" title="Formato MM/AA">
+            <input type="text" id="p-venc" class="form-control" placeholder="MM/AA" oninput="formatearFecha(this)">
           </div>
           <div class="form-group flex-1">
             <label>Código CVV</label>
-            <input type="password" id="p-cvv" class="form-control" required pattern="\d{3,4}" placeholder="***">
+            <input type="password" id="p-cvv" class="form-control" placeholder="***">
           </div>
         </div>
         <button type="submit" id="btn-pagar" class="btn btn-success mt-4" style="width: 100%;">Procesar cargo seguro</button>
@@ -256,76 +256,17 @@
     input.value = val;
   }
 
-  function esLuhnValido(num) {
-    let sum = 0; let shouldDouble = false;
-    for (let i = num.length - 1; i >= 0; i--) {
-      let digit = parseInt(num.charAt(i));
-      if (shouldDouble) { if ((digit *= 2) > 9) digit -= 9; }
-      sum += digit; shouldDouble = !shouldDouble;
-    }
-    return (sum % 10) == 0;
-  }
-
-  function esTarjetaVigente(mmyy) {
-    const parts = mmyy.split('/');
-    if(parts.length !== 2) return false;
-    const mm = parseInt(parts[0], 10);
-    const yy = parseInt(parts[1], 10) + 2000;
-    const now = new Date();
-    const expirationDate = new Date(yy, mm - 1, 1);
-    const currentDate = new Date(now.getFullYear(), now.getMonth(), 1);
-    return expirationDate >= currentDate;
-  }
-
-  // FIX CU-04 (mismo patrón que forzarValidezLongitud en registro.html):
-  // el oninput que pasa #p-titular a mayúsculas reescribe input.value en
-  // cada tecleo, lo que en varios navegadores apaga el "dirty value flag"
-  // del campo. minlength/maxlength solo se validan si ese flag está
-  // activo, así que checkValidity() ignora la longitud del titular aunque
-  // el usuario sí haya tecleado. Se fuerza la validación con
-  // setCustomValidity() para que se comporte igual que si el navegador
-  // sí la aplicara nativamente.
-  function forzarValidezLongitudPago(form) {
-    form.querySelectorAll('[minlength], [maxlength]').forEach(el => {
-      const len = el.value.length;
-      const min = el.getAttribute('minlength');
-      const max = el.getAttribute('maxlength');
-      if (min && len > 0 && len < Number(min)) {
-        el.setCustomValidity(`Debe tener al menos ${min} caracteres.`);
-      } else if (max && len > Number(max)) {
-        el.setCustomValidity(`Debe tener máximo ${max} caracteres.`);
-      } else {
-        el.setCustomValidity('');
-      }
-    });
-  }
-
+  // Toda validación de la tarjeta (formato, Luhn, vencimiento, titular)
+  // la realiza el backend (PagoRequestDTO / PagoServiceImpl.esLuhnValido).
+  // El frontend solo formatea la entrada (espacios, máscara, MM/AA) y
+  // muestra el mensaje de error que el backend devuelva.
   document.getElementById('form-pago').addEventListener('submit', async(e)=>{
     e.preventDefault();
     App.hideAlert('msg');
     const form = e.target;
     App.clearInvalidFields(form);
-    forzarValidezLongitudPago(form);
-
-    // FIX CU-04: faltaba validar patrón/longitud (tarjeta, titular, venc, cvv)
-    // igual que el resto de formularios del sistema, antes de llegar al backend.
-    const invalidos = App.markInvalidFields(form);
-    if (invalidos.length > 0) {
-      return App.showAlert('msg', 'Revise los campos marcados en rojo.', true);
-    }
 
     const numeroAProcesar = tarjetaReal || limpiarNumeroTarjeta(document.getElementById('p-tarjeta').value);
-    if (numeroAProcesar.length < 13 || numeroAProcesar.length > 19 || !esLuhnValido(numeroAProcesar)) {
-      // FIX CU-04 FA01: resaltar el campo específico, no solo alert general
-      document.getElementById('p-tarjeta').classList.add('is-invalid');
-      return App.showAlert('msg', 'El número de tarjeta no es válido.', true);
-    }
-
-    const fechaVencimiento = document.getElementById('p-venc').value;
-    if (!esTarjetaVigente(fechaVencimiento)) {
-      document.getElementById('p-venc').classList.add('is-invalid');
-      return App.showAlert('msg', 'La tarjeta está vencida.', true);
-    }
 
     const btn = document.getElementById('btn-pagar');
     btn.disabled = true; btn.innerText = "Procesando pago...";

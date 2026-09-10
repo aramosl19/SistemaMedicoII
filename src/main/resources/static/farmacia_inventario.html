@@ -60,18 +60,18 @@
                                 <option value="5">Ajuste-</option>
                             </select>
                         </div>
-                        <div class="form-group flex-1"><label>Cantidad</label><input type="number" id="c" class="form-control" required min="1" oninput="verificarStock()"></div>
+                        <div class="form-group flex-1"><label>Cantidad</label><input type="number" id="c" class="form-control" oninput="verificarStock()"></div>
                     </div>
 
                     <div class="d-flex">
                         <!-- El costo unitario delega su validación completamente al backend -->
                         <div class="form-group flex-1 d-none" id="div-costo"><label>Costo unitario (Q)</label><input type="number" id="co" class="form-control" step="any"></div>
-                        <div class="form-group flex-1 d-none" id="div-ref"><label id="lbl-ref">Documento referencia</label><input type="text" id="ref" class="form-control" maxlength="100"></div>
+                        <div class="form-group flex-1 d-none" id="div-ref"><label id="lbl-ref">Documento referencia</label><input type="text" id="ref" class="form-control"></div>
                     </div>
 
                     <div class="form-group d-none" id="div-motivo">
                         <label id="lbl-mot">Justificación / motivo</label>
-                        <input type="text" id="mo" class="form-control" minlength="10" maxlength="500">
+                        <input type="text" id="mo" class="form-control">
                     </div>
 
                     <div class="d-flex mt-4" style="gap: 0.5rem;">
@@ -262,14 +262,17 @@
         } catch(e) { App.showAlert('msg', e.message, true); }
     }
 
+    // Muestra u oculta el campo de motivo según el tipo de movimiento (UX);
+    // que sea obligatorio o no para ese tipo lo exige el backend
+    // (MovimientoInventarioServiceImpl).
     function ajustarFormulario() {
         const t = document.getElementById('t').value;
         const dCosto = document.getElementById('div-costo');
         const dRef = document.getElementById('div-ref'), lRef = document.getElementById('lbl-ref');
-        const dMot = document.getElementById('div-motivo'), cMot = document.getElementById('mo'), lMot = document.getElementById('lbl-mot');
+        const dMot = document.getElementById('div-motivo'), lMot = document.getElementById('lbl-mot');
 
         dCosto.classList.add('d-none');
-        dRef.classList.add('d-none'); dMot.classList.add('d-none'); cMot.required = false;
+        dRef.classList.add('d-none'); dMot.classList.add('d-none');
 
         if (t === "0") {
             dCosto.classList.remove('d-none');
@@ -277,14 +280,14 @@
             dMot.classList.remove('d-none'); lMot.textContent = "Notas (opcional)";
         } else if (t === "1") {
             dRef.classList.remove('d-none'); lRef.textContent = "Devolución";
-            dMot.classList.remove('d-none'); lMot.textContent = "Motivo de Devolución"; cMot.required = true;
+            dMot.classList.remove('d-none'); lMot.textContent = "Motivo de Devolución";
         } else if (t === "2") {
             dRef.classList.remove('d-none'); lRef.textContent = "Venta";
         } else if (t === "3") {
             dRef.classList.remove('d-none'); lRef.textContent = "Reclamo";
-            dMot.classList.remove('d-none'); lMot.textContent = "Motivo del Reclamo"; cMot.required = true;
+            dMot.classList.remove('d-none'); lMot.textContent = "Motivo del Reclamo";
         } else if (t === "4" || t === "5") {
-            dMot.classList.remove('d-none'); lMot.textContent = "Notas/Justificación"; cMot.required = true;
+            dMot.classList.remove('d-none'); lMot.textContent = "Notas/Justificación";
         }
     }
 
@@ -334,16 +337,13 @@
         document.getElementById('div-motivo').classList.add('d-none');
     });
 
+    // Toda validación (cantidad, costo unitario, motivo obligatorio según
+    // tipo, longitud) la realiza el backend (MovimientoInventarioRequestDTO
+    // / MovimientoInventarioServiceImpl).
     document.getElementById('f-inv').addEventListener('submit', async(e)=>{
         e.preventDefault();
         const form = e.target;
         App.clearInvalidFields(form);
-
-        if (!form.checkValidity()) {
-            App.markInvalidFields(form);
-            App.showAlert('msg', 'Revise los campos marcados en rojo.', true);
-            return;
-        }
 
         const lastSucursal = document.getElementById('s').value;
 
@@ -369,9 +369,35 @@
             document.getElementById('panel-stock').classList.add('d-none');
             load();
         } catch(err) {
-            const mapa = { 'costo unitario': 'co', 'cantidad': 'c', 'motivo': 'mo', 'medicamento': 'm', 'sucursal': 's' };
-            const campoMarcado = App.markFieldByErrorMessage(form, err.message, mapa);
-            App.showAlert('msg', campoMarcado ? 'Revise los campos marcados en rojo.' : err.message, true);
+            // Antes se buscaba una palabra clave dentro del mensaje ya
+            // concatenado (todos los errores en un solo string), lo que
+            // amontonaba todo bajo un único campo si el backend rechazaba
+            // más de una regla a la vez. Ahora se usa el mapa real
+            // {campo: mensaje} que llega en err.fieldErrors.
+            const mapaCampoBackend = {
+                medicamentoId: 'm',
+                sucursalId: 's',
+                tipoMovimiento: 't',
+                cantidad: 'c',
+                costoUnitario: 'co',
+                referencia: 'ref',
+                motivo: 'mo'
+            };
+            const { marcoAlgunCampo, mensajesSinCampo } = App.marcarErroresDeCampos(form, err.fieldErrors, mapaCampoBackend);
+
+            // Respaldo por palabra clave, para errores que no lleguen como
+            // mapa por campo (ej. validaciones manuales del service que
+            // devuelvan un solo mensaje suelto).
+            const mapaPalabraClave = { 'costo unitario': 'co', 'cantidad': 'c', 'motivo': 'mo', 'medicamento': 'm', 'sucursal': 's' };
+            const campoMarcado = marcoAlgunCampo ? true : App.markFieldByErrorMessage(form, err.message, mapaPalabraClave);
+
+            let textoAlert = campoMarcado ? 'Revise los campos marcados en rojo.' : err.message;
+            if (mensajesSinCampo.length > 0) {
+                textoAlert = campoMarcado
+                    ? [textoAlert, ...mensajesSinCampo].join(' ')
+                    : mensajesSinCampo.join(' | ');
+            }
+            App.showAlert('msg', textoAlert, true);
         }
     });
 

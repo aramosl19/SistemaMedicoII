@@ -94,23 +94,23 @@
                     <input type="hidden" id="u-id">
 
                     <div class="d-flex">
-                        <div class="form-group flex-1"><label>Nombre Completo</label><input type="text" id="u-nombre" class="form-control" required minlength="10" maxlength="100"></div>
-                        <div class="form-group flex-1"><label>Correo Electrónico</label><input type="email" id="u-correo" class="form-control" required oninput="validarCorreoEnVivo(this)"></div>
+                        <div class="form-group flex-1"><label>Nombre Completo</label><input type="text" id="u-nombre" class="form-control"></div>
+                        <div class="form-group flex-1"><label>Correo Electrónico</label><input type="email" id="u-correo" class="form-control"></div>
                     </div>
 
                     <div class="d-flex">
-                        <div class="form-group flex-1"><label>DPI</label><input type="text" id="u-dpi" class="form-control" pattern="\d{13}"></div>
-                        <div class="form-group flex-1"><label>Teléfono</label><input type="text" id="u-tel" class="form-control" pattern="\d{8}"></div>
+                        <div class="form-group flex-1"><label>DPI</label><input type="text" id="u-dpi" class="form-control"></div>
+                        <div class="form-group flex-1"><label>Teléfono</label><input type="text" id="u-tel" class="form-control"></div>
                     </div>
 
                     <div class="d-flex">
-                        <div class="form-group flex-1"><label>Nombre de Usuario</label><input type="text" id="u-username" class="form-control" required minlength="8" maxlength="9" pattern="^[a-zA-Z0-9]+$"></div>
-                        <div class="form-group flex-1"><label>Contraseña</label><input type="password" id="u-pass" class="form-control" minlength="12" placeholder="Dejar vacío si no desea cambiar"></div>
+                        <div class="form-group flex-1"><label>Nombre de Usuario</label><input type="text" id="u-username" class="form-control"></div>
+                        <div class="form-group flex-1"><label>Contraseña</label><input type="password" id="u-pass" class="form-control" placeholder="Dejar vacío si no desea cambiar"></div>
                     </div>
 
                     <div class="d-flex">
-                        <div class="form-group flex-1"><label>NIT</label><input type="text" id="u-nit" class="form-control" minlength="8" maxlength="9"></div>
-                        <div class="form-group flex-1"><label>No. Seguro Médico</label><input type="text" id="u-seguro" class="form-control" minlength="5" maxlength="50"></div>
+                        <div class="form-group flex-1"><label>NIT</label><input type="text" id="u-nit" class="form-control"></div>
+                        <div class="form-group flex-1"><label>No. Seguro Médico</label><input type="text" id="u-seguro" class="form-control"></div>
                     </div>
 
                     <div class="d-flex">
@@ -195,14 +195,9 @@
     // (o desmarca) en rojo el propio campo de correo, sin tocar el resto del
     // formulario, para que la persona siempre pueda seguir llenando o
     // corrigiendo cualquier campo mientras escribe.
-    function validarCorreoEnVivo(input) {
-        if (input.checkValidity()) {
-            input.classList.remove('is-invalid');
-        } else if (input.value.length > 0) {
-            input.classList.add('is-invalid');
-        }
-    }
-
+    // Muestra/oculta el selector de especialidad según el rol elegido;
+    // si es obligatorio para "Médico", ese requisito lo exige el backend
+    // (UsuarioServiceImpl.validarEspecialidadSiEsMedico).
     function validarRol() {
         const sel = document.getElementById('u-rol');
         const isMedico = sel.options[sel.selectedIndex].text.toLowerCase() === 'médico' || sel.options[sel.selectedIndex].text.toLowerCase() === 'medico';
@@ -210,10 +205,8 @@
         const selEsp = document.getElementById('u-esp');
         if (isMedico) {
             divEsp.classList.remove('d-none');
-            selEsp.required = true;
         } else {
             divEsp.classList.add('d-none');
-            selEsp.required = false;
             selEsp.value = '';
         }
     }
@@ -323,9 +316,7 @@
         document.getElementById('u-username').value = u.nombreUsuario || '';
         document.getElementById('u-nit').value = u.nit || '';
         document.getElementById('u-seguro').value = u.numeroSeguro || '';
-        document.getElementById('u-pass').required = false;
         document.getElementById('u-pass').placeholder = "Dejar vacío si no desea cambiar";
-        document.getElementById('u-suc').required = false;
 
         if(u.rolId) document.getElementById('u-rol').value = u.rolId;
         if(u.sucursalId) document.getElementById('u-suc').value = u.sucursalId;
@@ -345,12 +336,9 @@
         App.hideAlert('msg');
         const form = e.target;
 
-        // FIX CU-01 FA06: resaltado de campos en rojo campo por campo
+        // Toda validación de formato/obligatoriedad la realiza el backend;
+        // aquí solo se limpian marcas de errores previos antes de reintentar.
         App.clearInvalidFields(form);
-        if (!form.checkValidity()) {
-            App.markInvalidFields(form);
-            return App.showAlert('msg', 'Revise los campos marcados en rojo antes de continuar.', true);
-        }
 
         const id = document.getElementById('u-id').value;
         const payload = {
@@ -378,20 +366,49 @@
             // FIX CU-01 (bug #3/#5): el backend rechaza (400/409) por reglas
             // que el frontend no siempre valida en el navegador (ej. formato
             // de correo, username/password fuera de rango, DPI ya
-            // registrado). Si se identifica el campo responsable, se marca en
-            // rojo y el mensaje literal del backend se muestra debajo de ese
-            // campo; el alert general queda genérico. Si no se identifica un
-            // campo puntual, se muestra el mensaje del backend en el alert.
-            const campo = App.markFieldByErrorMessage(form, err.message, {
-                'usuario': 'u-username',
-                'contraseña': 'u-pass',
-                'correo': 'u-correo',
-                'dpi': 'u-dpi',
-                'nit': 'u-nit',
-                'teléfono': 'u-tel',
-                'telefono': 'u-tel'
+            // registrado).
+            //
+            // Antes se le pasaba a markFieldByErrorMessage el err.message ya
+            // concatenado con TODOS los errores juntos (Object.values(data)
+            // .join(' | ') en apiFetch), así que cuando el backend devolvía
+            // más de un campo inválido a la vez, la búsqueda por palabra
+            // clave solo encontraba la primera coincidencia y terminaba
+            // pegando el bloque de errores completo bajo un único campo.
+            // Ahora se usa marcarErroresDeCampos con err.fieldErrors (el mapa
+            // {campo: mensaje} real que arma el backend), que reparte cada
+            // mensaje bajo su propio input.
+            const { marcoAlgunCampo, mensajesSinCampo } = App.marcarErroresDeCampos(form, err.fieldErrors, {
+                nombreCompleto: 'u-nombre',
+                dpi: 'u-dpi',
+                nit: 'u-nit',
+                correo: 'u-correo',
+                nombreUsuario: 'u-username',
+                password: 'u-pass',
+                telefono: 'u-tel',
+                numeroSeguro: 'u-seguro'
             });
-            App.showAlert('msg', campo ? 'Revise los campos marcados en rojo antes de continuar.' : err.message, true);
+
+            // Respaldo para errores que no vienen como mapa por campo (ej.
+            // un 409 "ya existe" que llega como { mensaje: "..." } suelto).
+            const campo = marcoAlgunCampo
+                ? true
+                : App.markFieldByErrorMessage(form, err.message, {
+                    'usuario': 'u-username',
+                    'contraseña': 'u-pass',
+                    'correo': 'u-correo',
+                    'dpi': 'u-dpi',
+                    'nit': 'u-nit',
+                    'teléfono': 'u-tel',
+                    'telefono': 'u-tel'
+                });
+
+            let textoAlert = campo ? 'Revise los campos marcados en rojo antes de continuar.' : err.message;
+            if (mensajesSinCampo.length > 0) {
+                textoAlert = campo
+                    ? [textoAlert, ...mensajesSinCampo].join(' ')
+                    : mensajesSinCampo.join(' | ');
+            }
+            App.showAlert('msg', textoAlert, true);
         }
     });
 

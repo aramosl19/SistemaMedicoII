@@ -279,7 +279,7 @@
             <p class="text-base md:text-lg text-[#9C8E7A] font-normal max-w-sm mx-auto md:mx-0 mb-6">
                 Su salud y bienestar en manos expertas. Acceda a nuestros servicios en línea.
             </p>
-            
+
         </div>
 
         <!-- Columna derecha: acciones -->
@@ -370,7 +370,7 @@
 
         <form onsubmit="verificarRegistro(event)" class="space-y-6">
             <div class="field-group">
-                <input type="text" id="dpi" class="field-input font-mono text-center tracking-[0.2em] text-lg" maxlength="13" placeholder=" " oninput="contarDigitos(this)" required>
+                <input type="text" id="dpi" class="field-input font-mono text-center tracking-[0.2em] text-lg" maxlength="13" placeholder=" " oninput="contarDigitos(this)">
                 <label for="dpi" class="field-label">Número de DPI (13 dígitos)</label>
                 <div class="text-right text-xs text-[#7C7160] mt-2 font-mono">
                     Dígitos: <span id="contador" class="text-coffee font-semibold">0</span>/13
@@ -431,11 +431,8 @@
 
         App.hideAlert('msg-dpi');
 
-        // Solución CU-00: Mensaje de error dinámico indicando cuántos dígitos se ingresaron
-        if (dpi.length !== 13) {
-            return App.showAlert('msg-dpi', `El DPI debe contener exactamente 13 dígitos. Usted ingresó ${dpi.length} dígitos.`, true);
-        }
-
+        // La obligatoriedad y el formato de 13 dígitos del DPI los valida
+        // el backend (VerificarDpiRequestDTO).
         btn.disabled = true;
         btn.classList.add('opacity-75', 'cursor-not-allowed');
         spanText.textContent = "Verificando...";

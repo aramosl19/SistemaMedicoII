@@ -56,13 +56,13 @@
             <h3>Expediente clínico — Consulta #<span id="c-id"></span> — <span id="c-paciente"></span></h3>
             <form id="form-consulta" class="mt-4" novalidate>
                 <input type="hidden" id="citaActual">
-                <div class="form-group"><label>Motivo de visita</label><textarea id="mot" class="form-control" required rows="2"></textarea></div>
-                <div class="form-group"><label>Hallazgos clínicos</label><textarea id="hal" class="form-control" required rows="3"></textarea></div>
+                <div class="form-group"><label>Motivo de visita</label><textarea id="mot" class="form-control" rows="2"></textarea></div>
+                <div class="form-group"><label>Hallazgos clínicos</label><textarea id="hal" class="form-control" rows="3"></textarea></div>
 
                 <div class="d-flex">
                     <div class="form-group flex-1">
                         <label>Diagnóstico</label>
-                        <textarea id="diag" class="form-control" rows="2" minlength="10" maxlength="5000"></textarea>
+                        <textarea id="diag" class="form-control" rows="2"></textarea>
                     </div>
                     <div class="form-group flex-1">
                         <label>Código CIE-10 (opcional)</label>
@@ -71,12 +71,12 @@
                     </div>
                 </div>
 
-                <div class="form-group"><label>Plan de tratamiento</label><textarea id="trat" class="form-control" required rows="2"></textarea></div>
+                <div class="form-group"><label>Plan de tratamiento</label><textarea id="trat" class="form-control" rows="2"></textarea></div>
                 <div class="form-group"><label>Notas Adicionales</label><textarea id="notas-add" class="form-control" rows="2"></textarea></div>
 
                 <div class="well mt-4">
                     <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; font-weight: 600;">
-                        <input type="checkbox" id="fin" style="width: 18px; height: 18px;" onchange="validarCierre()">
+                        <input type="checkbox" id="fin" style="width: 18px; height: 18px;">
                         Marcar como evaluación finalizada (habilita recetas y órdenes)
                     </label>
                 </div>
@@ -95,13 +95,13 @@
                 <div id="form-receta" class="d-none">
                     <form id="add-med-form" onsubmit="agregarMedicamentoAReceta(event)" novalidate>
                         <div class="d-flex">
-                            <div class="form-group flex-1"><label>Medicamento</label><select id="r-med" class="form-control" required></select></div>
-                            <div class="form-group flex-1"><label>Dosis</label><input type="text" id="r-dosis" class="form-control" required></div>
-                            <div class="form-group flex-1"><label>Frecuencia</label><input type="text" id="r-frec" class="form-control" required></div>
+                            <div class="form-group flex-1"><label>Medicamento</label><select id="r-med" class="form-control"></select></div>
+                            <div class="form-group flex-1"><label>Dosis</label><input type="text" id="r-dosis" class="form-control"></div>
+                            <div class="form-group flex-1"><label>Frecuencia</label><input type="text" id="r-frec" class="form-control"></div>
                         </div>
                         <div class="d-flex mt-4">
-                            <div class="form-group flex-1"><label>Duración</label><input type="text" id="r-dur" class="form-control" required></div>
-                            <div class="form-group flex-1"><label>Cantidad a despachar</label><input type="number" id="r-cant" class="form-control" min="1" required></div>
+                            <div class="form-group flex-1"><label>Duración</label><input type="text" id="r-dur" class="form-control"></div>
+                            <div class="form-group flex-1"><label>Cantidad a despachar</label><input type="number" id="r-cant" class="form-control"></div>
                         </div>
                         <div class="form-group mt-4"><label>Indicaciones especiales (opcional)</label><input type="text" id="r-ind" class="form-control"></div>
                         <button type="submit" class="btn btn-primary mt-4" style="width: 100%;">Añadir medicamento a la receta</button>
@@ -157,7 +157,7 @@
                         <div class="form-group flex-1"><label>Fecha</label><input type="date" id="s-fecha" class="form-control" required onchange="buscarHorariosSeguimiento()"></div>
                         <div class="form-group flex-1"><label>Hora Disponible</label><select id="s-hora" class="form-control" required><option value="">Seleccione fecha primero</option></select></div>
                     </div>
-                    <div class="form-group mt-4"><label>Motivo clínico de seguimiento</label><input type="text" id="s-motivo" class="form-control" required minlength="10" maxlength="2000"></div>
+                    <div class="form-group mt-4"><label>Motivo clínico de seguimiento</label><input type="text" id="s-motivo" class="form-control"></div>
                     <div class="d-flex mt-4" style="justify-content: flex-end;">
                         <button type="button" onclick="cerrarFormulario('modal-acciones')" class="btn">Cancelar</button>
                         <button type="submit" class="btn btn-primary">Agendar Cita</button>
@@ -175,27 +175,6 @@
 
     let catCie10 = [], catMedicamentos = [], catExamenes = [];
     let recetaItemsTemporales = [];
-
-    // Mensajes específicos por campo para CU-08, mismo mecanismo que usa
-    // registro.html (App.fieldMessages + App.getValidationMessage).
-    Object.assign(App.fieldMessages, {
-        mot: { required: 'El motivo de visita es obligatorio.' },
-        hal: { required: 'Los hallazgos clínicos son obligatorios.' },
-        trat: { required: 'El plan de tratamiento es obligatorio.' },
-        'r-med': { required: 'Debe seleccionar un medicamento.' },
-        'r-dosis': { required: 'La dosis es obligatoria.' },
-        'r-frec': { required: 'La frecuencia es obligatoria.' },
-        'r-dur': { required: 'La duración es obligatoria.' },
-        'r-cant': { required: 'La cantidad a despachar es obligatoria.' },
-        's-tipo': { required: 'Debe seleccionar el tipo de seguimiento.' },
-        's-prioridad': { required: 'Debe seleccionar la prioridad.' },
-        's-fecha': { required: 'La fecha de seguimiento es obligatoria.' },
-        's-hora': { required: 'Debe seleccionar un horario disponible.' },
-        's-motivo': {
-            required: 'El motivo clínico de seguimiento es obligatorio.',
-            tooShort: (len) => `El motivo debe contener al menos 10 caracteres. Usted ingresó ${len} caracteres.`
-        }
-    });
 
     async function init() {
         try {
@@ -304,7 +283,6 @@
         // expediente (parecía que se perdía). Ahora se trae el borrador
         // existente y se precargan los campos si ya hay uno.
         document.getElementById('form-consulta').reset();
-        validarCierre();
         try {
             const borrador = await App.apiFetch(`/api/medico/citas/${id}/consulta`, 'GET');
             if (borrador) {
@@ -324,9 +302,9 @@
         document.getElementById(id).classList.add('d-none');
     }
 
-    function validarCierre() {
-        document.getElementById('diag').required = document.getElementById('fin').checked;
-    }
+    // La obligatoriedad del diagnóstico al finalizar la evaluación la
+    // exige el backend (ConsultaMedicaServiceImpl.validarCierre) con el
+    // mismo mensaje que antes mostraba esta validación en el navegador.
 
     // NOTA GAP (G): antes se mostraba un texto fijo genérico ("Expediente clínico
     // actualizado exitosamente.") sin importar lo que devolviera el backend. El
@@ -339,12 +317,6 @@
         const form = e.target;
         App.hideAlert('msg');
         App.clearInvalidFields(form);
-        validarCierre();
-
-        if (!form.checkValidity()) {
-            App.markInvalidFields(form);
-            return App.showAlert('msg', 'Revise los campos marcados en rojo antes de continuar.', true);
-        }
 
         const cie = document.getElementById('cie10-input').value;
         const objCie = catCie10.find(c => c.codigo === cie);
@@ -401,20 +373,16 @@
             document.getElementById('modal-titulo').innerText = "Agendar cita de seguimiento";
             document.getElementById('form-seg').classList.remove('d-none');
             document.getElementById('form-seg').reset();
-            document.getElementById('s-fecha').min = new Date().toISOString().split("T")[0];
         }
         document.getElementById('modal-acciones').classList.remove('d-none');
     }
 
+    // Los campos obligatorios de cada medicamento de la receta los valida
+    // el backend al generar la receta (RecetaMedicaServiceImpl.generarReceta).
     function agregarMedicamentoAReceta(e) {
         e.preventDefault();
         const form = e.target;
         App.clearInvalidFields(form);
-
-        if (!form.checkValidity()) {
-            App.markInvalidFields(form);
-            return;
-        }
 
         const sel = document.getElementById('r-med');
         const nomMed = sel.options[sel.selectedIndex].text;
@@ -498,16 +466,13 @@
         }
     }
 
+    // Toda validación (motivo, tipo, prioridad, fecha/hora futura) la
+    // realiza el backend al agendar el seguimiento.
     document.getElementById('form-seg').addEventListener('submit', async(e) => {
         e.preventDefault();
         const form = e.target;
         App.hideAlert('msg');
         App.clearInvalidFields(form);
-
-        if (!form.checkValidity()) {
-            App.markInvalidFields(form);
-            return App.showAlert('msg', 'Revise los campos marcados en rojo antes de continuar.', true);
-        }
 
         const payload = {
             fechaHora: document.getElementById('s-hora').value,
@@ -548,4 +513,3 @@
 </script>
 </body>
 </html>
-```

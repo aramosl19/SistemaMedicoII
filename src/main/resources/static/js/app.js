@@ -44,10 +44,21 @@ const App = {
 
             if (!response.ok) {
                 let errorMsg = data.error || data.mensaje || 'Ha ocurrido un error en la operación.';
+                let fieldErrors = null;
                 if (Object.keys(data).length > 0 && !data.error && !data.mensaje) {
+                    // El backend (GlobalExceptionHandler) devuelve, para
+                    // errores de Bean Validation, un mapa { campo: mensaje }
+                    // con un mensaje por cada campo que falló. Antes esto se
+                    // aplastaba en un solo string con "errorMsg", perdiendo a
+                    // qué campo pertenecía cada mensaje; ahora se conserva el
+                    // mapa completo en fieldErrors para poder mostrar cada
+                    // mensaje bajo su propio input (ver App.marcarErroresDeCampos).
+                    fieldErrors = data;
                     errorMsg = Object.values(data).join(' | ');
                 }
-                throw new Error(errorMsg);
+                const err = new Error(errorMsg);
+                err.fieldErrors = fieldErrors;
+                throw err;
             }
             return data;
         } catch (error) {
@@ -112,85 +123,14 @@ const App = {
         if(el) el.style.display = 'none';
     },
 
-    markInvalidFields: (form) => {
-        const invalidos = [];
-        form.querySelectorAll('input, select, textarea').forEach(field => {
-            if (field.willValidate && !field.checkValidity()) {
-                field.classList.add('is-invalid');
-                App.setFieldFeedback(field, App.getValidationMessage(field));
-                invalidos.push(field);
-            } else {
-                field.classList.remove('is-invalid');
-                App.setFieldFeedback(field, '');
-            }
-        });
-        return invalidos;
-    },
-
-    fieldMessages: {
-        nombre: {
-            required: 'El nombre debe contener entre 10 y 100 caracteres.',
-            tooShort: (len) => `El nombre debe contener entre 10 y 100 caracteres. Usted ingresó ${len} caracteres.`,
-            tooLong: (len) => `El nombre debe contener entre 10 y 100 caracteres. Usted ingresó ${len} caracteres.`
-        },
-        dpi: {
-            required: 'El campo DPI es obligatorio. Por favor, ingrese su número de DPI.',
-            patternMismatch: 'El DPI debe contener únicamente números. No se permiten letras ni caracteres especiales.',
-            tooShort: (len) => `El DPI debe contener exactamente 13 dígitos. Usted ingresó ${len} dígitos.`,
-            tooLong: (len) => `El DPI debe contener exactamente 13 dígitos. Usted ingresó ${len} dígitos.`
-        },
-        nit: {
-            required: 'El campo NIT es obligatorio.',
-            tooShort: (len) => `El NIT debe contener entre 8 y 9 caracteres. Usted ingresó ${len} caracteres.`,
-            tooLong: (len) => `El NIT debe contener entre 8 y 9 caracteres. Usted ingresó ${len} caracteres.`,
-            patternMismatch: 'El NIT debe contener únicamente caracteres alfanuméricos.'
-        },
-        telefono: {
-            required: 'El número de teléfono debe contener exactamente 8 dígitos numéricos.',
-            patternMismatch: 'El número de teléfono debe contener exactamente 8 dígitos numéricos.'
-        },
-        seguro: {
-            tooShort: () => 'El número de seguro debe contener entre 5 y 50 caracteres.',
-            tooLong: () => 'El número de seguro debe contener entre 5 y 50 caracteres.'
-        },
-        correo: {
-            required: 'El campo Correo es obligatorio.',
-            typeMismatch: 'El formato del correo electrónico no es válido. Ejemplo: usuario@dominio.com'
-        },
-        username: {
-            required: 'El usuario debe contener al menos 8 caracteres.',
-            tooShort: () => 'El usuario debe contener al menos 8 caracteres.',
-            tooLong: () => 'El usuario no puede exceder los 9 caracteres.',
-            patternMismatch: 'El usuario debe contener únicamente caracteres alfanuméricos.'
-        },
-        password: {
-            required: 'La contraseña debe contener al menos 12 caracteres.',
-            tooShort: () => 'La contraseña debe contener al menos 12 caracteres.'
-        },
-        'p-venc': {
-            required: 'La fecha de vencimiento es obligatoria.',
-            patternMismatch: 'Formato inválido. Use MM/AA'
-        },
-        diag: {
-            required: 'El diagnóstico es obligatorio para finalizar la consulta.',
-            tooShort: (len) => `El diagnóstico debe contener entre 10 y 5000 caracteres. Usted ingresó ${len} caracteres.`,
-            tooLong: (len) => `El diagnóstico debe contener entre 10 y 5000 caracteres. Usted ingresó ${len} caracteres.`
-        }
-    },
-
-    getValidationMessage: (field) => {
-        const v = field.validity;
-        const len = field.value.length;
-        const cfg = App.fieldMessages[field.id];
-        if (cfg) {
-            if (v.valueMissing && cfg.required) return cfg.required;
-            if (v.tooShort && cfg.tooShort) return cfg.tooShort(len);
-            if (v.tooLong && cfg.tooLong) return cfg.tooLong(len);
-            if (v.patternMismatch && cfg.patternMismatch) return cfg.patternMismatch;
-            if (v.typeMismatch && cfg.typeMismatch) return cfg.typeMismatch;
-        }
-        return field.validationMessage;
-    },
+    // NOTA: se eliminó la capa de validación de formato en el navegador
+    // (markInvalidFields/fieldMessages/getValidationMessage, basada en
+    // checkValidity()/validity nativos). Toda validación de formato,
+    // longitud y campos obligatorios ahora ocurre únicamente en el backend
+    // (DTOs con Bean Validation y/o validaciones explícitas en los
+    // services). El frontend solo muestra el mensaje de error que el
+    // backend devuelve, usando clearInvalidFields/setFieldFeedback/
+    // markFieldByErrorMessage a continuación.
 
     clearInvalidFields: (form) => {
         form.querySelectorAll('.is-invalid').forEach(f => f.classList.remove('is-invalid'));
@@ -207,6 +147,46 @@ const App = {
         feedback.textContent = mensaje || '';
     },
 
+    // Reemplaza a markFieldByErrorMessage para el caso de varios errores de
+    // Bean Validation a la vez (ej. registro con 5 campos inválidos en el
+    // mismo submit). markFieldByErrorMessage recibía el mensaje YA
+    // concatenado (todos los errores unidos con " | ") y buscaba una sola
+    // palabra clave dentro de ese bloque completo; como solo encontraba la
+    // primera coincidencia, terminaba pegando el bloque entero de errores
+    // bajo un único campo (el bug de "todos los errores debajo de un solo
+    // campo"). Esta función en cambio recibe el mapa { campoBackend: mensaje }
+    // tal cual lo arma el backend (fieldErrors de apiFetch) y muestra cada
+    // mensaje debajo de su propio input, usando mapaCampoBackendAInputId
+    // para traducir el nombre del campo del DTO al id del <input> en el HTML.
+    // Devuelve { marcoAlgunCampo, mensajesSinCampo }: mensajesSinCampo son
+    // los errores cuya clave no estaba en mapaCampoBackendAInputId (ej. si
+    // el nombre de un campo del backend no coincide con lo esperado, o si
+    // el DTO agrega un campo nuevo y el mapa del HTML no se actualizó). Se
+    // devuelven en vez de descartarlos en silencio, para poder mostrarlos
+    // igual en el alert general y no perder información del backend.
+    marcarErroresDeCampos: (form, fieldErrors, mapaCampoBackendAInputId) => {
+        if (!fieldErrors) return { marcoAlgunCampo: false, mensajesSinCampo: [] };
+        let marcoAlgunCampo = false;
+        const mensajesSinCampo = [];
+        for (const campoBackend in fieldErrors) {
+            const inputId = mapaCampoBackendAInputId[campoBackend];
+            const campo = inputId ? form.querySelector('#' + inputId) : null;
+            if (!campo) {
+                mensajesSinCampo.push(fieldErrors[campoBackend]);
+                continue;
+            }
+            campo.classList.add('is-invalid');
+            App.setFieldFeedback(campo, fieldErrors[campoBackend]);
+            marcoAlgunCampo = true;
+        }
+        return { marcoAlgunCampo, mensajesSinCampo };
+    },
+
+    // NOTA: se conserva markFieldByErrorMessage para el caso de un solo
+    // mensaje suelto que no viene como mapa por campo (ej. un 409 "ya
+    // existe" que el backend manda como { mensaje: "..." } en vez de un
+    // mapa de Bean Validation). Para el caso de varios errores a la vez,
+    // usar marcarErroresDeCampos (arriba) con err.fieldErrors.
     markFieldByErrorMessage: (form, message, mapaPalabraClave) => {
         if (!message) return null;
         const msgLower = message.toLowerCase();
@@ -295,7 +275,7 @@ const App = {
             html += `<a href="crear_usuario.html"${location.pathname.includes('crear_usuario.html') ? ' class="active"' : ''}>Crear Usuario</a>`;
             html += `</div></div>`;
             html += `<a href="admin_catalogos.html">Mantenimiento de Catálogos</a>`;
-          //html += `<a href="bitacora.html">Bitácora de Operación</a>`;
+            html += `<a href="bitacora.html">Bitácora de Operación</a>`;
         }
         if (r === 'PACIENTE' || r === 'ADMINISTRADOR') {
             html += `<a href="paciente_agendar.html">Agendar Cita Médica</a>`;

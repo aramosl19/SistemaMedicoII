@@ -36,34 +36,34 @@
         <form id="form-reg" onsubmit="registrar(event)" novalidate>
             <div class="form-group">
                 <label>Nombre completo (según documento)</label>
-                <input type="text" id="nombre" class="form-control" required minlength="10" maxlength="100">
+                <input type="text" id="nombre" class="form-control">
             </div>
 
             <div class="d-flex mt-4">
                 <div class="form-group flex-1">
                     <label>Documento de identificación (DPI)</label>
-                    <input type="text" id="dpi" class="form-control" required pattern="\d{13}" title="13 dígitos numéricos" readonly>
+                    <input type="text" id="dpi" class="form-control" readonly>
                 </div>
                 <div class="form-group flex-1">
                     <label>Número de identificación tributaria (NIT)</label>
-                    <input type="text" id="nit" class="form-control" required minlength="8" maxlength="9" pattern="^[a-zA-Z0-9]+$">
+                    <input type="text" id="nit" class="form-control">
                 </div>
             </div>
 
             <div class="d-flex mt-4">
                 <div class="form-group flex-1">
                     <label>Teléfono celular / contacto</label>
-                    <input type="text" id="telefono" class="form-control" required pattern="\d{8}" title="8 dígitos numéricos">
+                    <input type="text" id="telefono" class="form-control">
                 </div>
                 <div class="form-group flex-1">
                     <label>Correo electrónico (notificaciones y recibos)</label>
-                    <input type="email" id="correo" class="form-control" required pattern=".*\.com$">
+                    <input type="email" id="correo" class="form-control">
                 </div>
             </div>
 
             <div class="form-group mt-4">
                 <label>Número de afiliado seguro médico (opcional)</label>
-                <input type="text" id="seguro" class="form-control" minlength="5" maxlength="50" placeholder="Deje en blanco si no posee seguro">
+                <input type="text" id="seguro" class="form-control" placeholder="Deje en blanco si no posee seguro">
             </div>
 
             <hr style="border: 0; border-top: 1px dashed var(--line); margin: 2rem 0;">
@@ -71,14 +71,14 @@
 
             <div class="form-group">
                 <label>Nombre de usuario</label>
-                <input type="text" id="username" class="form-control" required minlength="8" maxlength="9" pattern="^[a-zA-Z0-9]+$" placeholder="Ej. jperez123">
+                <input type="text" id="username" class="form-control" placeholder="Ej. jperez123">
             </div>
 
             <div class="d-flex mt-4">
                 <div class="form-group flex-1">
                     <label>Contraseña maestra</label>
                     <div class="password-wrap">
-                        <input type="password" id="password" class="form-control" required minlength="12" placeholder="Mínimo 12 caracteres">
+                        <input type="password" id="password" class="form-control" placeholder="Mínimo 12 caracteres">
                         <button type="button" class="toggle-password" onclick="togglePassword('password', this)" aria-label="Mostrar contraseña" tabindex="-1">
                             <i class="fa-solid fa-eye"></i>
                         </button>
@@ -87,7 +87,7 @@
                 <div class="form-group flex-1">
                     <label>Confirmar contraseña</label>
                     <div class="password-wrap">
-                        <input type="password" id="password-confirm" class="form-control" required minlength="12" placeholder="Repita la contraseña">
+                        <input type="password" id="password-confirm" class="form-control" placeholder="Repita la contraseña">
                         <button type="button" class="toggle-password" onclick="togglePassword('password-confirm', this)" aria-label="Mostrar contraseña" tabindex="-1">
                             <i class="fa-solid fa-eye"></i>
                         </button>
@@ -132,54 +132,16 @@
         btn.setAttribute('aria-label', mostrar ? 'Ocultar contraseña' : 'Mostrar contraseña');
     }
 
-    // FIX bug autorellenado: el navegador solo aplica minlength/maxlength
-    // cuando el valor fue tecleado por el usuario (dirty value flag). Si el
-    // valor llega por autorellenado, checkValidity() lo pasa por alto aunque
-    // no cumpla la longitud. Aquí se fuerza esa validación manualmente con
-    // setCustomValidity() para que se comporte igual que si se hubiera
-    // tecleado a mano.
-    function forzarValidezLongitud(form) {
-        form.querySelectorAll('[minlength], [maxlength]').forEach(el => {
-            const len = el.value.length;
-            const min = el.getAttribute('minlength');
-            const max = el.getAttribute('maxlength');
-            if (min && len > 0 && len < Number(min)) {
-                el.setCustomValidity(`Debe tener al menos ${min} caracteres.`);
-            } else if (max && len > Number(max)) {
-                el.setCustomValidity(`Debe tener máximo ${max} caracteres.`);
-            } else {
-                el.setCustomValidity('');
-            }
-        });
-    }
-
-    // Mejora UX (no pedida por el documento): valida que la confirmación
-    // coincida con la contraseña, usando el mismo mecanismo de
-    // setCustomValidity() que ya usa forzarValidezLongitud, para que el
-    // campo se marque en rojo igual que el resto del formulario.
-    function forzarValidezConfirmacion(form) {
-        const pass = document.getElementById('password');
-        const confirmar = document.getElementById('password-confirm');
-        if (pass.value !== confirmar.value) {
-            confirmar.setCustomValidity('Las contraseñas no coinciden.');
-        } else {
-            confirmar.setCustomValidity('');
-        }
-    }
-
+    // Toda validación de formato, longitud y coincidencia de contraseñas
+    // (incluida la confirmación) la realiza el backend ahora
+    // (RegistroExternoRequestDTO). El frontend solo limpia marcas de
+    // errores previos y envía los datos tal cual fueron escritos.
     async function registrar(e) {
         e.preventDefault();
         App.hideAlert('msg-reg');
 
-        // FIX CU-02 FA04: resaltado de campos en rojo campo por campo
         const form = document.getElementById('form-reg');
         App.clearInvalidFields(form);
-        forzarValidezLongitud(form);
-        forzarValidezConfirmacion(form);
-        if (!form.checkValidity()) {
-            App.markInvalidFields(form);
-            return App.showAlert('msg-reg', 'Revise los campos marcados en rojo antes de continuar.', true);
-        }
 
         document.getElementById('btn-reg').disabled = true;
         document.getElementById('btn-reg').textContent = "Creando expediente...";
@@ -192,7 +154,8 @@
             correo: document.getElementById('correo').value,
             numeroSeguro: document.getElementById('seguro').value || null,
             nombreUsuario: document.getElementById('username').value,
-            password: document.getElementById('password').value
+            password: document.getElementById('password').value,
+            confirmarPassword: document.getElementById('password-confirm').value
         };
         try {
             await App.apiFetch('/api/portal/registro', 'POST', payload);
@@ -203,24 +166,54 @@
             // FIX CU-02 FA04 (bug #3): el backend rechaza (400/409) por reglas
             // que el frontend no siempre valida en el navegador (ej. username
             // fuera de 8-9 caracteres, password menor a 12, DPI/correo ya
-            // registrado). Si logramos identificar el campo responsable, se
-            // marca en rojo y el mensaje literal del backend se muestra justo
-            // debajo de ese campo; el alert general queda genérico, igual
-            // que en el resto de validaciones del formulario. Si no se pudo
-            // identificar un campo puntual, se muestra el mensaje del backend
-            // tal cual en el alert (comportamiento anterior).
-            const campo = App.markFieldByErrorMessage(form, err.message, {
-                'usuario': 'username',
-                'contraseña': 'password',
-                'correo': 'correo',
-                'dpi': 'dpi',
-                'nit': 'nit',
-                'teléfono': 'telefono',
-                'telefono': 'telefono',
-                'seguro': 'seguro',
-                'nombre': 'nombre'
+            // registrado).
+            //
+            // Caso normal (varios campos inválidos a la vez, ej. Bean
+            // Validation en RegistroExternoRequestDTO): err.fieldErrors trae
+            // el mapa { campoBackend: mensaje } armado por apiFetch, y
+            // marcarErroresDeCampos muestra cada mensaje debajo de SU propio
+            // input (antes, con markFieldByErrorMessage sobre el mensaje ya
+            // concatenado, todos los mensajes terminaban amontonados bajo un
+            // único campo).
+            const { marcoAlgunCampo, mensajesSinCampo } = App.marcarErroresDeCampos(form, err.fieldErrors, {
+                nombreCompleto: 'nombre',
+                dpi: 'dpi',
+                nit: 'nit',
+                telefono: 'telefono',
+                correo: 'correo',
+                numeroSeguro: 'seguro',
+                nombreUsuario: 'username',
+                password: 'password',
+                confirmarPassword: 'password-confirm',
+                passwordsCoinciden: 'password-confirm'
             });
-            App.showAlert('msg-reg', campo ? 'Revise los campos marcados en rojo antes de continuar.' : err.message, true);
+
+            // Respaldo: si el backend no mandó un mapa por campo (ej. un 409
+            // "ya existe" que llega como { mensaje: "..." } suelto), se sigue
+            // usando la búsqueda por palabra clave de antes.
+            const campo = marcoAlgunCampo
+                ? true
+                : App.markFieldByErrorMessage(form, err.message, {
+                    'usuario': 'username',
+                    'contraseña': 'password',
+                    'correo': 'correo',
+                    'dpi': 'dpi',
+                    'nit': 'nit',
+                    'teléfono': 'telefono',
+                    'telefono': 'telefono',
+                    'seguro': 'seguro',
+                    'nombre': 'nombre'
+                });
+
+            // Si además quedó algún mensaje sin campo (clave del backend no
+            // mapeada), se agrega al alert general para no perderlo.
+            let textoAlert = campo ? 'Revise los campos marcados en rojo antes de continuar.' : err.message;
+            if (mensajesSinCampo.length > 0) {
+                textoAlert = campo
+                    ? [textoAlert, ...mensajesSinCampo].join(' ')
+                    : mensajesSinCampo.join(' | ');
+            }
+            App.showAlert('msg-reg', textoAlert, true);
 
             document.getElementById('btn-reg').disabled = false;
             document.getElementById('btn-reg').textContent = "Completar registro oficial";

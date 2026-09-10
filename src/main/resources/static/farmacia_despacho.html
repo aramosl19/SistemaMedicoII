@@ -50,7 +50,7 @@
                 </div>
                 <div class="form-group flex-1">
                     <label>Valor</label>
-                    <input type="text" id="criterio" class="form-control" placeholder="Ingrese el valor a buscar" required>
+                    <input type="text" id="criterio" class="form-control" placeholder="Ingrese el valor a buscar">
                 </div>
                 <div class="form-group" style="align-self: flex-end;">
                     <button type="submit" class="btn btn-primary">Buscar receta</button>
@@ -77,7 +77,7 @@
                 <h3 class="text-primary">Total del Despacho: Q<span id="lbl-total">0.00</span></h3>
             </div>
 
-            <form id="form-despacho" class="mt-4">
+            <form id="form-despacho" class="mt-4" novalidate>
                 <input type="hidden" id="hdn-receta-id">
                 <table class="table mb-4">
                     <thead><tr><th>Medicamento</th><th>Dosis</th><th>Recetado</th><th>Precio Unitario</th><th>Stock (Sede)</th><th>A despachar</th><th>Subtotal</th><th>Sustituto (opcional)</th></tr></thead>
@@ -175,7 +175,7 @@
                         ${!invItem ? '<br><small class="text-error" style="font-weight:normal;">Sin inventario registrado</small>'
                     : (stock <= (invItem.stockMinimo || 0) ? `<br><small class="text-error" style="font-weight:normal;">${d.medicamentoNombre}: Stock bajo — disponible: ${stock} (mínimo: ${invItem.stockMinimo || 0})</small>` : '')}
                     </td>
-                    <td><input type="number" class="form-control c-cant" value="${Math.min(d.cantidad, stock)}" min="0" max="${d.cantidad}" style="width: 80px;" oninput="calcularTotal()"></td>
+                    <td><input type="number" class="form-control c-cant" value="${Math.min(d.cantidad, stock)}" style="width: 80px;" oninput="calcularTotal()"></td>
                     <td id="sub-${index}">Q0.00</td>
                     <td>
                         <select class="form-control c-sus" style="margin-bottom: 5px;">${opts}</select>
@@ -189,7 +189,6 @@
                     const razon = ev.target.nextElementSibling;
                     if(ev.target.value) {
                         razon.classList.remove('d-none');
-                        razon.required = true;
 
                         // Solución CU-11 FA02: Mostrar notificación visual al escoger sustituto
                         const nombreOriginal = ev.target.closest('tr').children[0].innerText;
@@ -197,7 +196,6 @@
                         App.showAlert('msg', `Medicamento ${nombreOriginal} sustituido por ${nombreSustituto}. El médico tratante será notificado de la sustitución.`);
                     } else {
                         razon.classList.add('d-none');
-                        razon.required = false;
                         razon.value = '';
                         App.hideAlert('msg');
                     }
@@ -248,9 +246,8 @@
         });
 
         const itemsFiltrados = items.filter(i => i.cantidadDespachada > 0);
-        if (itemsFiltrados.length === 0) {
-            return App.showAlert('msg', 'Debe despachar al menos una unidad de algún medicamento.', true);
-        }
+        // Que se despache al menos una unidad lo valida el backend
+        // (DespachoFarmaciaServiceImpl.despachar).
 
         const payload = {
             recetaId: parseInt(document.getElementById('hdn-receta-id').value),

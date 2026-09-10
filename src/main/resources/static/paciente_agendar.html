@@ -98,7 +98,7 @@
                     </div>
                     <div class="form-group mt-4">
                         <label>Motivo de la consulta (requerido por el médico)</label>
-                        <textarea id="motivo" class="form-control" rows="3" required minlength="10" maxlength="2000"></textarea>
+                        <textarea id="motivo" class="form-control" rows="3"></textarea>
                     </div>
 
                     <!-- Adjuntar documento PDF (CU-03) -->
@@ -189,8 +189,6 @@
             } else if (pasoActual === 3) {
                 const selectMed = document.getElementById('med');
                 if (!selectMed.reportValidity()) return;
-                document.getElementById('fecha').min = new Date().toISOString().split("T")[0];
-
                 document.getElementById('hora').innerHTML = '<option value="">Seleccione una fecha</option>';
                 if (document.getElementById('fecha').value) {
                     await buscarHorarios();
@@ -282,73 +280,22 @@
         }
     }
 
-    // FIX RN-CU03-05: #motivo ya tenía minlength="10" maxlength="2000" en el
-    // HTML, pero el listener del submit nunca llamaba a checkValidity()/
-    // reportValidity() -- dependía por completo de que el navegador bloqueara
-    // el envío por su cuenta. En la práctica, la validación nativa de
-    // minlength/maxlength en <textarea> es menos confiable entre navegadores
-    // que en <input> (es un problema documentado del propio estándar HTML,
-    // no exclusivo de esta app), así que un motivo de 9 caracteres tecleado
-    // normalmente estaba pasando el submit sin bloquearse. Se agrega la
-    // misma validación explícita en JS que ya usamos en registro.html, que
-    // además cubre el caso de un valor puesto por script saltándose
-    // minlength/maxlength (igual que el bug de #username en CU-02).
-    function forzarValidezLongitud(form) {
-        form.querySelectorAll('[minlength], [maxlength]').forEach(el => {
-            const len = el.value.length;
-            const min = el.getAttribute('minlength');
-            const max = el.getAttribute('maxlength');
-            if (min && len > 0 && len < Number(min)) {
-                el.setCustomValidity(`Debe tener al menos ${min} caracteres.`);
-            } else if (max && len > Number(max)) {
-                el.setCustomValidity(`Debe tener máximo ${max} caracteres.`);
-            } else {
-                el.setCustomValidity('');
-            }
-        });
-    }
-
+    // Toda validación de contenido (longitud del motivo, etc.) la realiza
+    // el backend (ver CitaRequestDTO); aquí solo se limpian marcas de
+    // errores previos antes de reintentar el envío.
     document.getElementById('form-cita').addEventListener('submit', async(e)=>{
         e.preventDefault();
         App.hideAlert('msg');
 
-        // FIX RN-CU03-05: validación explícita antes de continuar. Los
-        // campos de pasos anteriores (#suc, #esp, #med, #tipo, #fecha,
-        // #hora) están ocultos con d-none en este punto, así que quedan
-        // fuera de la validación de restricciones del navegador (un
-        // elemento no renderizado no es candidato a "constraint
-        // validation") -- en la práctica esto solo termina evaluando
-        // #motivo, que es justamente el campo que queríamos cubrir.
         const form = document.getElementById('form-cita');
         App.clearInvalidFields(form);
-        forzarValidezLongitud(form);
-        if (!form.checkValidity()) {
-            App.markInvalidFields(form);
-            window.scrollTo(0,0);
-            return App.showAlert('msg', 'Revise los campos marcados en rojo antes de continuar.', true);
-        }
 
         const btnFinalizar = document.getElementById('btn-finalizar');
-        // FIX QA: antes solo el min del date picker bloqueaba fechas pasadas, sin avisar
-        const horaSeleccionada = document.getElementById('hora').value;
-        if (horaSeleccionada && new Date(horaSeleccionada) <= new Date()) {
-            window.scrollTo(0,0);
-            return App.showAlert('msg', 'La fecha y hora seleccionadas ya pasaron. Elija una fecha y hora futuras.', true);
-        }
+        // La fecha/hora futura la valida el backend (CitaServiceImpl).
 
-        // Validación del Archivo (Regla de negocio CU-03-04)
+        // El tipo y tamaño del archivo adjunto los valida el backend
+        // (CitaController#subirDocumento) al momento de la subida.
         const fileInput = document.getElementById('doc_ref');
-        if (fileInput.files.length > 0) {
-            const file = fileInput.files[0];
-            if (file.type !== "application/pdf") {
-                window.scrollTo(0,0);
-                return App.showAlert('msg', 'El documento debe ser un archivo PDF válido.', true);
-            }
-            if (file.size > 2 * 1024 * 1024) { // 2MB
-                window.scrollTo(0,0);
-                return App.showAlert('msg', 'El tamaño del documento excede el máximo permitido de 2 MB.', true);
-            }
-        }
 
         btnFinalizar.disabled = true;
 

@@ -91,7 +91,7 @@
                 </div>
                 <div class="form-group d-none" id="div-tarjeta">
                     <label>Últimos 4 dígitos del plástico</label>
-                    <input type="text" id="ultimos" class="form-control" maxlength="4" pattern="\d{4}">
+                    <input type="text" id="ultimos" class="form-control">
                 </div>
                 <div class="d-flex mt-4">
                     <button id="btn-confirmar-pago" type="submit" class="btn btn-success">Registrar Pago</button>
@@ -158,13 +158,8 @@
         const t = document.getElementById('tipoServ').value, id = document.getElementById('refId').value, dpi = document.getElementById('refDpi').value;
         const isCita = t === 'CITA';
 
-        if(!id && !dpi) return App.showAlert('msg', 'Ingrese el número de referencia o el DPI del paciente.', true);
-
-        // RN-GLOBAL-001: el DPI debe tener exactamente 13 dígitos numéricos.
-        if (dpi && !/^\d{13}$/.test(dpi)) {
-            return App.showAlert('msg', `El DPI debe contener exactamente 13 dígitos. Usted ingresó ${dpi.length} dígitos.`, true);
-        }
-
+        // La obligatoriedad de id/DPI y el formato de 13 dígitos del DPI
+        // los valida el backend (CajaServiceImpl / CobroLaboratorioServiceImpl).
         let query = id ? `numero${isCita?'Cita':'Orden'}=${id}` : `dpi=${dpi}`;
 
         try {
@@ -241,36 +236,16 @@
         App.hideAlert('msg');
     }
 
+    // Toda validación (método de pago obligatorio, últimos 4 dígitos,
+    // monto recibido suficiente) la realiza el backend: CobroCajaRequestDTO,
+    // PagoEfectivoStrategy y PagoTarjetaStrategy ya la cubren con los
+    // mismos mensajes que antes se mostraban desde el navegador.
     document.getElementById('form-cobro').addEventListener('submit', async(e)=>{
         e.preventDefault();
         App.hideAlert('msg');
         const t = document.getElementById('tipoServ').value, isCita = t === 'CITA';
         const metodo = document.getElementById('metodo').value;
         const ultimos = document.getElementById('ultimos').value;
-
-        if (!metodo) {
-            return App.showAlert('msg', 'Seleccione un método de pago.', true);
-        }
-
-        // Solución CU-06 / CU-10: Validación explícita de dígitos de tarjeta
-        if (metodo !== 'EFECTIVO') {
-            if (!/^\d{4}$/.test(ultimos)) {
-                return App.showAlert('msg', 'Ingrese los últimos 4 dígitos de la tarjeta.', true);
-            }
-        }
-
-        // Solución CU-06: Validación en cliente de "monto recibido" vacío o menor al monto a cobrar
-        if (metodo === 'EFECTIVO') {
-            const montoRecibidoVal = document.getElementById('montoRecibido').value;
-            if (!montoRecibidoVal) {
-                return App.showAlert('msg', 'Ingrese el monto recibido.', true);
-            }
-            const monto = parseFloat(document.getElementById('c-monto').innerText);
-            const recibido = parseFloat(montoRecibidoVal);
-            if (recibido < monto) {
-                return App.showAlert('msg', `El monto recibido (Q${recibido}) es menor al monto a cobrar (Q${monto})`, true);
-            }
-        }
 
         const payload = {
             metodoPago: metodo,

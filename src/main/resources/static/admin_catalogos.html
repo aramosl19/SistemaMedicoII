@@ -78,12 +78,12 @@
         <div class="modal-overlay d-none" id="modal-container">
             <div class="modal-content" style="max-width: 600px;">
                 <h3 id="form-title">Registro de Catálogo</h3>
-                <form id="form-catalogo" class="mt-4" onsubmit="guardarRegistro(event)">
+                <form id="form-catalogo" class="mt-4" onsubmit="guardarRegistro(event)" novalidate>
                     <input type="hidden" id="cat-id">
 
                     <div id="campos-normales">
-                        <div class="form-group"><label>Nombre</label><input type="text" id="cat-nombre" class="form-control" maxlength="200"></div>
-                        <div class="form-group"><label>Descripción / Observaciones</label><input type="text" id="cat-desc" class="form-control" maxlength="500"></div>
+                        <div class="form-group"><label>Nombre</label><input type="text" id="cat-nombre" class="form-control"></div>
+                        <div class="form-group"><label>Descripción / Observaciones</label><input type="text" id="cat-desc" class="form-control"></div>
                     </div>
 
                     <div id="campos-extra"></div>
@@ -251,11 +251,11 @@
         document.getElementById('btn-guardar').textContent = esEdicion ? 'Actualizar Registro' : 'Crear Registro';
 
         if (endpointActual === 'sucursales') {
-            extra.innerHTML = `<div class="d-flex"><div class="form-group flex-1"><label>Teléfono (8 dígitos)</label><input type="text" id="cat-tel" class="form-control" pattern="\\d{8}"></div>
-            <div class="form-group flex-1"><label>Dirección</label><input type="text" id="cat-dir" class="form-control" maxlength="500"></div></div>`;
+            extra.innerHTML = `<div class="d-flex"><div class="form-group flex-1"><label>Teléfono (8 dígitos)</label><input type="text" id="cat-tel" class="form-control"></div>
+            <div class="form-group flex-1"><label>Dirección</label><input type="text" id="cat-dir" class="form-control"></div></div>`;
         } else if (endpointActual === 'medicamentos') {
             extra.innerHTML = `<div class="d-flex"><div class="form-group flex-1"><label>Precio Venta (Q)</label><input type="number" step="0.01" min="0.01" id="cat-precio" class="form-control"></div>
-            <div class="form-group flex-1"><label>Unidad Medida</label><input type="text" id="cat-unidad" class="form-control" maxlength="50"></div></div>
+            <div class="form-group flex-1"><label>Unidad Medida</label><input type="text" id="cat-unidad" class="form-control"></div></div>
             <div class="d-flex"><div class="form-group flex-1"><label>Stock Mínimo (Alerta)</label><input type="number" id="cat-min" class="form-control" min="0"></div>
             <div class="form-group flex-1 mt-4"><label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; color: var(--error); text-transform: none; letter-spacing: normal; font-size: 0.9rem;"><input type="checkbox" id="cat-controlado" style="width: 18px; height: 18px;"> Sustancia Controlada</label></div></div>`;
         } else if (endpointActual === 'tipos-cita') {
