@@ -73,6 +73,10 @@ public class DespachoFarmaciaServiceImpl implements DespachoFarmaciaService {
             throw new IllegalArgumentException("La receta es inválida o está vencida (máximo 7 días).");
         }
 
+        if (dto.getItems() == null || dto.getItems().stream().noneMatch(i -> i.getCantidadDespachada() != null && i.getCantidadDespachada() > 0)) {
+            throw new IllegalArgumentException("Debe despachar al menos una unidad de algún medicamento.");
+        }
+
         List<String> alertasStock = new ArrayList<>();
         StringBuilder notasSustitucion = new StringBuilder(receta.getNotas() != null ? receta.getNotas() : "");
 
@@ -83,6 +87,15 @@ public class DespachoFarmaciaServiceImpl implements DespachoFarmaciaService {
                     .filter(d -> d.getId().equals(itemReq.getDetalleRecetaId()))
                     .findFirst()
                     .orElseThrow(() -> new IllegalArgumentException("El detalle de receta no pertenece a esta orden."));
+
+            // La cantidad a despachar debe ser positiva y no exceder lo recetado
+            // (antes solo lo impedía min="0"/max="${d.cantidad}" en el navegador).
+            if (itemReq.getCantidadDespachada() == null || itemReq.getCantidadDespachada() <= 0) {
+                throw new IllegalArgumentException("La cantidad a despachar debe ser mayor a 0.");
+            }
+            if (itemReq.getCantidadDespachada() > detalleOriginal.getCantidad()) {
+                throw new IllegalArgumentException("No puede despachar más unidades de las recetadas para " + detalleOriginal.getMedicamento().getNombre() + ".");
+            }
 
             Medicamento medicamentoDespachar;
 

@@ -71,6 +71,10 @@ public class CobroLaboratorioServiceImpl implements CobroLaboratorioService {
         if (numeroOrden == null && (dpi == null || dpi.isBlank())) {
             throw new IllegalArgumentException("Debe ingresar un número de orden o DPI para buscar.");
         }
+        // RN-GLOBAL-001: el DPI debe tener exactamente 13 dígitos numéricos.
+        if (dpi != null && !dpi.isBlank() && !dpi.matches("\\d{13}")) {
+            throw new IllegalArgumentException("El DPI debe contener exactamente 13 dígitos. Usted ingresó " + dpi.length() + " dígitos.");
+        }
         List<OrdenLaboratorio> ordenes = new java.util.ArrayList<>();
         if (numeroOrden != null) {
             ordenLaboratorioRepository.findById(numeroOrden)

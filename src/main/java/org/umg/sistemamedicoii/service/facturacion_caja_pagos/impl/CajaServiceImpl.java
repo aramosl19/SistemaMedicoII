@@ -48,6 +48,12 @@ public class CajaServiceImpl implements CajaService {
         if (numeroCita == null && (dpi == null || dpi.isBlank())) {
             throw new IllegalArgumentException("Debe ingresar un número de cita o DPI para buscar.");
         }
+        // RN-GLOBAL-001: el DPI debe tener exactamente 13 dígitos numéricos.
+        // (antes solo se validaba en caja.html con una expresión regular en
+        // el navegador; se traslada aquí al quitar esa capa del frontend.)
+        if (dpi != null && !dpi.isBlank() && !dpi.matches("\\d{13}")) {
+            throw new IllegalArgumentException("El DPI debe contener exactamente 13 dígitos. Usted ingresó " + dpi.length() + " dígitos.");
+        }
 
         List<Cita> citas = new ArrayList<>();
         String estadoPendiente = EstadoCitaEnum.PENDIENTE_PAGO.getNombreBd();
