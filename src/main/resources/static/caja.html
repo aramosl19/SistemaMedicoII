@@ -100,7 +100,7 @@
             </form>
         </div>
 
-        <div class="card ticket-card d-none" id="area-comprobante" style="max-width: 420px; margin: 0 auto;">
+        <div class="card ticket-card d-none print-only" id="area-comprobante" style="max-width: 420px; margin: 0 auto;">
             <div style="text-align: center; margin-bottom: 1rem;">
                 <h3>Hospital El Milagro</h3>
                 <p class="text-muted">Comprobante de pago</p>
@@ -281,6 +281,7 @@
             App.showAlert('msg', data.mensaje);
         } catch(err) {
             App.showAlert('msg', err.message, true);
+        } finally {
             btnCobrar.disabled = false;
             btnCobrar.innerText = textoOriginal;
         }

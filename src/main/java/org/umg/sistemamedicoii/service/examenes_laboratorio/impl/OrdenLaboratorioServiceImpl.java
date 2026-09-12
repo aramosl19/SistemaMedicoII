@@ -50,7 +50,13 @@ public class OrdenLaboratorioServiceImpl implements OrdenLaboratorioService {
         orden.setEsExterna(dto.isEsExterna());
         orden.setNotas(dto.getNotas());
         orden.setFechaCreacion(LocalDateTime.now());
-        orden.setEstado(EstadoOrdenLaboratorioEnum.PENDIENTE);
+
+        // FA01 CU-09: una orden externa termina aquí mismo. El paciente paga y
+        // se realiza los exámenes fuera del hospital, así que no debe pasar por
+        // caja (CU-16) ni por toma de muestras/registro de resultados interno.
+        orden.setEstado(dto.isEsExterna()
+                ? EstadoOrdenLaboratorioEnum.COMPLETADA
+                : EstadoOrdenLaboratorioEnum.PENDIENTE);
 
         BigDecimal montoTotal = BigDecimal.ZERO;
         for (Integer examenId : dto.getExamenesIds()) {
@@ -60,14 +66,21 @@ public class OrdenLaboratorioServiceImpl implements OrdenLaboratorioService {
             DetalleOrdenLaboratorio detalle = new DetalleOrdenLaboratorio();
             detalle.setOrden(orden);
             detalle.setExamen(examen);
-            detalle.setMonto(examen.getPrecio());
 
             // Prellena el rango y la unidad para el laboratorista
             detalle.setRangoReferencia(examen.getRangoReferencia());
             detalle.setUnidad(examen.getUnidadMedida());
 
+            if (dto.isEsExterna()) {
+                // No se cobra en este hospital: el monto queda en cero para no
+                // dar pie a que caja intente cobrarla.
+                detalle.setMonto(BigDecimal.ZERO);
+            } else {
+                detalle.setMonto(examen.getPrecio());
+                montoTotal = montoTotal.add(examen.getPrecio());
+            }
+
             orden.getDetalles().add(detalle);
-            montoTotal = montoTotal.add(examen.getPrecio());
         }
         orden.setMontoTotal(montoTotal);
 

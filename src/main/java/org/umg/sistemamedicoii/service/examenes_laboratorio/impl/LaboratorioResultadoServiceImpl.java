@@ -1,5 +1,7 @@
 package org.umg.sistemamedicoii.service.examenes_laboratorio.impl;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.umg.sistemamedicoii.dto.examenes_laboratorio.DetalleOrdenLaboratorioResponseDTO;
@@ -21,6 +23,8 @@ import java.util.stream.Collectors;
 @Service
 public class LaboratorioResultadoServiceImpl implements LaboratorioResultadoService {
 
+    private static final Logger log = LoggerFactory.getLogger(LaboratorioResultadoServiceImpl.class);
+
     @Autowired private OrdenLaboratorioRepository ordenLaboratorioRepository;
     @Autowired private DetalleOrdenLaboratorioRepository detalleOrdenLaboratorioRepository;
     @Autowired private EmailService emailService;
@@ -32,10 +36,15 @@ public class LaboratorioResultadoServiceImpl implements LaboratorioResultadoServ
 
     @Override
     public List<OrdenLaboratorioResponseDTO> listarOrdenes(String estado, Integer medicoId) {
+        log.info("GET /api/laboratorio/ordenes -> estado={}, medicoId={}", estado, medicoId);
+
         EstadoOrdenLaboratorioEnum filtro = parsearEstado(estado);
         List<OrdenLaboratorio> ordenes = (medicoId != null)
                 ? ordenLaboratorioRepository.findByEstadoAndMedico_IdOrderByFechaCreacionAsc(filtro, medicoId)
                 : ordenLaboratorioRepository.findByEstadoOrderByFechaCreacionAsc(filtro);
+
+        log.info("listarOrdenes() -> {} orden(es) encontradas con estado {}", ordenes.size(), filtro);
+
         return ordenes.stream()
                 .map(this::toOrdenResponseDTO)
                 .collect(Collectors.toList());
@@ -49,9 +58,12 @@ public class LaboratorioResultadoServiceImpl implements LaboratorioResultadoServ
 
     @Override
     public OrdenLaboratorioResponseDTO obtenerDetalle(Integer ordenId, Integer medicoId) {
+        log.info("GET /api/laboratorio/ordenes/{} -> medicoId={}", ordenId, medicoId);
+
         OrdenLaboratorio orden = buscarOrden(ordenId);
         // FIX QA (gap #2): un médico no debe poder consultar el detalle de la orden de otro médico
         if (medicoId != null && (orden.getMedico() == null || !medicoId.equals(orden.getMedico().getId()))) {
+            log.warn("Acceso denegado: medicoId={} intentó ver la orden {} de otro médico", medicoId, ordenId);
             throw new org.springframework.security.access.AccessDeniedException(
                     "No tiene permisos para consultar esta orden de laboratorio.");
         }
@@ -60,10 +72,13 @@ public class LaboratorioResultadoServiceImpl implements LaboratorioResultadoServ
 
     @Override
     public DetalleOrdenLaboratorioResponseDTO registrarResultado(Integer detalleId, RegistrarResultadoRequestDTO dto) {
+        log.info("POST /api/laboratorio/examenes/{}/resultado -> valor={}, fueraDeRango={}", detalleId, dto.getValorResultado(), dto.isFueraDeRango());
+
         DetalleOrdenLaboratorio detalle = buscarDetalle(detalleId);
         OrdenLaboratorio orden = detalle.getOrden();
 
         if (orden.getEstado() != EstadoOrdenLaboratorioEnum.EN_PROCESO) {
+            log.warn("registrarResultado() rechazado: orden {} está en estado '{}'", orden.getId(), orden.getEstado().getNombre());
             throw new IllegalArgumentException(
                     "No es posible registrar resultados: la orden se encuentra en estado '" + orden.getEstado().getNombre() + "'.");
         }
@@ -101,6 +116,8 @@ public class LaboratorioResultadoServiceImpl implements LaboratorioResultadoServ
 
         detalleOrdenLaboratorioRepository.save(detalle);
 
+        log.info("registrarResultado() OK -> detalle {} guardado (orden {})", detalleId, orden.getId());
+
         String mensaje = detalle.isFueraDeRango()
                 ? "Resultado guardado exitosamente. Los resultados están fuera del rango de referencia normal. Requiere revisión."
                 : "Resultado guardado exitosamente.";
@@ -110,6 +127,8 @@ public class LaboratorioResultadoServiceImpl implements LaboratorioResultadoServ
 
     @Override
     public DetalleOrdenLaboratorioResponseDTO publicarResultado(Integer detalleId) {
+        log.info("POST /api/laboratorio/examenes/{}/publicar", detalleId);
+
         DetalleOrdenLaboratorio detalle = buscarDetalle(detalleId);
 
         if (detalle.getValorResultado() == null) {
@@ -127,6 +146,7 @@ public class LaboratorioResultadoServiceImpl implements LaboratorioResultadoServ
         if (todosPublicados) {
             orden.setEstado(EstadoOrdenLaboratorioEnum.COMPLETADA);
             ordenLaboratorioRepository.save(orden);
+            log.info("publicarResultado() -> orden {} quedó COMPLETADA (todos los exámenes publicados)", orden.getId());
         }
 
         // FIX QA (RNF-007): notificar al médico tratante que hay un resultado de laboratorio disponible.
@@ -137,6 +157,8 @@ public class LaboratorioResultadoServiceImpl implements LaboratorioResultadoServ
 
     @Override
     public DetalleOrdenLaboratorioResponseDTO reabrirResultado(Integer detalleId) {
+        log.info("POST /api/laboratorio/examenes/{}/reabrir", detalleId);
+
         DetalleOrdenLaboratorio detalle = buscarDetalle(detalleId);
 
         if (!detalle.isPublicado()) {
@@ -152,6 +174,7 @@ public class LaboratorioResultadoServiceImpl implements LaboratorioResultadoServ
         if (orden.getEstado() == EstadoOrdenLaboratorioEnum.COMPLETADA) {
             orden.setEstado(EstadoOrdenLaboratorioEnum.EN_PROCESO);
             ordenLaboratorioRepository.save(orden);
+            log.info("reabrirResultado() -> orden {} volvió a EN_PROCESO", orden.getId());
         }
 
         return toDetalleResponseDTO(detalle, "Resultado reabierto para corrección. Vuelve a estar disponible para edición.");

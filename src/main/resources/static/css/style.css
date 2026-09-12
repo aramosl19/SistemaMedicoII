@@ -334,9 +334,20 @@ input[type="checkbox"] { accent-color: var(--coffee); }
 }
 
 @media print {
-    .sidebar, .sidebar-toggle-mobile, .backdrop, .aurora, .paper-grain, .btn { display: none !important; }
-    body, .main-content { background: #fff; color: #000; }
+    /* Oculta todo excepto lo marcado explícitamente como imprimible */
+    .sidebar, .sidebar-toggle-mobile, .backdrop, .aurora, .paper-grain, .btn,
+    .main-content > *:not(.print-only) { display: none !important; }
+
+    /* Limpia el layout general para que no queden márgenes ni fondo oscuro */
+    body, .main-content { background: #fff; color: #000; padding: 0 !important; margin: 0 !important; }
+    .main-content { display: flex; justify-content: center; }
+
+    /* Tamaño de página compacto en vez de carta/A4 completa */
+    @page { size: 80mm auto; margin: 5mm; }
+
+    /* El recibo en sí, sin sombras ni límites de ancho pensados para pantalla */
     .receipt-box { border: 1px solid #000; }
+    .ticket-card.print-only { max-width: 100% !important; margin: 0 !important; box-shadow: none !important; }
 }
 
 /* ---------- Global Loader (Anti-doble click) ---------- */

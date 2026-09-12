@@ -92,9 +92,6 @@ public class CitaServiceImpl implements CitaService {
                 medicoId, fecha.atTime(HORA_INICIO), fin, ESTADO_CANCELADA);
         List<LocalDateTime> ocupadosList = ocupadas.stream().map(Cita::getFechaHora).collect(Collectors.toList());
 
-        // GAP QA: además de las citas ya agendadas, un bloqueo de agenda del médico
-        // (Bloqueo de disponibilidad, Evento personal, Capacitación, Vacaciones)
-        // también debe quitar el horario de la lista de disponibles.
         List<EventoAgenda> bloqueos = eventoAgendaRepository
                 .findByMedicoIdAndFechaInicioLessThanAndFechaFinGreaterThan(medicoId, fin, fecha.atTime(HORA_INICIO));
 

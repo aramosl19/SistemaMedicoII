@@ -9,11 +9,11 @@ public enum EstadoCitaEnum {
     CANCELADA("Cancelada"),
     PACIENTE_PRESENTE("Paciente Presente"),
     SIGNOS_VITALES("Signos Vitales"),
-    EN_ESPERA("En Espera"), // <-- Nuevo (Post-signos vitales)
+    EN_ESPERA("En Espera"), // (Post-signos vitales)
     CONSULTA_MEDICA("Consulta Médica"),
-    EVALUADO("Evaluado"), // <-- Nuevo (Post-consulta, pre-cierre)
+    EVALUADO("Evaluado"), // (Post-consulta, pre-cierre)
     ATENCION_FINALIZADA("Atención Finalizada"),
-    NO_ASISTIO("No Asistió"); // <-- Nuevo (Flujo Alterno 06)
+    NO_ASISTIO("No Asistió"); // (Flujo Alterno 06)
 
     private final String nombreBd;
 
