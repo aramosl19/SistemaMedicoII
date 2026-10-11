@@ -111,13 +111,14 @@
         window.location.href = 'index.html';
     }
 
-    // FIX CU-02 FA01: antes navegaba siempre a index.html sin importar la
-    // respuesta del confirm(). Ahora solo navega si la persona confirma; si
-    // cancela, se queda en el formulario sin perder lo ya escrito.
-    function descartarRegistro() {
-        if (confirm('¿Está seguro que desea descartar la información ingresada y volver al portal principal? Los datos no guardados se perderán.')) {
-            window.location.href = 'index.html';
+    async function descartarRegistro() {
+        const form = document.getElementById('form-reg');
+        const datos = Object.fromEntries(new FormData(form).entries());
+        try {
+            await App.apiFetch('/api/portal/descartar-registro', 'POST', datos);
+        } catch (err) {
         }
+        window.location.href = 'index.html';
     }
 
     // Mejora UX (no pedida por el documento): permite ver/ocultar el texto

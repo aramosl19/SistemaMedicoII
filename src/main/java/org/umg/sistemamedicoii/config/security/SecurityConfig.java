@@ -72,7 +72,7 @@ public class SecurityConfig {
                         .accessDeniedHandler(restAccessDeniedHandler))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/", "/*.html", "/favicon.ico", "/css/**", "/js/**").permitAll()
-                        .requestMatchers("/api/portal/registro", "/api/portal/verificar-dpi", "/api/portal/login").permitAll()
+                        .requestMatchers("/api/portal/registro", "/api/portal/verificar-dpi", "/api/portal/login", "/api/portal/descartar-registro").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/usuarios/me").authenticated()
                         .requestMatchers(HttpMethod.GET, "/api/usuarios/**").hasAnyRole("ADMINISTRADOR", "RECEPCIONISTA")
                         .requestMatchers("/api/usuarios/**").hasRole("ADMINISTRADOR")
