@@ -26,6 +26,7 @@ Backend (API REST) de un sistema de gestión hospitalaria para **Hospital El Mil
 ---
 
 ## Casos de uso
+Como detalle los coloque en la carpeta "docs" en la raiz del proyecto.
 
 | CU | Nombre |
 |----|--------|
@@ -44,7 +45,7 @@ Backend (API REST) de un sistema de gestión hospitalaria para **Hospital El Mil
 | CU-12 | Agendamiento de cita de seguimiento |
 | CU-13 | Configuración de sedes y especialidades |
 | CU-15 | Bitácora y movimientos de inventario |
-| CU-16 | Gestión de agenda médica (en el documento original figura como CU-14) |
+| CU-16 | Gestión de agenda médica |
 
 ---
 
