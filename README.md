@@ -4,8 +4,6 @@ Backend (API REST) de un sistema de gestión hospitalaria para **Hospital El Mil
 
 > **Estado:** el proyecto está **publicado en Azure, junto con su base de datos PostgreSQL**, y cuenta con **CI/CD** en GitHub Actions: con cada push a `main` construye y actualiza la imagen del backend en Azure (el arranque del sistema en Azure no es automático). Más detalle en [Despliegue en Azure y CI/CD](#despliegue-en-azure-y-cicd).
 
-Proyecto del curso de **Programación II**.
-
 ---
 
 ## Tabla de contenido
