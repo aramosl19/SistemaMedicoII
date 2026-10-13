@@ -270,7 +270,7 @@
             document.getElementById('rec-trx').innerText = data.numeroTransaccion;
             document.getElementById('rec-fec').innerText = new Date().toLocaleString();
             document.getElementById('rec-pac').innerText = data.pacienteNombre;
-            document.getElementById('rec-sucursal').innerText = data.sucursal || '';
+            document.getElementById('rec-sucursal').innerText = data.sucursal || data.sucursalNombre || '';
             document.getElementById('rec-con').innerText = isCita ? 'Pago consulta médica' : 'Pago orden de laboratorio';
             document.getElementById('rec-cant-wrap').classList.toggle('d-none', isCita);
             document.getElementById('rec-cant-examenes').innerText = data.cantidadExamenes ?? '';
