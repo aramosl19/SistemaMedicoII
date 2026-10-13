@@ -37,15 +37,26 @@
     <h2>Toma de Signos Vitales y Triage</h2>
     <div id="msg" class="alert"></div>
 
-    <div class="card">
-      <div class="d-flex" style="justify-content: space-between; align-items: center;">
-        <h3>Pacientes en sala de espera</h3>
-        <button onclick="cargarEnEspera()" class="btn"><i class="fa-solid fa-rotate"></i> Actualizar lista</button>
+    <div class="d-flex" style="justify-content: flex-end; margin-bottom: 1rem;">
+      <button onclick="cargarEnEspera()" class="btn"><i class="fa-solid fa-rotate"></i> Actualizar lista</button>
+    </div>
+
+    <div class="d-flex" style="gap: 1rem; align-items: flex-start; flex-wrap: wrap;">
+      <div class="card flex-1" style="min-width: 320px;">
+        <h3>Pacientes presentes</h3>
+        <table class="table mt-4">
+          <thead><tr><th>Paciente</th><th>Acción</th></tr></thead>
+          <tbody id="tb-espera"></tbody>
+        </table>
       </div>
-      <table class="table mt-4">
-        <thead><tr><th>Paciente</th><th>Estado</th><th>Acción</th></tr></thead>
-        <tbody id="tb-espera"></tbody>
-      </table>
+
+      <div class="card flex-1" style="min-width: 320px;">
+        <h3>En proceso de triage (signos vitales)</h3>
+        <table class="table mt-4">
+          <thead><tr><th>Paciente</th><th>Acción</th></tr></thead>
+          <tbody id="tb-triage"></tbody>
+        </table>
+      </div>
     </div>
 
     <div class="card d-none" id="form-area">
@@ -94,30 +105,34 @@
 
   let citasEnEspera = [];
 
+  function filaPaciente(c, textoBoton) {
+    return `
+      <tr>
+        <td>${c.pacienteNombre} ${c.emergencia ? '<span class="badge badge-danger">URGENCIA</span>' : ''}</td>
+        <td>
+          <button class="btn btn-primary" onclick="abrirExpediente(${c.id})">${textoBoton}</button>
+        </td>
+      </tr>`;
+  }
+
   async function cargarEnEspera() {
     try {
       const data = await App.apiFetch('/api/enfermeria/citas/en-espera');
       citasEnEspera = data;
-      document.getElementById('tb-espera').innerHTML = data.length ? data.map(c => {
-        let badgeEstado = c.estadoNombre;
-        if (c.estadoNombre === 'Signos Vitales') {
-          badgeEstado = `<span class="badge badge-brass">En proceso (Triage)</span>`;
-        }
-        return `
-            <tr>
-                <td>${c.pacienteNombre} ${c.emergencia ? '<span class="badge badge-danger">URGENCIA</span>' : ''}</td>
-                <td>${badgeEstado}</td>
-                <td>
-                    <button class="btn btn-primary" onclick="abrirExpediente(${c.id})">
-                        ${c.estadoNombre === 'Signos Vitales' ? 'Retomar expediente' : 'Llamar y Tomar Signos'}
-                    </button>
-                </td>
-            </tr>
-          `;
-      }).join('') : `<tr><td colspan="3" class="text-muted">No hay pacientes esperando triage en este momento.</td></tr>`;
+
+      const presentes = data.filter(c => c.estadoNombre !== 'Signos Vitales');
+      const enTriage = data.filter(c => c.estadoNombre === 'Signos Vitales');
+
+      document.getElementById('tb-espera').innerHTML = presentes.length
+              ? presentes.map(c => filaPaciente(c, 'Llamar y Tomar Signos')).join('')
+              : `<tr><td colspan="2" class="text-muted">No hay pacientes esperando triage en este momento.</td></tr>`;
+
+      document.getElementById('tb-triage').innerHTML = enTriage.length
+              ? enTriage.map(c => filaPaciente(c, 'Retomar expediente')).join('')
+              : `<tr><td colspan="2" class="text-muted">No hay pacientes en proceso de triage.</td></tr>`;
     } catch(e) { App.showAlert('msg', e.message, true); }
   }
-  
+
   function abrirExpediente(id) {
     const c = citasEnEspera.find(x => x.id === id);
     if (c && c.estadoNombre === 'Signos Vitales') retomar(c);
@@ -125,11 +140,13 @@
   }
 
   function retomar(c) {
+    document.getElementById('form-signos').reset();
     document.getElementById('citaId').value = c.id;
     document.getElementById('num-cita-text').innerText = c.id;
     document.getElementById('nom-pac').innerText = c.pacienteNombre;
     document.getElementById('em').checked = c.emergencia;
     document.getElementById('form-area').classList.remove('d-none');
+    document.getElementById('form-area').scrollIntoView({ behavior: 'smooth' });
     validarAlertasRT();
   }
 
@@ -137,11 +154,13 @@
     try {
       const data = await App.apiFetch(`/api/enfermeria/citas/${id}/llamar`, 'POST');
       App.showAlert('msg', data.mensaje);
+      document.getElementById('form-signos').reset();
       document.getElementById('citaId').value = data.id;
       document.getElementById('num-cita-text').innerText = data.id;
       document.getElementById('nom-pac').innerText = data.pacienteNombre;
       document.getElementById('em').checked = data.emergencia;
       document.getElementById('form-area').classList.remove('d-none');
+      document.getElementById('form-area').scrollIntoView({ behavior: 'smooth' });
       validarAlertasRT();
 
       if ('speechSynthesis' in window) {
