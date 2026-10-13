@@ -4,6 +4,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.umg.sistemamedicoii.models.gestion_citas_recepcion.Cita;
 
 import java.time.LocalDateTime;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -32,4 +33,6 @@ public interface CitaRepository extends JpaRepository<Cita, Integer> {
     List<Cita> findByMedicoIdAndEstado_NombreOrderByEmergenciaDescFechaHoraAsc(Integer medicoId, String estadoNombre);
 
     List<Cita> findByEstado_NombreOrderByEmergenciaDescFechaHoraAsc(String estadoNombre);
+
+    List<Cita> findByEstado_NombreInOrderByEmergenciaDescFechaHoraAsc(Collection<String> estadosNombre);
 }

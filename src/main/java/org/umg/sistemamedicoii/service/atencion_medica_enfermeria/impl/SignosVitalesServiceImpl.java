@@ -60,8 +60,10 @@ public class SignosVitalesServiceImpl implements SignosVitalesService {
 
     @Override
     public List<CitaEnfermeriaResponseDTO> listarCitasPresentes() {
-        String estadoPacientePresente = EstadoCitaEnum.PACIENTE_PRESENTE.getNombreBd();
-        return citaRepository.findByEstado_NombreOrderByEmergenciaDescFechaHoraAsc(estadoPacientePresente)
+        List<String> estadosTriage = List.of(
+                EstadoCitaEnum.PACIENTE_PRESENTE.getNombreBd(),
+                EstadoCitaEnum.SIGNOS_VITALES.getNombreBd());
+        return citaRepository.findByEstado_NombreInOrderByEmergenciaDescFechaHoraAsc(estadosTriage)
                 .stream()
                 .map(c -> {
                     CitaEnfermeriaResponseDTO dto = new CitaEnfermeriaResponseDTO();

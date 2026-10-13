@@ -92,9 +92,12 @@
   document.getElementById('user-name').textContent = App.getName() || 'Usuario del Sistema';
   document.getElementById('user-role').textContent = App.getRole() || '';
 
+  let citasEnEspera = [];
+
   async function cargarEnEspera() {
     try {
       const data = await App.apiFetch('/api/enfermeria/citas/en-espera');
+      citasEnEspera = data;
       document.getElementById('tb-espera').innerHTML = data.length ? data.map(c => {
         let badgeEstado = c.estadoNombre;
         if (c.estadoNombre === 'Signos Vitales') {
@@ -105,7 +108,7 @@
                 <td>${c.pacienteNombre} ${c.emergencia ? '<span class="badge badge-danger">URGENCIA</span>' : ''}</td>
                 <td>${badgeEstado}</td>
                 <td>
-                    <button class="btn btn-primary" onclick="llamar(${c.id})">
+                    <button class="btn btn-primary" onclick="abrirExpediente(${c.id})">
                         ${c.estadoNombre === 'Signos Vitales' ? 'Retomar expediente' : 'Llamar y Tomar Signos'}
                     </button>
                 </td>
@@ -113,6 +116,21 @@
           `;
       }).join('') : `<tr><td colspan="3" class="text-muted">No hay pacientes esperando triage en este momento.</td></tr>`;
     } catch(e) { App.showAlert('msg', e.message, true); }
+  }
+  
+  function abrirExpediente(id) {
+    const c = citasEnEspera.find(x => x.id === id);
+    if (c && c.estadoNombre === 'Signos Vitales') retomar(c);
+    else llamar(id);
+  }
+
+  function retomar(c) {
+    document.getElementById('citaId').value = c.id;
+    document.getElementById('num-cita-text').innerText = c.id;
+    document.getElementById('nom-pac').innerText = c.pacienteNombre;
+    document.getElementById('em').checked = c.emergencia;
+    document.getElementById('form-area').classList.remove('d-none');
+    validarAlertasRT();
   }
 
   async function llamar(id) {
