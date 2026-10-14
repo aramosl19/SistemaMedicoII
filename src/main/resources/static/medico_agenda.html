@@ -148,6 +148,10 @@
                         <option value="PENDING" selected>Solo pendientes</option>
                         <option value="DONE">Completadas</option>
                     </select>
+                    <label style="display: flex; align-items: center; gap: 0.5rem; margin-top: 0.5rem; cursor: pointer; font-size: 0.85rem; text-transform: none; letter-spacing: normal;">
+                        <input type="checkbox" id="ver-todas-fechas" onchange="renderTasks()" style="width: 16px; height: 16px;">
+                        Ver tareas de todas las fechas
+                    </label>
                 </div>
 
                 <div id="l-ta" style="display: flex; flex-direction: column; gap: 0.5rem; max-height: 60vh; overflow-y: auto; margin-top: 1rem;"></div>
@@ -301,10 +305,14 @@
         // calendario (currentDate), no todas las tareas del médico.
         const isoDia = formatDateIso(currentDate);
         const delDia = tasksCache.filter(t => t.fechaLimite && formatDateIso(new Date(t.fechaLimite)) === isoDia);
-        const filtered = delDia.filter(t => f === 'ALL' ? true : (f === 'DONE' ? t.completada : !t.completada));
+        const verTodas = document.getElementById('ver-todas-fechas').checked;
+        const base = verTodas ? tasksCache : delDia;
+        const filtered = base.filter(t => f === 'ALL' ? true : (f === 'DONE' ? t.completada : !t.completada));
 
         const lblFecha = document.getElementById('fecha-tareas-panel');
-        if (lblFecha) lblFecha.textContent = currentDate.toLocaleDateString('es-GT', { day: 'numeric', month: 'long', year: 'numeric' });
+        if (lblFecha) lblFecha.textContent = verTodas
+            ? 'Todas las fechas'
+            : currentDate.toLocaleDateString('es-GT', { day: 'numeric', month: 'long', year: 'numeric' });
 
         // Solución CU-16 (gap #1 del QA): conteo de tareas pendientes en el botón toggle
         document.getElementById('contador-tareas').textContent = delDia.filter(t => !t.completada).length;
@@ -324,7 +332,7 @@
                     </div>
                 </div>
             </div>
-        `).join('') : '<p class="text-muted" style="text-align:center; padding: 1rem;">No hay tareas que coincidan para este día.</p>';
+        `).join('') : `<p class="text-muted" style="text-align:center; padding: 1rem;">No hay tareas que coincidan${verTodas ? '' : ' para este día'}.</p>`;
     }
 
     // Solución CU-16 (gap #1 del QA, FA06): panel de tareas colapsable a la derecha
