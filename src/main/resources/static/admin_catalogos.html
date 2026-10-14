@@ -154,8 +154,8 @@
         cargarDatos();
     }
 
-    async function cargarDatos() {
-        App.hideAlert('msg');
+    async function cargarDatos(mantenerMensaje = false) {
+        if (mantenerMensaje !== true) App.hideAlert('msg');
         try {
             dataCache = await App.apiFetch(`/api/${endpointActual}`);
             currentPage = 1;
@@ -359,7 +359,7 @@
                 : `El registro '${nomGuardado}' ha sido ${id ? 'actualizado correctamente' : 'creado exitosamente'}.`;
 
             App.showAlert('msg', mensajeExito);
-            cerrarModal(); cargarDatos(); precargarCombos();
+            cerrarModal(); cargarDatos(true); precargarCombos();
         } catch(err) {
             App.showAlert('msg-modal', err.message, true);
             marcarCamposInvalidos(err.message);
@@ -387,7 +387,7 @@
                     await App.apiFetch(`/api/${endpointActual}/${id}`, 'PUT', item);
                 }
                 App.showAlert('msg', `El registro '${nombre}' ha sido ${estadoActual ? 'eliminado' : 'activado'} correctamente.`);
-                cargarDatos();
+                cargarDatos(true);
             } catch(e) { App.showAlert('msg', e.message, true); }
         }
     }
@@ -397,7 +397,7 @@
             try {
                 await App.apiFetch(`/api/sucursal-especialidad/${id}`, 'DELETE');
                 App.showAlert('msg', `La especialidad '${nomEsp}' fue removida de la sede '${nomSede}' correctamente.`);
-                cargarDatos();
+                cargarDatos(true);
             }
             catch(e) { App.showAlert('msg', e.message, true); }
         }
