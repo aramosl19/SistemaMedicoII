@@ -78,6 +78,7 @@
         <div class="modal-overlay d-none" id="modal-container">
             <div class="modal-content" style="max-width: 600px;">
                 <h3 id="form-title">Registro de Catálogo</h3>
+                <div id="msg-modal" class="alert"></div>
                 <form id="form-catalogo" class="mt-4" onsubmit="guardarRegistro(event)" novalidate>
                     <input type="hidden" id="cat-id">
 
@@ -316,7 +317,11 @@
         }
     }
 
-    function cerrarModal() { document.getElementById('modal-container').classList.add('d-none'); }
+    function cerrarModal() {
+        document.getElementById('modal-container').classList.add('d-none');
+        App.hideAlert('msg-modal');
+        document.querySelectorAll('#form-catalogo .form-control').forEach(el => el.style.borderColor = '');
+    }
 
     async function guardarRegistro(e) {
         e.preventDefault();
@@ -355,7 +360,21 @@
 
             App.showAlert('msg', mensajeExito);
             cerrarModal(); cargarDatos(); precargarCombos();
-        } catch(err) { App.showAlert('msg', err.message, true); }
+        } catch(err) {
+            App.showAlert('msg-modal', err.message, true);
+            marcarCamposInvalidos(err.message);
+        }
+    }
+
+    function marcarCamposInvalidos(mensaje) {
+        document.querySelectorAll('#form-catalogo .form-control').forEach(el => el.style.borderColor = '');
+        const m = (mensaje || '').toLowerCase();
+        const mapa = [['nombre', 'cat-nombre'], ['descripci', 'cat-desc'], ['precio', 'cat-precio'],
+            ['unidad', 'cat-unidad'], ['tel', 'cat-tel'], ['laboratorio', 'cat-lab'], ['stock', 'cat-min']];
+        mapa.forEach(([clave, id]) => {
+            const el = document.getElementById(id);
+            if (el && m.includes(clave)) el.style.borderColor = 'var(--error)';
+        });
     }
 
     async function toggleEstado(id, estadoActual, nombre) {
