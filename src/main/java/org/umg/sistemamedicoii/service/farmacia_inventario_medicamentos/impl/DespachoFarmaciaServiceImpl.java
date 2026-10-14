@@ -69,9 +69,10 @@ public class DespachoFarmaciaServiceImpl implements DespachoFarmaciaService {
         RecetaMedica receta = recetaMedicaRepository.findById(dto.getRecetaId())
                 .orElseThrow(() -> new ResourceNotFoundException("No se encontró la receta ingresada."));
 
-        if (!receta.isActivo() || !esVigente(receta)) {
-            throw new IllegalArgumentException("La receta es inválida o está vencida (máximo 7 días).");
+        if (!receta.isActivo()) {
+            throw new IllegalArgumentException("La receta es inválida o ya fue procesada.");
         }
+        validarVigencia(receta);
 
         if (dto.getItems() == null || dto.getItems().stream().noneMatch(i -> i.getCantidadDespachada() != null && i.getCantidadDespachada() > 0)) {
             throw new IllegalArgumentException("Debe despachar al menos una unidad de algún medicamento.");
@@ -221,6 +222,8 @@ public class DespachoFarmaciaServiceImpl implements DespachoFarmaciaService {
         RecetaMedica receta = recetaMedicaRepository.findById(recetaId)
                 .orElseThrow(() -> new ResourceNotFoundException("No se encontró la receta ingresada."));
 
+        validarVigencia(receta);
+
         RecetaMedicaResponseDTO dto = new RecetaMedicaResponseDTO();
         dto.setId(receta.getId());
         dto.setCitaId(receta.getCita().getId());
@@ -244,6 +247,15 @@ public class DespachoFarmaciaServiceImpl implements DespachoFarmaciaService {
             return det;
         }).collect(Collectors.toList()));
         return dto;
+    }
+
+    private void validarVigencia(RecetaMedica receta) {
+        LocalDateTime limite = receta.getFechaEmision().plusDays(VIGENCIA_DIAS);
+        if (!limite.isAfter(LocalDateTime.now())) {
+            long dias = java.time.temporal.ChronoUnit.DAYS.between(receta.getFechaEmision(), LocalDateTime.now());
+            throw new IllegalArgumentException("Receta Vencida. La receta #" + receta.getId()
+                    + " fue emitida hace " + dias + " días y ya no es válida para despacho.");
+        }
     }
 
     private boolean esVigente(RecetaMedica receta) {
